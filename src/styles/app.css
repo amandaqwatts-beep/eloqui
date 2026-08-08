@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-burgundy-50: #fdf2f4;
+  --color-burgundy-100: #fbe5e9;
+  --color-burgundy-200: #f7ccd4;
+  --color-burgundy-300: #f0a3b0;
+  --color-burgundy-400: #e66f85;
+  --color-burgundy-500: #d94462;
+  --color-burgundy-600: #c4274b;
+  --color-burgundy-700: #a51c3e;
+  --color-burgundy-800: #8b1a39;
+  --color-burgundy-900: #751a36;
+  --color-burgundy-950: #410919;
+  --color-gold-50: #fffdf5;
+  --color-gold-100: #fff9e0;
+  --color-gold-200: #fff2b0;
+  --color-gold-300: #ffe674;
+  --color-gold-400: #fdd836;
+  --color-gold-500: #f0c010;
+  --color-gold-600: #d49e06;
+  --color-gold-700: #ad7908;
+  --color-gold-800: #8e5f0e;
+  --color-gold-900: #744d12;
+  --color-gold-950: #432905;
+  --color-cream-50: #fefdfb;
+  --color-cream-100: #fdf9f1;
+  --color-cream-200: #faf3e2;
+  --color-cream-300: #f5e9ca;
+  --color-cream-400: #eed9a7;
+  --color-cream-500: #e6c783;
+  --color-cream-600: #dbb05f;
+  --color-cream-700: #c4953c;
+  --color-cream-800: #a57c35;
+  --color-cream-900: #886530;
+  --color-cream-950: #4a3518;
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-cream-50 text-gray-900 antialiased;
+  }
+}
