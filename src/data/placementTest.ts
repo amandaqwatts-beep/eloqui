@@ -211,6 +211,39 @@ q(69,1,"The perfect passive is formed with…",["the fourth principal part plus 
 q(69,2,"vehementer means…",["violently, greatly","afterwards","almost","therefore"],0,"vehementer is an adverb meaning 'violently, greatly'."),
 // Level 70 — Mastery Review Vocab #2
 q(70,1,"audīmur means…",["we are heard","we hear","they are heard","I am heard"],0,"audīmur is the first-person plural present passive, 'we are heard'."),
-q(70,2,"Which phrase shows a personal agent?",["ā Caesare","gladiō","cum amīcīs","tēlīs"],0,"ā Caesare is ā/ab plus a person — the ablative of agent; the others express means or accompaniment.")
+q(70,2,"Which phrase shows a personal agent?",["ā Caesare","gladiō","cum amīcīs","tēlīs"],0,"ā Caesare is ā/ab plus a person — the ablative of agent; the others express means or accompaniment."),
+// Level 71 — The Present Subjunctive Active
+q(71,1,"The present subjunctive of amō (1st sg.) is…",["amem","amō","amet","amāvī"],0,"First conjugation changes -ā- to -ē-: amem, 'I may love'."),
+q(71,2,"celeriter means…",["quickly","for a long time","sharply","easily"],0,"celeriter is an adverb meaning 'quickly'."),
+// Level 72 — Mood in Purpose Clauses
+q(72,1,"A purpose clause is introduced by ___ + subjunctive.",["ut","quod","et","sed"],0,"ut + subjunctive expresses purpose: 'so that, in order that'."),
+q(72,2,"Venit ut videat means…",["he comes to see","he comes because he sees","he sees the coming","he came to see"],0,"ut videat = so that he may see, i.e., to see."),
+// Level 73 — Primary Tenses: Sequence of Tenses
+q(73,1,"Which main-verb tenses are primary?",["present and future","imperfect and perfect","pluperfect only","all past tenses"],0,"Primary tenses (present, future) take the present subjunctive in purpose clauses."),
+q(73,2,"exspectō means…",["I wait for, expect","I storm","I see","I come"],0,"exspectō, exspectāre means 'I wait for, expect'."),
+// Level 74 — Negative Purpose Clauses
+q(74,1,"Negative purpose is introduced by…",["nē","ut","quod","cum"],0,"nē ('so that...not, lest') introduces negative purpose clauses."),
+q(74,2,"Fugit nē videātur means…",["he flees so that he may not be seen","he flees to be seen","he does not flee","they flee so as not to be seen"],0,"nē videātur = so that he may not be seen."),
+// Level 75 — The Imperfect Subjunctive Active
+q(75,1,"The imperfect subjunctive is formed from the ___ + personal endings.",["present active infinitive","perfect stem","future stem","4th principal part"],0,"Add -m, -s, -t, -mus, -tis, -nt to the present active infinitive."),
+q(75,2,"The imperfect subjunctive of amō (1st sg.) is…",["amārem","amem","amābam","amāvī"],0,"amāre + -m = amārem, 'I might love'."),
+// Level 76 — Secondary Tenses: Sequence of Tenses
+q(76,1,"Vēnit ut vidēret means…",["he came to see","he comes to see","he will come to see","they came to see"],0,"The perfect main verb vēnit takes the imperfect subjunctive vidēret."),
+q(76,2,"With a past main verb, a purpose clause uses the…",["imperfect subjunctive","present subjunctive","future indicative","perfect indicative"],0,"Past main verb → imperfect subjunctive in the purpose clause."),
+// Level 77 — Adjectives Used as Nouns; Imperfect Subjunctive of sum
+q(77,1,"The imperfect subjunctive of sum (1st sg.) is…",["essem","eram","sum","fuī"],0,"esse + -m = essem, 'I might be'."),
+q(77,2,"bonī used as a noun means…",["the good (people)","goodness","the good thing","a good man"],0,"The masculine plural of an adjective used as a noun names a group of people."),
+// Level 78 — quī, quae, quod: The Relative Pronoun
+q(78,1,"quī, quae, quod means…",["who, which, that","because","so that","who?"],0,"quī, quae, quod is the relative pronoun: who, which, that."),
+q(78,2,"The relative pronoun agrees with its antecedent in…",["gender and number","case only","tense","person"],0,"Gender and number come from the antecedent; case comes from the relative's own clause."),
+// Level 79 — The Use of ad
+q(79,1,"ad takes the…",["accusative","ablative","genitive","dative"],0,"ad governs the accusative case."),
+q(79,2,"usque ad flūmen means…",["all the way to the river","in the river","from the river","to the bridge"],0,"usque (all the way) strengthens ad: all the way to the river."),
+// Level 80 — Relative Clauses of Purpose
+q(80,1,"Mīsit virōs quī adjuvārent means…",["he sent men to help","he sent the men who were helping","the men helped him","he helped the men"],0,"quī adjuvārent (subjunctive) = who would help, i.e., to help."),
+q(80,2,"The verb of a relative clause of purpose is in the…",["subjunctive","indicative","imperative","infinitive"],0,"A relative clause of purpose uses the subjunctive."),
+// Level 81 — Purpose Clauses with quō
+q(81,1,"A purpose clause containing a comparative is introduced by…",["quō","ut","quod","nē"],0,"quō + comparative + subjunctive expresses purpose with a comparative."),
+q(81,2,"facilius means…",["more easily","easily","easiest","harder"],0,"facilius is the comparative adverb: more easily."),
 ];
 export default placementQuestions;
