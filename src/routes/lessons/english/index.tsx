@@ -3,8 +3,8 @@
  *
  * Parameterized copy of the Latin route shell (src/routes/lessons/latin/index.tsx)
  * minus the Latin-only surfaces: no AudioPlayer, no Explore, no Review /
- * diagnostics pair drills, and no AI Practice in Phase A (both AI seams are
- * still Latin-hardcoded — Phase B of the english-course-route-wiring spec).
+ * diagnostics pair drills. AI Practice is wired (Phase B of the
+ * english-course-route-wiring spec) — both AI seams are language-aware.
  * Pronunciation mode is fixed to "ecclesiastical" (the Latin PronMode union is
  * the only valid type; English has a single pronunciation mode and nothing
  * consumes pronMode for English since every item carries its own respelling).
@@ -41,6 +41,7 @@ import DrillView from "~/screens/DrillView";
 import PlacementTest from "~/screens/PlacementTest";
 import SettingsScreen from "~/screens/SettingsScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
+import AIPracticeScreen from "~/screens/AIPracticeScreen";
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
 
 export const Route = createFileRoute("/lessons/english/")({
@@ -77,12 +78,24 @@ function EnglishLessons() {
   const [drillCards, setDrillCards] = useState<DrillCard[] | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [aiLessonId, setAiLessonId] = useState<number | null>(null);
 
   // ── Navigation wrappers ──────────────────────────────────────
   const openDrill = useCallback(() => {
     setDrillCards(null); // re-enter drill from the setup screen
     lesson.goToDrill();
   }, [lesson]);
+
+  const openAIPractice = useCallback(
+    (lessonId: number) => {
+      setAiLessonId(lessonId);
+      lesson.goToAIPractice(lessonId);
+    },
+    [lesson],
+  );
+
+  const aiLesson =
+    englishLessons.find((l) => l.id === aiLessonId) ?? lesson.currentLesson;
 
   const startDrill = useCallback(() => {
     const pool = shuffle(
@@ -136,7 +149,7 @@ function EnglishLessons() {
           onSelectLesson={lesson.selectLesson}
           onOpenDrill={openDrill}
           onOpenPlacement={lesson.goToPlacement}
-          onOpenAIPractice={() => {}}
+          onOpenAIPractice={openAIPractice}
           onPronModeChange={() => {}}
           onOpenSettings={() => setShowSettings(true)}
           onOpenProgress={() => setShowProgress(true)}
@@ -145,7 +158,6 @@ function EnglishLessons() {
           description="Master formal register and academic vocabulary — the language of essays, applications, and professional writing."
           emoji="📚"
           showPronToggle={false}
-          showAIPractice={false}
           backTo="/languages"
         />
       );
@@ -167,8 +179,7 @@ function EnglishLessons() {
           pronMode={pronMode}
           onStart={lesson.startLesson}
           onBack={lesson.backToMenu}
-          onOpenAIPractice={() => {}}
-          showAIPractice={false}
+          onOpenAIPractice={openAIPractice}
           vocabLeftHeader="Formal word"
           vocabRightHeader="Informal equivalent"
           onSpeakLeft={speakEnglish}
@@ -202,9 +213,8 @@ function EnglishLessons() {
           onNext={lesson.nextLesson}
           onRestart={lesson.restartLesson}
           onBack={lesson.backToMenu}
-          onOpenAIPractice={() => {}}
+          onOpenAIPractice={openAIPractice}
           onOpenDrill={openDrill}
-          showAIPractice={false}
         />
       );
 
@@ -248,6 +258,18 @@ function EnglishLessons() {
           onChooseStart={placement.chooseStart}
           introBlurb="Answer questions about formal English vocabulary and usage. We'll figure out where you should start."
           resultBlurb="Here's how your placement levels went:"
+        />
+      );
+
+    case "ai-practice":
+      return (
+        <AIPracticeScreen
+          lesson={aiLesson}
+          pronMode={pronMode}
+          onBack={lesson.backToMenu}
+          aiEnabled={settingsEngine.settings.aiEnabled}
+          language="english"
+          distractorLessons={englishLessons}
         />
       );
 
