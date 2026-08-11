@@ -291,5 +291,26 @@ q(95,2,"The pluperfect subjunctive passive of laudō (1st sg.) is…",["laudātu
 // Level 96 — The Ablative of Cause
 q(96,1,"The ablative of cause is…",["a bare ablative expressing reason","ā/ab + a person","cum + ablative","an accusative phrase"],0,"Cause is expressed by a bare ablative without a preposition: dolōre, 'from grief'."),
 q(96,2,"causā with a genitive means…",["for the sake of","because of the case","by the cause","with the cause"],0,"causā (postpositive) with a genitive means 'for the sake of': rēī pūblicae causā."),
+// Level 97 — The Perfect Participle Passive
+q(97,1,"The perfect passive participle is the ___ principal part used as an adjective.",["4th","1st","2nd","3rd"],0,"The 4th principal part (laudātus, -a, -um) is the perfect passive participle, a 2-1-2 adjective."),
+q(97,2,"The perfect passive participle of mittō is…",["missus, -a, -um","mittēns","mīsī","mittere"],0,"The 4th principal part of mittō is missus: 'sent'."),
+// Level 98 — Hic, Haec, Hoc: The Declension
+q(98,1,"The genitive singular of hic (all genders) is…",["huius","huic","hōrum","hunc"],0,"huius is the genitive singular of hic, haec, hoc — one form for all genders."),
+q(98,2,"The dative plural of hic (all genders) is…",["hīs","hōrum","huic","hās"],0,"The dative and ablative plural of hic is hīs."),
+// Level 99 — Hic, Haec, Hoc: Uses
+q(99,1,"summus mōns means…",["the top of the mountain","the highest mountain","a high mountain","the greatest mountains"],0,"summus with a noun means 'the top of': summus mōns = the top of the mountain."),
+q(99,2,"In Hic vir fortis est, hic is a(n)…",["adjective modifying vir","pronoun standing alone","adverb","conjunction"],0,"hic here modifies vir, so it is the demonstrative adjective."),
+// Level 100 — Prepositions Ex, Ab, Dē
+q(100,1,"ex/ē takes the…",["ablative","accusative","genitive","dative"],0,"ex/ē ('out of, from') governs the ablative."),
+q(100,2,"'About the war' is…",["dē bellō","ex bellō","ā bellō","ad bellum"],0,"dē means 'about, concerning' with the ablative: dē bellō."),
+// Level 101 — Ille and Is
+q(101,1,"The genitive singular of ille (all genders) is…",["illīus","illī","illōrum","illum"],0,"ille declines like magnus except genitive illīus and dative illī."),
+q(101,2,"numquam means…",["never","always","sometimes","often"],0,"numquam is the adverb 'never'."),
+// Level 102 — The Ablative of Separation
+q(102,1,"The ablative of separation is used with verbs and adjectives of…",["freeing, lacking, depriving","praising","motion toward","giving"],0,"līberō, prohibeō, vacuus, līber take the ablative of separation."),
+q(102,2,"In Caesar mīlitēs perīculō līberāvit, perīculō is…",["the ablative of separation (from danger)","the dative","accusative","genitive"],0,"perīculō is the ablative: freed the soldiers FROM danger."),
+// Level 103 — Review of Ablative Constructions
+q(103,1,"Agent is expressed by…",["ā/ab + a person","a bare ablative of a thing","cum + a person","ex/ab/dē + a place"],0,"The personal agent in a passive sentence is ā/ab + ablative."),
+q(103,2,"'From Rome' is…",["Rōmā","ex Rōmā","ab Rōmā","dē Rōmā"],0,"Names of towns use the bare ablative for place from which: Rōmā discēdō, 'I depart from Rome.'"),
 ];
 export default placementQuestions;
