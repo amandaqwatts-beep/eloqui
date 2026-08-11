@@ -245,5 +245,27 @@ q(80,2,"The verb of a relative clause of purpose is in the…",["subjunctive","i
 // Level 81 — Purpose Clauses with quō
 q(81,1,"A purpose clause containing a comparative is introduced by…",["quō","ut","quod","nē"],0,"quō + comparative + subjunctive expresses purpose with a comparative."),
 q(81,2,"facilius means…",["more easily","easily","easiest","harder"],0,"facilius is the comparative adverb: more easily."),
+// Level 82 — Interrogative Adverbs
+q(82,1,"ubi means…",["where?","why?","from where?","to where?"],0,"ubi asks about place where: 'where?'"),
+q(82,2,"Which adverb asks 'to where?'",["quō","ubi","unde","cūr"],0,"quō is the adverb of destination: 'to where?' (whither)."),
+// Level 83 — Interrogative Particles
+q(83,1,"num expects the answer…",["no","yes","maybe","either"],0,"num introduces a question expecting 'no': 'Surely…not?'"),
+q(83,2,"nōnne is a compound of…",["nōn + -ne","num + -ne","nōn + quis","ne + nōn"],0,"nōnne = nōn + -ne; it expects the answer 'yes'."),
+// Level 84 — The Interrogative Pronoun
+q(84,1,"quis means…",["who?","what?","which?","why?"],0,"quis is the interrogative pronoun 'who?' (nominative singular, m./f.)."),
+q(84,2,"The genitive of quis is…",["cuius","cui","quem","quō"],0,"cuius means 'whose?': Cuius est? 'Whose is it?'"),
+// Level 85 — The Interrogative Adjective
+q(85,1,"As an interrogative adjective, quī, quae, quod means…",["which? what?","who? what?","because","where?"],0,"quī, quae, quod as an adjective means 'which? what?': Quod oppidum? 'What town?'"),
+q(85,2,"In Quod oppidum?, quod is a(n)…",["interrogative adjective","relative pronoun","conjunction","adverb"],0,"Here quod modifies oppidum, so it is the interrogative adjective, not 'because'."),
+// Level 86 — Perfect and Pluperfect Subjunctive Active
+q(86,1,"The perfect subjunctive is built from the ___ stem.",["perfect","present","infinitive","future"],0,"Add -erim, -erīs, -erit, -erīmus, -erītis, -erint to the perfect stem: laudāverim."),
+q(86,2,"The pluperfect subjunctive of laudō (1st sg.) is…",["laudāvissem","laudāverim","laudāveram","laudāvī"],0,"Perfect stem + -issem gives the pluperfect subjunctive: laudāvissem, 'I might have praised'."),
+// Level 87 — Indirect Questions: Primary Sequence
+q(87,1,"An indirect question takes its verb in the…",["subjunctive","indicative","infinitive","imperative"],0,"The verb of an indirect question is subjunctive: Rogat quis veniat, 'He asks who is coming.'"),
+q(87,2,"In an indirect question, num means…",["whether","surely not","no","indeed"],0,"num keeps its form but changes meaning: in indirect questions it means 'whether'."),
+// Level 88 — Indirect Questions: Secondary Sequence
+q(88,1,"With a past main verb, an indirect question uses the ___ subjunctive.",["imperfect or pluperfect","present","perfect only","future"],0,"Secondary sequence: imperfect subjunctive for same-time action, pluperfect for earlier action."),
+q(88,2,"Rogāvit quis venīret means…",["He asked who was coming","He asks who is coming","He will ask who comes","Who came? He asked"],0,"The past main verb rogāvit takes the imperfect subjunctive venīret: 'who was coming.'"),
+
 ];
 export default placementQuestions;
