@@ -1,4 +1,4 @@
-import { DEFAULT_PRONUNCIATION_MODE, PLACEMENT_TOTAL_LEVELS } from "~/data/settings";
+import { DEFAULT_PRONUNCIATION_MODE, PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE } from "~/data/settings";
 import {
   DIAGNOSTICS_WINDOW_DAYS,
   MAX_DIAGNOSTICS_EVENTS,
@@ -147,7 +147,7 @@ export function clearAllData(language: Language = "latin"): void {
 }
 export function enableDevMode(language: Language = "latin"): void {
   saveSettings({ ...loadSettings(language), devMode: true }, language);
-  const total = language === "latin" ? PLACEMENT_TOTAL_LEVELS : 1;
+  const total = PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE[language];
   saveJSON(STORAGE_KEYS.PLACEMENT_RESULT, { passed: Array(total).fill(true), startLevel: total, completedAt: new Date().toISOString() }, language);
 }
 export function saveFeedback(lessonId: number, rating: number, comment?: string, language: Language = "latin"): void {

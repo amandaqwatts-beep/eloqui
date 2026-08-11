@@ -10,6 +10,7 @@ export default function DrillView({
   title,
   reference,
   exitLabel,
+  instructionOverride,
 }: {
   cards: DrillCard[];
   onExit: () => void;
@@ -18,6 +19,7 @@ export default function DrillView({
   title?: string;
   reference?: string;
   exitLabel?: string;
+  instructionOverride?: Partial<Record<DrillKind, string>>;
 }) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -88,7 +90,7 @@ export default function DrillView({
     conjugation: "Identify the person and number:",
     declension: "Identify the case and number:",
   };
-  const instruction = instructionByKind[card.kind];
+  const instruction = instructionOverride?.[card.kind] ?? instructionByKind[card.kind];
 
   // Only Latin prompts should include pronunciation (English → Latin prompts do not).
   const isLatinPrompt =

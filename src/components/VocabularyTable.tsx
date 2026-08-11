@@ -6,9 +6,12 @@ interface Props {
   title: string;
   items: VocabularyItem[];
   pronMode?: PronMode;
+  leftHeader?: string;
+  rightHeader?: string;
+  onSpeakLeft?: (text: string) => void;
 }
 
-export default function VocabularyTable({ title, items, pronMode = "ecclesiastical" }: Props) {
+export default function VocabularyTable({ title, items, pronMode = "ecclesiastical", leftHeader = "Latin", rightHeader = "English", onSpeakLeft = speakLatin }: Props) {
   return (
     <div className="rounded-xl border border-burgundy-200 bg-cream-50 overflow-hidden">
       <div className="bg-burgundy-100 px-4 py-2 text-sm font-semibold text-burgundy-800">
@@ -19,10 +22,10 @@ export default function VocabularyTable({ title, items, pronMode = "ecclesiastic
           <thead>
             <tr className="border-b border-burgundy-200 bg-burgundy-50/50">
               <th className="px-3 py-2 text-left font-semibold text-burgundy-700 whitespace-nowrap">
-                Latin
+                {leftHeader}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-burgundy-700 whitespace-nowrap">
-                English
+                {rightHeader}
               </th>
               <th className="px-3 py-2 text-left font-semibold text-burgundy-700 whitespace-nowrap">
                 Pronunciation
@@ -44,7 +47,7 @@ export default function VocabularyTable({ title, items, pronMode = "ecclesiastic
                   className="border-b border-burgundy-100 last:border-0 text-gray-700 hover:bg-burgundy-50/30 transition-colors"
                 >
                   <td className="px-3 py-2 font-medium text-burgundy-900 whitespace-nowrap">
-                    {item.latin} <button type="button" onClick={() => speakLatin(item.latin)} aria-label={`Hear ${item.latin}`} className="ml-1">🔊</button>
+                    {item.latin} <button type="button" onClick={() => onSpeakLeft(item.latin)} aria-label={`Hear ${item.latin}`} className="ml-1">🔊</button>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     {item.english} <button type="button" onClick={() => speakEnglish(item.english)} aria-label={`Hear ${item.english}`} className="ml-1">🔊</button>

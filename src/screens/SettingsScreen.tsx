@@ -9,6 +9,7 @@ interface Props {
   onClearData: () => void;
   onEnableDevMode: () => void;
   onBack: () => void;
+  showPronunciation?: boolean;
 }
 
 /** Simple on/off switch (track + sliding knob). */
@@ -55,6 +56,7 @@ export default function SettingsScreen({
   onClearData,
   onEnableDevMode,
   onBack,
+  showPronunciation = true,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
 
@@ -78,6 +80,7 @@ export default function SettingsScreen({
 
           <div className="mt-8 space-y-6">
             {/* ── Pronunciation ─────────────────────────────────────── */}
+            {showPronunciation && (
             <SectionCard title="Pronunciation">
               <div className="inline-flex rounded-full border border-burgundy-200 bg-burgundy-50/60 p-1 text-sm font-medium">
                 <button
@@ -106,6 +109,7 @@ export default function SettingsScreen({
                 </button>
               </div>
             </SectionCard>
+            )}
 
             {/* ── AI Features ───────────────────────────────────────── */}
             <SectionCard title="AI Features">
