@@ -369,5 +369,30 @@ q(121,2,"Caesar dīcit sē pugnātūrum esse means…",["Caesar says that he wil
 // Level 122 — Passive Infinitives in Indirect Statement
 q(122,1,"The present passive infinitive of laudō is…",["laudārī","laudāre","laudātus esse","laudātum īrī"],0,"Present passive infinitive (1st conj.) = stem + -ārī: laudārī, 'to be praised'."),
 q(122,2,"Caesar dīcit mīlitēs laudātōs esse means…",["Caesar says that the soldiers were praised","Caesar says that the soldiers are being praised","Caesar says that the soldiers will be praised","The soldiers say that Caesar was praised"],0,"Perfect passive infinitive = PPP (laudātōs, agreeing with mīlitēs) + esse: 'were praised'."),
+
+// Level 123 — Regular Comparison of Adjectives
+q(123,1,"The comparative of longus is…",["longior","longissimus","longus","longius"],0,"Comparative = stem + -ior/-ius: long- + -ior = longior, 'longer'."),
+q(123,2,"The superlative of gravis is…",["gravissimus","gravior","gravis","gravius"],0,"Superlative = stem + -issimus: grav- + -issimus = gravissimus, 'heaviest'."),
+// Level 124 — Declension of Comparative and Superlative Adjectives
+q(124,1,"The comparative altior declines as a…",["3rd-declension adjective","2-1-2 adjective","1st-declension noun","4th-declension noun"],0,"The comparative is a 3rd-declension adjective: altior (m./f.), altius (n.), genitive altiōris."),
+q(124,2,"The genitive plural of altior is…",["altiōrum","altiōrium","altiōribus","altiōrīs"],0,"Comparatives are not i-stems: genitive plural -um — altiōrum, never *altiōrium."),
+// Level 125 — The Ablative of Comparison
+q(125,1,"Caesar est altior eō means…",["Caesar is taller than he","Caesar is tall","He is taller than Caesar","Caesar is the tallest"],0,"eō is the ablative of comparison: 'than he'."),
+q(125,2,"The ablative of comparison translates as…",["than","with","by","from"],0,"A bare ablative after a comparative means 'than': altior eō = 'taller than he'."),
+// Level 126 — Irregular Comparatives and Superlatives
+q(126,1,"The comparative of bonus is…",["melior","bonior","optimus","peior"],0,"bonus's comparative is irregular: melior, melius — never *bonior."),
+q(126,2,"plūs temporis means…",["more time","much time","most time","a long time"],0,"plūs (genitive plūris) is a neuter noun with a partitive genitive: 'more (of) time'."),
+// Level 127 — Indicative of Deponent Verbs
+q(127,1,"conor, conārī means…",["try, attempt","be tried","fear","follow"],0,"Deponents are passive in form, active in meaning: conor = 'I try'."),
+q(127,2,"The 3rd-person singular present of sequor is…",["sequitur","sequor","sequeris","sequuntur"],0,"sequor is 3rd conjugation: sequor, sequeris, sequitur, sequimur, sequiminī, sequuntur."),
+// Level 128 — Subjunctive of Deponent Verbs
+q(128,1,"The present subjunctive of conor (1st sg.) is…",["coner","conārer","conāris","conātus sim"],0,"The subjunctive of a deponent is the passive subjunctive of lesson 94: coner = 'I may try'."),
+q(128,2,"Venit ut sequātur means…",["He comes to follow","He comes because he follows","He follows to come","They come to follow"],0,"ut + present subjunctive sequātur = purpose: 'he comes so that he may follow'."),
+// Level 129 — Perfect Participle of Deponent Verbs
+q(129,1,"locūtus means…",["having spoken","having been spoken","speaking","to speak"],0,"The deponent PPP is passive in form, active in meaning: locūtus = 'having spoken'."),
+q(129,2,"nactus sum means…",["I obtained, I have obtained","I was obtained","I set out","I was born"],0,"nactus is the irregular PPP of nancīscor: nactus sum = 'I obtained'."),
+// Level 130 — Infinitives of Deponent Verbs
+q(130,1,"The present infinitive of conor is…",["conārī","conāre","conātus esse","conātūrus esse"],0,"The present infinitive of a deponent is the passive infinitive: conārī = 'to try'."),
+q(130,2,"The future infinitive of loquor is…",["locūtūrus esse","locūtus esse","loquī","locūtum īrī"],0,"The future infinitive of a deponent is the ACTIVE -ūrus esse: locūtūrus esse, 'to be about to speak'."),
 ];
 export default placementQuestions;
