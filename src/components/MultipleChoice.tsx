@@ -1,12 +1,18 @@
 import { useState } from "react";
 import type { MultipleChoiceExercise } from "~/data/latinLessons";
+import type { ExerciseResultDetail } from "~/engine/types";
 
 interface Props {
   exercise: MultipleChoiceExercise;
   onComplete: (correct: boolean) => void;
+  /**
+   * Optional additive detail hook (diagnostics): forwards the selected option
+   * and the canonical answer so the route can record wrong/expected.
+   */
+  onResult?: (detail: ExerciseResultDetail) => void;
 }
 
-export default function MultipleChoice({ exercise, onComplete }: Props) {
+export default function MultipleChoice({ exercise, onComplete, onResult }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
@@ -21,6 +27,11 @@ export default function MultipleChoice({ exercise, onComplete }: Props) {
     if (selected === null || submitted) return;
     setSubmitted(true);
     onComplete(isCorrect);
+    onResult?.({
+      correct: isCorrect,
+      wrong: exercise.options[selected],
+      expected: exercise.options[exercise.correctIndex],
+    });
   };
 
   return (

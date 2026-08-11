@@ -4,15 +4,22 @@
  * All state machines live in the Engine department (src/engine/) and all
  * rendering lives in the Screens department (src/screens/). This file only
  * wires them together: owns the small amount of route-local UI state
- * (drill setup, settings overlay, AI lesson target) and switches between
- * the screens exposed by the engines.
+ * (drill setup, settings overlay, AI lesson target, diagnostics drill meta)
+ * and switches between the screens exposed by the engines.
+ *
+ * Diagnostics (owner direction 2026-08-11): the route assembles a
+ * DiagnosticsSummary from the engine's query functions (loadDiagnostics +
+ * getWeakSpots + getConfusionPairs) and passes it to ProgressScreen /
+ * ReviewScreen, which stay presentational. Word/pair drills compose decks
+ * from the free drill engine and enter the existing drill screen with
+ * optional DrillView meta (title/reference/exitLabel).
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 
 import latinLessons from "~/data/latinLessons";
 import placementQuestions from "~/data/placementTest";
-import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE } from "~/data/settings";
+import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE, DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE } from "~/data/settings";
 import { LANGUAGES } from "~/data/languages";
 import { useLessonEngine } from "~/engine/lesson";
 import { usePlacementEngine } from "~/engine/placement";
@@ -23,6 +30,20 @@ import {
   type DrillCard,
   type DrillKind,
 } from "~/lib/drillUtils";
+import {
+  getWeakSpots,
+  getConfusionPairs,
+  recordLessonAttempt,
+} from "~/engine/diagnostics";
+import { loadDiagnostics } from "~/engine/storage";
+import type { ConfusionPair, ExerciseResultDetail } from "~/engine/types";
+import {
+  buildWordDrillCards,
+  buildPairDrillCards,
+  pairCheatLine,
+  conceptGloss,
+  type DiagnosticsSummary,
+} from "~/lib/diagnosticUi";
 
 import LessonMenu from "~/screens/LessonMenu";
 import LessonIntro from "~/screens/LessonIntro";
@@ -38,8 +59,8 @@ import AudioPlayerScreen from "~/screens/AudioPlayerScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
 import { loadAccuracy, recordAccuracy } from "~/engine/storage";
-import { recordLessonAttempt } from "~/engine/diagnostics";
 import ReviewScreen from "~/screens/ReviewScreen";
+import PairDrillScreen from "~/screens/PairDrillScreen";
 
 export const Route = createFileRoute("/lessons/latin/")({
   component: LatinLessons,
@@ -64,6 +85,24 @@ function LatinLessons() {
   const [showAudio, setShowAudio] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  // Diagnostics drill session meta (UI-spec §6): title/reference/exitLabel
+  // passed through to DrillView; pendingPair gates the pair-drill intro.
+  const [drillMeta, setDrillMeta] = useState<{
+    title?: string;
+    reference?: string;
+    exitLabel?: string;
+  } | null>(null);
+  const [pendingPair, setPendingPair] = useState<ConfusionPair | null>(null);
+
+  // ── Diagnostics summary (assembled per render — the event log is small) ──
+  const diagnosticsEvents = loadDiagnostics(language.id);
+  const summary: DiagnosticsSummary = {
+    windowDays: DIAGNOSTICS_WINDOW_DAYS,
+    answerCount: diagnosticsEvents.length,
+    enoughData: diagnosticsEvents.length >= MIN_MISTAKE_EVIDENCE,
+    weakSpots: getWeakSpots(diagnosticsEvents, latinLessons),
+    confusionPairs: getConfusionPairs(diagnosticsEvents, latinLessons),
+  };
 
   // Navigation wrappers: keep engine screen transitions in sync with
   // route-local state the screens don't own.
@@ -99,14 +138,136 @@ function LatinLessons() {
     [],
   );
 
+  // ── Diagnostics drill wiring (UI-spec §6) ────────────────────
+  const exitLabelForOrigin = showProgress ? "Back to Progress" : "Back to Review";
+
+  const startWordDrill = useCallback(
+    (conceptId: string) => {
+      const spot = summary.weakSpots.find((s) => s.conceptId === conceptId);
+      const partnerConceptId =
+        spot?.mainMistake?.type === "confused-with"
+          ? spot.mainMistake.partner?.conceptId
+          : undefined;
+      const cards = buildWordDrillCards({
+        conceptId,
+        partnerConceptId,
+        lessons: latinLessons,
+        pronMode,
+      });
+      setPendingPair(null);
+      setDrillMeta({
+        title: "🎯 Word Drill",
+        reference: partnerConceptId
+          ? pairCheatLine(
+              {
+                a: conceptId,
+                b: partnerConceptId,
+                labelA: spot?.label ?? conceptId,
+                labelB: spot?.mainMistake?.partner?.label ?? partnerConceptId,
+                aToB: 0,
+                bToA: 0,
+                total: 0,
+                attempts: 0,
+                rate: 0,
+              },
+              latinLessons,
+            )
+          : undefined,
+        exitLabel: exitLabelForOrigin,
+      });
+      if (cards.length === 0) {
+        lesson.backToMenu();
+        return;
+      }
+      setDrillCards(cards);
+      lesson.goToDrill();
+    },
+    [summary.weakSpots, pronMode, lesson, exitLabelForOrigin],
+  );
+
+  const beginPairDrill = useCallback(
+    (pair: ConfusionPair) => {
+      setDrillCards(null);
+      setPendingPair(pair);
+      lesson.goToDrill();
+    },
+    [lesson],
+  );
+
+  const startPairDrill = useCallback(
+    (pair: ConfusionPair) => {
+      const cards = buildPairDrillCards({
+        pair,
+        lessons: latinLessons,
+        pronMode,
+      });
+      if (cards.length === 0) {
+        setPendingPair(null);
+        lesson.backToMenu();
+        return;
+      }
+      setPendingPair(null);
+      setDrillCards(cards);
+      setDrillMeta({
+        title: "⚔️ Confusion Drill",
+        reference: pairCheatLine(pair, latinLessons),
+        exitLabel: exitLabelForOrigin,
+      });
+      lesson.goToDrill();
+    },
+    [pronMode, lesson, exitLabelForOrigin],
+  );
+
+  const exitDiagnosticsDrill = useCallback(() => {
+    setDrillMeta(null);
+    setDrillCards(null);
+    setPendingPair(null);
+    lesson.backToMenu();
+  }, [lesson]);
+
+  const openLessonFromDiagnostics = useCallback(
+    (lessonId: number) => {
+      const idx = latinLessons.findIndex((l) => l.id === lessonId);
+      if (idx >= 0 && idx < lesson.unlockedLessons) {
+        setShowProgress(false);
+        setShowReview(false);
+        lesson.selectLesson(idx);
+      }
+    },
+    [lesson],
+  );
+
   const aiLesson =
     latinLessons.find((l) => l.id === aiLessonId) ?? lesson.currentLesson;
 
   switch (lesson.screen) {
     case "menu":
       if (showAudio) return <AudioPlayerScreen lessons={latinLessons} unlockedLessons={lesson.unlockedLessons} onBack={()=>setShowAudio(false)} />;
-      if (showReview) return <ReviewScreen accuracy={loadAccuracy(language.id)} lessons={latinLessons} onBack={()=>setShowReview(false)} onPracticeLesson={openAIPractice} />;
-      if (showProgress) return <ProgressScreen lessons={latinLessons} stats={getDashboardStats(latinLessons.length, [], language.id)} lessonProgress={loadProgress(language.id)} onBack={()=>setShowProgress(false)} onOpenReview={()=>{setShowProgress(false);setShowReview(true)}} />;
+      if (showReview) return (
+        <ReviewScreen
+          accuracy={loadAccuracy(language.id)}
+          lessons={latinLessons}
+          onBack={()=>setShowReview(false)}
+          onPracticeLesson={openAIPractice}
+          summary={summary}
+          onDrillWord={startWordDrill}
+          onDrillPair={beginPairDrill}
+          onOpenLesson={openLessonFromDiagnostics}
+        />
+      );
+      if (showProgress) return (
+        <ProgressScreen
+          lessons={latinLessons}
+          stats={getDashboardStats(latinLessons.length, [], language.id, diagnosticsEvents)}
+          lessonProgress={loadProgress(language.id)}
+          onBack={()=>setShowProgress(false)}
+          onOpenReview={()=>{setShowProgress(false);setShowReview(true)}}
+          summary={summary}
+          onDrillWord={startWordDrill}
+          onDrillPair={beginPairDrill}
+          onOpenLesson={openLessonFromDiagnostics}
+        />
+      );
       if (showSettings) {
         return (
           <SettingsScreen
@@ -163,7 +324,11 @@ function LatinLessons() {
           lesson={lesson.currentLesson}
           exerciseIdx={lesson.exerciseIdx}
           pronMode={pronMode}
-          onComplete={(correct) => { recordAccuracy(`lesson-${lesson.currentLesson.id}`, correct, language.id); recordLessonAttempt({ lesson: lesson.currentLesson, exerciseIdx: lesson.exerciseIdx, detail: { correct }, language: language.id, allLessons: latinLessons }); lesson.completeExercise(correct); }}
+          onComplete={(detail: ExerciseResultDetail) => {
+            recordAccuracy(`lesson-${lesson.currentLesson.id}`, detail.correct, language.id);
+            recordLessonAttempt({ lesson: lesson.currentLesson, exerciseIdx: lesson.exerciseIdx, detail, language: language.id, allLessons: latinLessons });
+            lesson.completeExercise(detail.correct);
+          }}
           onQuit={lesson.backToMenu}
         />
       );
@@ -186,13 +351,28 @@ function LatinLessons() {
       );
 
     case "drill":
+      if (pendingPair && !drillCards) {
+        // Pair-drill intro phase (UI-spec §6.1); Start builds the deck.
+        return (
+          <PairDrillScreen
+            pair={pendingPair}
+            glossA={conceptGloss(pendingPair.a, latinLessons)}
+            glossB={conceptGloss(pendingPair.b, latinLessons)}
+            onStart={() => startPairDrill(pendingPair)}
+            onBack={() => { setPendingPair(null); lesson.backToMenu(); }}
+          />
+        );
+      }
       return drillCards && drillCards.length > 0 ? (
         <DrillView
           key={drillCards.map((c) => c.id).join(",")}
           cards={drillCards}
-          onExit={lesson.backToMenu}
+          onExit={drillMeta ? exitDiagnosticsDrill : lesson.backToMenu}
           onRestartMissed={restartMissed}
           pronMode={pronMode}
+          title={drillMeta?.title}
+          reference={drillMeta?.reference}
+          exitLabel={drillMeta?.exitLabel}
         />
       ) : (
         <DrillSetup

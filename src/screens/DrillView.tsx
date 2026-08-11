@@ -7,11 +7,17 @@ export default function DrillView({
   onExit,
   onRestartMissed,
   pronMode,
+  title,
+  reference,
+  exitLabel,
 }: {
   cards: DrillCard[];
   onExit: () => void;
   onRestartMissed: (cards: DrillCard[]) => void;
   pronMode: PronMode;
+  title?: string;
+  reference?: string;
+  exitLabel?: string;
 }) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -67,7 +73,7 @@ export default function DrillView({
             onClick={onExit}
             className="flex-1 rounded-xl border-2 border-burgundy-200 py-3 font-bold text-burgundy-700"
           >
-            Back to Lessons
+            {exitLabel ?? "Back to Lessons"}
           </button>
         </div>
       </div>
@@ -95,6 +101,11 @@ export default function DrillView({
 
   return (
     <div className="mx-auto w-full max-w-xl">
+      {title ? (
+        <p className="mb-3 text-xs font-bold uppercase tracking-widest text-gold-700">
+          {title}
+        </p>
+      ) : null}
       <div className="mb-5 flex items-center justify-between text-sm font-semibold text-burgundy-700">
         <span>
           Card {index + 1} / {cards.length}
@@ -103,6 +114,11 @@ export default function DrillView({
           🔥 {streak} in a row
         </span>
       </div>
+      {reference ? (
+        <p className="mb-3 rounded-lg border border-gold-200 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800">
+          {reference}
+        </p>
+      ) : null}
       <div
         onClick={() => setRevealed(true)}
         className={`min-h-[240px] cursor-pointer select-none rounded-3xl border-2 p-8 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-300 ${
