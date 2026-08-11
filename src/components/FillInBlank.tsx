@@ -1,12 +1,18 @@
 import { useState, useRef, type KeyboardEvent } from "react";
 import type { FillInBlankExercise } from "~/data/latinLessons";
+import type { ExerciseResultDetail } from "~/engine/types";
 
 interface Props {
   exercise: FillInBlankExercise;
   onComplete: (correct: boolean) => void;
+  /**
+   * Optional additive detail hook (diagnostics): forwards the typed answer
+   * and the canonical answer so the route can record wrong/expected.
+   */
+  onResult?: (detail: ExerciseResultDetail) => void;
 }
 
-export default function FillInBlank({ exercise, onComplete }: Props) {
+export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
   const [value, setValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +41,7 @@ export default function FillInBlank({ exercise, onComplete }: Props) {
     if (!value.trim() || submitted) return;
     setSubmitted(true);
     onComplete(isCorrect);
+    onResult?.({ correct: isCorrect, wrong: value, expected: exercise.answer });
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
