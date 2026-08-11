@@ -1,15 +1,15 @@
 import type { Language } from "~/data/languages";
 export const APP_NAME = "Eloqui";
 export const SETTINGS_DEFAULTS = { aiEnabled: true, devMode: false } as const;
-export const LESSONS_PER_UNIT = 109;
-export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 109, greek: 0, hebrew: 0, english: 10 };
+export const LESSONS_PER_UNIT = 118;
+export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 118, greek: 0, hebrew: 0, english: 10 };
 export const EXERCISES_PER_LESSON = 7;
 export const DRILL_KINDS = ["vocab-latin", "vocab-english", "conjugation", "declension", "mixed"] as const;
 export const DRILL_COUNTS = [10, 20, "all"] as const;
 export const DRILL_DEFAULT_COUNT = 10;
 export const PLACEMENT_QUESTIONS_PER_LEVEL = 2;
-export const PLACEMENT_TOTAL_LEVELS = 109;
-export const PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE: Record<Language, number> = { latin: 109, greek: 0, hebrew: 0, english: 10 };
+export const PLACEMENT_TOTAL_LEVELS = 118;
+export const PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE: Record<Language, number> = { latin: 118, greek: 0, hebrew: 0, english: 10 };
 export const PRONUNCIATION_MODES = ["ecclesiastical", "classical"] as const;
 export type PronMode = (typeof PRONUNCIATION_MODES)[number];
 export const DEFAULT_PRONUNCIATION_MODE = "ecclesiastical";
@@ -21,7 +21,7 @@ export const AI_MAX_EXERCISES = 10;
 export const AI_DEFAULT_EXERCISES = 5;
 export const AI_DEFAULT_LESSON_ID = 1;
 export const STORAGE_KEYS = { placementResult: "verbum-placement-result", pronunciationMode: "verbum-pronunciation-mode" } as const;
-export const LATIN_LESSONS = 109;
+export const LATIN_LESSONS = 118;
 // ── Diagnostics (owner direction 2026-08-11) ────────────────────
 // Rolling 2-week per-concept tracking: window, event-log cap, and the
 // mistake/confusion thresholds consumed by src/engine/diagnostics.ts.
