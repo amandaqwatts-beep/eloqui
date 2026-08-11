@@ -267,5 +267,29 @@ q(87,2,"In an indirect question, num means…",["whether","surely not","no","ind
 q(88,1,"With a past main verb, an indirect question uses the ___ subjunctive.",["imperfect or pluperfect","present","perfect only","future"],0,"Secondary sequence: imperfect subjunctive for same-time action, pluperfect for earlier action."),
 q(88,2,"Rogāvit quis venīret means…",["He asked who was coming","He asks who is coming","He will ask who comes","Who came? He asked"],0,"The past main verb rogāvit takes the imperfect subjunctive venīret: 'who was coming.'"),
 
+// Level 89 — The Vocative Case
+q(89,1,"The vocative singular of dominus is…",["domine","dominus","dominī","dominum"],0,"2nd-declension -us nouns form the vocative in -e: dominus → domine."),
+q(89,2,"The vocative singular of fīlius is…",["fīlī","fīlius","fīlium","fīliō"],0,"Nouns in -ius drop to -ī in the vocative: fīlius → fīlī."),
+// Level 90 — The Present Imperative Active
+q(90,1,"The imperative singular of laudō is…",["laudā","laudat","laudāre","laudāte"],0,"The singular imperative is the present stem: laudā, 'praise!'"),
+q(90,2,"The imperative plural of mittō is…",["mittite","mitte","mittēte","mittunt"],0,"Third-conjugation plurals show -i- before -te: mittite, 'send!'"),
+// Level 91 — The Subjunctive in Wishes and Exhortations
+q(91,1,"Laudēmus means…",["Let us praise","Praise!","He may praise","They praise"],0,"The 1st-person plural present subjunctive expresses exhortation: 'let us praise.'"),
+q(91,2,"The negative hortatory subjunctive uses…",["nē + subjunctive","ut + subjunctive","nōn + imperative","num + subjunctive"],0,"Negative exhortations use nē with the subjunctive: Nē timeāmus! 'Let us not fear!'"),
+// Level 92 — Suus and Suī: Direct Reflexives
+q(92,1,"suus, -a, -um refers back to…",["the subject of its clause","the direct object","the speaker","the person addressed"],0,"suus means 'his/her/its/their own' and points back to the subject."),
+q(92,2,"In Caesar suum fīlium laudat, eius would mean…",["his (someone else's) son","his own son","the son's Caesar","our son"],0,"eius (genitive of is) refers away from the subject: 'his (another's)'; suus is the subject's own."),
+// Level 93 — Suus and Suī: Indirect Reflexives
+q(93,1,"An indirect reflexive in a subordinate clause refers back to…",["the subject of the main clause","the nearest noun","the object of its own clause","the speaker"],0,"In subordinate clauses suus/sē can look back to the main-clause subject: the indirect reflexive."),
+q(93,2,"rēs pūblica means…",["republic, state","public thing","a meeting","the people's wealth"],0,"rēs pūblica, reī pūblicae is the 'public thing' — the republic, the state."),
+// Level 94 — The Present and Imperfect Subjunctive Passive
+q(94,1,"The present subjunctive passive of amō (1st sg.) is…",["amer","amor","amārer","amātur"],0,"Swap the passive endings onto the present subjunctive active: amem → amer, 'I may be loved'."),
+q(94,2,"The imperfect subjunctive passive is formed from…",["the present active infinitive + passive endings","the perfect stem + -erim","the 4th principal part + sum","the present stem + -bā-"],0,"amāre + -r = amārer, 'I might be loved' — the same rule as the imperfect subjunctive active."),
+// Level 95 — The Perfect System of the Passive Subjunctive
+q(95,1,"The perfect subjunctive passive is formed with…",["the 4th principal part + present subjunctive of sum","the perfect stem + -erim","the 4th principal part + eram","the infinitive + -r"],0,"laudātus sim, 'I may have been praised' — 4th principal part + sim."),
+q(95,2,"The pluperfect subjunctive passive of laudō (1st sg.) is…",["laudātus essem","laudātus sim","laudātus eram","laudātus sum"],0,"4th principal part + imperfect subjunctive of sum: laudātus essem, 'I might have been praised'."),
+// Level 96 — The Ablative of Cause
+q(96,1,"The ablative of cause is…",["a bare ablative expressing reason","ā/ab + a person","cum + ablative","an accusative phrase"],0,"Cause is expressed by a bare ablative without a preposition: dolōre, 'from grief'."),
+q(96,2,"causā with a genitive means…",["for the sake of","because of the case","by the cause","with the cause"],0,"causā (postpositive) with a genitive means 'for the sake of': rēī pūblicae causā."),
 ];
 export default placementQuestions;
