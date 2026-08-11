@@ -294,6 +294,7 @@ function LatinLessons() {
           onOpenReview={() => setShowReview(true)}
           onOpenExplore={() => navigate({ to: "/lessons/latin/explore" })}
           devMode={settingsEngine.settings.devMode}
+          lessonProgress={loadProgress(language.id)}
         />
       );
 
