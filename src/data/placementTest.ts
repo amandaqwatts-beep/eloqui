@@ -329,6 +329,33 @@ q(108,2,"mīlia mīlitum means…",["thousands of soldiers","a thousand soldiers
 // Level 109 — Irregular Adjectives
 q(109,1,"The nine irregular adjectives have genitive singular ___ for all genders.",["-īus","-ae","-īs","-ium"],0,"alius, alter, neuter, nūllus, ūllus, sōlus, tōtus, ūnus, uter take -īus in the genitive singular and -ī in the dative."),
 q(109,2,"The genitive singular of alius is…",["alīus","aliīus","aliī","aliud"],0,"alius is irregular even within the set: genitive alīus, dative aliī, neuter aliud."),
+// Level 110 — Indicative Active of -iō Verbs
+q(110,1,"capiō, capere, cēpī, captus means…",["take, seize","make, do","flee","desire, wish"],0,"capiō is the model -iō verb: 'take, seize' — 3rd-conjugation infinitive capere."),
+q(110,2,"The present 3rd-person plural of capiō is…",["capiunt","capient","capīunt","capunt"],0,"-iō verbs end in -iunt in the 3rd plural: capiunt (capient would be future)."),
+// Level 111 — Time When
+q(111,1,"Time when is expressed by the…",["ablative","accusative","genitive","dative"],0,"Time when uses the bare ablative: eō diē, 'on that day'."),
+q(111,2,"annus means…",["year","day","hour","time"],0,"annus, -ī (m.) is 'year'."),
+// Level 112 — Subjunctive Active of -iō Verbs
+q(112,1,"The present subjunctive of capiō (1st sg.) is…",["capiam","caperem","capīrem","capiō"],0,"The present subjunctive of -iō verbs follows the 4th conjugation: capiam."),
+q(112,2,"The imperfect subjunctive of capiō (1st sg.) is…",["caperem","capiam","capiēbam","capīrem"],0,"The imperfect subjunctive is the one-rule of lesson 75: capere + -m = caperem — never *capīrem."),
+// Level 113 — Extent of Time and Space
+q(113,1,"'For three hours' (duration) is…",["trēs hōrās","trībus hōrīs","trium hōrārum","trēs hōrae"],0,"Duration of time is accusative: trēs hōrās, 'for three hours'."),
+q(113,2,"A Roman mile is…",["mīlle passūs","mīlia passuum","mīlle pedēs","passus mīlle"],0,"mīlle passūs = one thousand paces = a Roman mile."),
+// Level 114 — Indicative Passive of -iō Verbs
+q(114,1,"The 2nd-person singular present passive of capiō is…",["caperis","capīris","capiēris","capieris"],0,"The -iō verbs keep the 3rd-conjugation passive ending -eris: caperis, not *capīris."),
+q(114,2,"interficiō means…",["I kill","I receive, accept","I finish, exhaust","I take"],0,"interficiō, interficere, interfēcī, interfectus = 'kill' (perfect stem like faciō's)."),
+// Level 115 — Time Within Which
+q(115,1,"Time within which is expressed by the…",["ablative","accusative","genitive","nominative"],0,"Within what time? → ablative: trībus hōrīs, 'within three hours'."),
+q(115,2,"'Within three days' is…",["trībus diēbus","trēs diēs","trium diērum","trēs diēbus"],0,"Time within which uses the ablative plural: trībus diēbus."),
+// Level 116 — Subjunctive Passive of -iō Verbs
+q(116,1,"The present subjunctive passive of capiō (1st sg.) is…",["capiar","caperer","capior","capīrer"],0,"Present subjunctive passive = 4th-conj pattern: capiar, 'I may be taken'."),
+q(116,2,"The imperfect subjunctive passive of capiō (1st sg.) is…",["caperer","capiar","caperem","capīrer"],0,"capere + -r = caperer, 'I might be taken' — never *capīrer."),
+// Level 117 — Dative Verbs
+q(117,1,"noceō takes the…",["dative","accusative","genitive","ablative"],0,"noceō + dative: noceō tibi = 'I harm you'."),
+q(117,2,"praesum, praeesse, praefuī means…",["be in charge of, preside over","be present","be able","be absent"],0,"praesum = prae + sum, 'be in charge of' + dative."),
+// Level 118 — Passive of Verbs of Calling
+q(118,1,"Appellor Rōmānus means…",["I am called a Roman","I call a Roman","The Roman calls me","I am calling the Roman"],0,"Passive of a verb of calling + predicate nominative: 'I am called a Roman'."),
+q(118,2,"After a passive verb of calling, the predicate stands in the…",["nominative","accusative","ablative","dative"],0,"Appellor Rōmānus — the predicate is nominative, agreeing with the subject."),
 
 ];
 export default placementQuestions;
