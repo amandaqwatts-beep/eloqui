@@ -52,6 +52,146 @@ export interface AccuracyEntry {
   total: number;
 }
 
+// ── Diagnostics (owner direction 2026-08-11) ────────────────────
+// Raw event-log model (D1/D2) + closed MistakeType taxonomy (D4).
+// conceptId conventions (D3): `vocab:<normalized lemma>`, `concept:<lessonId>`,
+// `lesson:<lessonId>`, `char:<id>`, `drill:<kind>`; lesson-level always tagged.
+
+/** The kind of concept a DiagnosticEvent's primary conceptId refers to. */
+export type ConceptKind = "vocab" | "concept" | "lesson" | "character" | "drill";
+
+/**
+ * Closed 10-type mistake taxonomy, consumed verbatim by future rule-based
+ * error analysis (D4) — explanation templates key on these, never re-classify.
+ */
+export type MistakeType =
+  | "wrong-meaning" // target known, a different meaning/identification chosen
+  | "wrong-form" // right word, wrong inflection (case/number/person/tense/ending)
+  | "wrong-case" // declension-flavored: wrong case chosen
+  | "wrong-number" // singular ↔ plural
+  | "wrong-person" // conjugation: wrong person chosen
+  | "wrong-gender" // gender attribution error
+  | "confused-with" // wrong answer = another specific known word (feeds confusion pairs)
+  | "spelling" // orthographic near-miss of the correct answer (edit distance ≤ 2 after normalizeAnswer)
+  | "rule" // grammar-concept error: wrong rule/statement chosen
+  | "unknown"; // evidence insufficient to classify (e.g. self-rated drills)
+
+/** Where a diagnostic event originated. */
+export type DiagnosticSource = "lesson" | "drill" | "ai-practice" | "review" | "quizzer";
+
+/**
+ * One attempt, persisted in the raw event log (D1). Primary conceptId plus
+ * tags[] (D2) — an exercise can evidence both a vocab word and a grammar
+ * concept; tags always include `lesson:<id>`.
+ */
+export interface DiagnosticEvent {
+  /** Unique; `${Date.now()}-${seq}` or crypto.randomUUID(). */
+  id: string;
+  /** ISO 8601 UTC — same pattern as PlacementResult.completedAt. */
+  ts: string;
+  /** Primary concept, e.g. "vocab:porta" | "concept:12" | "lesson:12" | "char:alpha". */
+  conceptId: string;
+  /** Additional concepts this attempt evidences (always includes `lesson:<id>`). */
+  tags?: string[];
+  kind: ConceptKind;
+  ok: boolean;
+  source: DiagnosticSource;
+  /** Exercise id ("l1-q1") or drill card id — provenance for error analysis. */
+  context?: string;
+  /** Set when !ok. */
+  mistake?: MistakeType;
+  /** Student's answer as given (option text or typed input) — confusion pairs + error analysis. */
+  wrong?: string;
+  /** Canonical answer text — error analysis copy. */
+  expected?: string;
+  /** One UUID per lesson run / drill run — groups events ("in your last run…"). */
+  session?: string;
+}
+
+/** What recordAttempt accepts; id is generated and ts defaults to now. */
+export interface AttemptRecord extends Omit<DiagnosticEvent, "id" | "ts"> {
+  ts?: string;
+}
+
+/** What a screen passes up when an exercise is completed (replaces bare boolean). */
+export interface ExerciseResultDetail {
+  correct: boolean;
+  wrong?: string;
+  expected?: string;
+}
+
+/** Rolled-up stats for one concept over the window (getConceptStats). */
+export interface ConceptStats {
+  conceptId: string;
+  correct: number;
+  total: number;
+  /** 0-100 rounded. */
+  accuracy: number;
+  firstAttemptAt: string | null;
+  lastAttemptAt: string | null;
+  /** ISO timestamp of now − windowDays (derived window start). */
+  windowStart: string;
+  mistakes: Partial<Record<MistakeType, number>>;
+  /** Wrongs with no mistake field recorded (e.g. pre-forwarding events). */
+  unknownWrong: number;
+}
+
+/** The student's single most frequent mistake for a concept (getMainMistake). */
+export interface MainMistake {
+  conceptId: string;
+  type: MistakeType;
+  count: number;
+  totalWrong: number;
+  /** 0-100 rounded share of wrongs this type accounts for. */
+  share: number;
+  /** Present when type === "confused-with" — the lemma most often chosen instead. */
+  partner?: { conceptId: string; label: string; count: number };
+}
+
+/** A detected vocab confusion pair (A answers B when A was asked and/or vice versa). */
+export interface ConfusionPair {
+  a: string;
+  b: string;
+  labelA: string;
+  labelB: string;
+  aToB: number;
+  bToA: number;
+  total: number;
+  attempts: number;
+  /** pairCount / attempts (fraction). */
+  rate: number;
+}
+
+/** A concept under the weak threshold (getWeakSpots; replaces ReviewScreen's inline filter). */
+export interface WeakSpot {
+  conceptId: string;
+  kind: ConceptKind;
+  label: string;
+  lessonId?: number;
+  correct: number;
+  total: number;
+  accuracy: number;
+  mainMistake?: MainMistake;
+}
+
+/** A weak spot ranked for remediation (getWorstAreas; sleep audio / daily lesson). */
+export interface WorstArea extends WeakSpot {
+  wrongCount: number;
+  /** 0..1, higher = more recent activity in the window. */
+  recencyWeight: number;
+}
+
+/** One day's aggregated performance (UTC YYYY-MM-DD) in getImprovementSeries. */
+export interface ImprovementDay {
+  date: string;
+  correct: number;
+  total: number;
+  /** 0-100 rounded; null when total === 0 (never emitted — total ≥ 1 by construction). */
+  accuracy: number | null;
+}
+
+export type ImprovementSeries = ImprovementDay[];
+
 /** Internal state of the lesson flow state machine (see engine/lesson.ts). */
 export interface LessonEngineState {
   screen: Screen;

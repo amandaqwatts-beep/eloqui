@@ -38,6 +38,7 @@ import AudioPlayerScreen from "~/screens/AudioPlayerScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
 import { loadAccuracy, recordAccuracy } from "~/engine/storage";
+import { recordLessonAttempt } from "~/engine/diagnostics";
 import ReviewScreen from "~/screens/ReviewScreen";
 
 export const Route = createFileRoute("/lessons/latin/")({
@@ -162,7 +163,7 @@ function LatinLessons() {
           lesson={lesson.currentLesson}
           exerciseIdx={lesson.exerciseIdx}
           pronMode={pronMode}
-          onComplete={(correct) => { recordAccuracy(`lesson-${lesson.currentLesson.id}`, correct, language.id); lesson.completeExercise(correct); }}
+          onComplete={(correct) => { recordAccuracy(`lesson-${lesson.currentLesson.id}`, correct, language.id); recordLessonAttempt({ lesson: lesson.currentLesson, exerciseIdx: lesson.exerciseIdx, detail: { correct }, language: language.id, allLessons: latinLessons }); lesson.completeExercise(correct); }}
           onQuit={lesson.backToMenu}
         />
       );

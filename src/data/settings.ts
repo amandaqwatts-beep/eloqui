@@ -22,3 +22,16 @@ export const AI_DEFAULT_EXERCISES = 5;
 export const AI_DEFAULT_LESSON_ID = 1;
 export const STORAGE_KEYS = { placementResult: "verbum-placement-result", pronunciationMode: "verbum-pronunciation-mode" } as const;
 export const LATIN_LESSONS = 109;
+// ── Diagnostics (owner direction 2026-08-11) ────────────────────
+// Rolling 2-week per-concept tracking: window, event-log cap, and the
+// mistake/confusion thresholds consumed by src/engine/diagnostics.ts.
+// Tunable without code changes.
+export const DIAGNOSTICS_WINDOW_DAYS = 14;
+export const MAX_DIAGNOSTICS_EVENTS = 8000;
+export const MIN_MISTAKE_EVIDENCE = 2;
+export const MIN_CONFUSION_EVIDENCE = 3;
+export const CONFUSION_RATE_THRESHOLD = 0.25;
+export const MIN_TOTAL_ATTEMPTS_FOR_RATE = 10;
+export const WEAK_SPOT_THRESHOLD = 0.6;
+export const WEAK_SPOT_MIN_ATTEMPTS = 1;
+export const WORST_AREA_MIN_ATTEMPTS = 3;
