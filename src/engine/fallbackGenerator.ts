@@ -52,7 +52,7 @@ export type FallbackMode = "mc" | "fill" | "conjugation" | "mixed";
 // ── Small utilities ────────────────────────────────────────────
 
 /** Strip HTML tags from concept/teaching text. */
-function stripHtml(s: string): string {
+export function stripHtml(s: string): string {
   return s.replace(/<[^>]+>/g, "");
 }
 

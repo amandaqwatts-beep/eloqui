@@ -8,6 +8,8 @@
  * src/routes/lessons/latin.tsx; PlacementResult and FeedbackEntry are the
  * persisted localStorage payloads owned by this department.
  */
+import type { Lesson } from "~/data/latinLessons";
+import type { Language } from "~/data/languages";
 
 /** The top-level screen a user can be on. */
 export type Screen =
@@ -191,6 +193,117 @@ export interface ImprovementDay {
 }
 
 export type ImprovementSeries = ImprovementDay[];
+
+// ── Error analysis (owner direction 2026-08-11) ─────────────────
+// Rule-based (no AI) explanations — research/error-analysis-engine-design.md.
+// Phase A ships per-answer explanations for MC + fill (lesson exercises and
+// AI practice); matching/flashcard/reading-passage return null in MVP (D9).
+
+/** One bullet in an explanation; `highlight` substrings the UI MAY emphasize. */
+export interface ExplanationPoint {
+  text: string;
+  highlight?: string[];
+}
+
+/** Structured explanation produced by src/engine/errorAnalysis.ts. */
+export interface ExplanationResult {
+  /** Short headline, e.g. "Case mix-up: accusative vs nominative". */
+  title: string;
+  /** 1–3 sentences: what / why / correct / why-correct. */
+  body: string;
+  /** Rule statements + pattern line; empty array allowed. */
+  points: ExplanationPoint[];
+  /** The concept behind the rule (vocab mistakes point at their lesson). */
+  relatedConcept?: { conceptId: string; label: string; lessonId?: number };
+  /** e.g. "vocab:porta" to re-drill, or "concept:<lessonId>" for the lesson. */
+  drillSuggestion?: { conceptId: string; label: string; kind: ConceptKind };
+  /** Set when events show this mistake ≥ MIN_MISTAKE_EVIDENCE (Phase B layer). */
+  pattern?: { count: number };
+  /** "fallback" = generic unknown-type copy, still better than nothing. */
+  source: "rule-generated" | "fallback";
+}
+
+/** What getExplanation needs from any exercise (Exercise and GeneratedExercise both satisfy it). */
+export interface ExplanationExerciseSource {
+  type: string; // "multiple-choice" | "fill-in-blank" | "matching" | …
+  prompt: string;
+  options?: string[];
+  correctIndex?: number;
+  answer?: string;
+  acceptableAnswers?: string[];
+  before?: string;
+  after?: string;
+  pairs?: { left: string; right: string }[];
+  explanation?: string;
+}
+
+export interface ExplanationRequest {
+  detail: ExerciseResultDetail;
+  exercise: ExplanationExerciseSource;
+  lesson: Lesson;
+  /** Optional; enables pattern + pair copy (Phase B) — never gates classification. */
+  events?: DiagnosticEvent[];
+  language?: Language;
+  /**
+   * All lessons for a global vocab index (cross-lesson wrong-word resolution,
+   * spec §10 "wrong is a real Latin word from another lesson"). Defaults to
+   * [lesson] — additive beyond the spec's request shape.
+   */
+  allLessons?: Lesson[];
+}
+
+/** Internal assembled context for template builds (exported for tests, spec §5). */
+export interface ExplanationContext {
+  mistake: MistakeType;
+  wrong: string;
+  expected: string;
+  wrongN: string;
+  expectedN: string;
+  exerciseType: string;
+  prompt: string;
+  conceptId: string;
+  kind: ConceptKind;
+  label: string;
+  gloss?: string;
+  wrongLemma?: string;
+  wrongLemmaGloss?: string;
+  /** Which field of the vocab item the wrong answer matched ("latin" vs "english"). */
+  wrongMatched?: "latin" | "english";
+  stem?: string;
+  wrongEnding?: string;
+  expectedEnding?: string;
+  wrongCase?: string;
+  expectedCase?: string;
+  wrongNum?: "singular" | "plural";
+  expectedNum?: "singular" | "plural";
+  wrongPerson?: string;
+  expectedPerson?: string;
+  wrongGender?: string;
+  expectedGender?: string;
+  ruleText?: string;
+  endingRule?: string;
+  difference?: string;
+  pairCount?: number;
+  lessonId: number;
+  lessonTitle: string;
+  canned?: string;
+  /** The lesson itself — lets templates derive table lines at build time (additive). */
+  lesson?: Lesson;
+}
+
+/** One template per closed MistakeType (D1) — error analysis maps, never re-classifies. */
+export interface ExplanationTemplate {
+  type: MistakeType;
+  build: (c: ExplanationContext) => ExplanationResult;
+}
+
+/** Case/number/person labels for a form, derived from lesson tables (describeForm). */
+export interface FormLabel {
+  case?: string;
+  number?: "singular" | "plural";
+  person?: string;
+  gender?: string;
+}
 
 /** Internal state of the lesson flow state machine (see engine/lesson.ts). */
 export interface LessonEngineState {
