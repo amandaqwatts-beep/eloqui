@@ -1,5 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
-import latinLessons from "~/data/latinLessons";
+import latinLessons, { type Lesson } from "~/data/latinLessons";
+import englishLessons from "~/data/englishLessons";
+
+/** Per-language lesson index for AI Practice context building. */
+const LESSONS_BY_LANGUAGE: Record<string, Lesson[]> = {
+  latin: latinLessons,
+  english: englishLessons,
+};
+
+/** AI Practice languages currently supported by the server seam. */
+type PracticeLanguage = "latin" | "english";
+
+/** Clamp a raw language value to the supported union (default latin). */
+function toPracticeLanguage(value: unknown): PracticeLanguage {
+  return value === "english" ? "english" : "latin";
+}
 
 export type GeneratedExerciseType = "multiple-choice" | "fill-in-blank" | "matching";
 
@@ -62,8 +77,9 @@ async function callOpenAI(systemPrompt: string, userMessage: string): Promise<st
   return data.choices[0]?.message?.content ?? "";
 }
 
-function buildLessonContext(lessonId: number): string {
-  const lesson = latinLessons.find((l) => l.id === lessonId);
+function buildLessonContext(lessonId: number, language: PracticeLanguage = "latin"): string {
+  const lessons = LESSONS_BY_LANGUAGE[language] ?? latinLessons;
+  const lesson = lessons.find((l) => l.id === lessonId);
   if (!lesson) throw new Error(`Lesson ${lessonId} not found`);
 
   const parts: string[] = [];
@@ -97,22 +113,15 @@ function buildLessonContext(lessonId: number): string {
 
 // ── Server function: generate exercises ──────────────────────
 
-export const generatePractice = createServerFn()
-  .validator(
-    (data: unknown): { lessonId: number; count?: number } => {
-      const d = data as Record<string, unknown>;
-      const lessonId = Number(d.lessonId);
-      const count = d.count ? Math.min(Math.max(Number(d.count), 3), 10) : 5;
-      if (!Number.isFinite(lessonId) || lessonId < 1)
-        throw new Error("Invalid lessonId");
-      return { lessonId, count };
-    },
-  )
-  .handler(async ({ data }): Promise<PracticeResult> => {
-    const lessonContext = buildLessonContext(data.lessonId);
-
-    const systemPrompt = `You are a Latin teacher creating exercises for high school students.
-Generate exactly ${data.count} Latin language exercises based on the lesson content provided.
+/** Per-language system prompts. The `latin` strings are byte-identical to the
+ *  pre-parameterization build — zero behavior change for Latin. */
+const SYSTEM_PROMPTS: Record<
+  PracticeLanguage,
+  { exercises: (count: number) => string; culture: string }
+> = {
+  latin: {
+    exercises: (count: number) => `You are a Latin teacher creating exercises for high school students.
+Generate exactly ${count} Latin language exercises based on the lesson content provided.
 Vary the exercise types: multiple-choice, fill-in-blank, and matching.
 Every exercise MUST use ONLY vocabulary and grammar from the provided lesson — do not introduce new words or concepts.
 
@@ -130,7 +139,52 @@ Rules:
 - correctIndex is 0-based for multiple-choice
 - Include acceptableAnswers array for fill-in-blank
 - All prompts in English; Latin words with macrons
-- Keep sentences simple for first-year students`;
+- Keep sentences simple for first-year students`,
+    culture: `You are a Roman historian sharing fascinating facts with high school Latin students.
+Based on the lesson topic and vocabulary, share ONE interesting, historically accurate fact about ancient Roman culture, daily life, history, or language.
+Return ONLY valid JSON: { "title": "Short title", "fact": "1-2 engaging sentences", "icon": "emoji representing the topic" }`,
+  },
+  english: {
+    exercises: (count: number) => `You are an English writing teacher creating exercises for high school and college students.
+Generate exactly ${count} English language exercises based on the lesson content provided.
+Vary the exercise types: multiple-choice, fill-in-blank, and matching.
+Every exercise MUST use ONLY vocabulary and usage points from the provided lesson — do not introduce new words.
+
+Return ONLY valid JSON in this exact shape (no markdown, no explanation):
+{
+  "exercises": [
+    { "type": "multiple-choice", "prompt": "question", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "hint" },
+    { "type": "fill-in-blank", "prompt": "question", "answer": "answer", "acceptableAnswers": ["alt"] },
+    { "type": "matching", "prompt": "Match...", "pairs": [["left","right"],["left2","right2"]] }
+  ],
+  "culture": { "title": "Short title", "fact": "1-2 sentences", "icon": "📚" }
+}
+
+Rules:
+- correctIndex is 0-based for multiple-choice
+- Include acceptableAnswers array for fill-in-blank
+- All prompts in English; use formal register
+- Keep sentences simple for students`,
+    culture: `You are a literacy educator sharing a short, accurate fact about formal English usage, word history (especially Latin/Greek roots), or academic writing conventions tied to the lesson's vocabulary.
+Return ONLY valid JSON: { "title": "Short title", "fact": "1-2 sentences", "icon": "emoji representing the topic" }`,
+  },
+};
+
+export const generatePractice = createServerFn()
+  .validator(
+    (data: unknown): { lessonId: number; count: number; language: PracticeLanguage } => {
+      const d = data as Record<string, unknown>;
+      const lessonId = Number(d.lessonId);
+      const count = d.count ? Math.min(Math.max(Number(d.count), 3), 10) : 5;
+      const language = toPracticeLanguage(d.language);
+      if (!Number.isFinite(lessonId) || lessonId < 1)
+        throw new Error("Invalid lessonId");
+      return { lessonId, count, language };
+    },
+  )
+  .handler(async ({ data }): Promise<PracticeResult> => {
+    const lessonContext = buildLessonContext(data.lessonId, data.language);
+    const systemPrompt = SYSTEM_PROMPTS[data.language].exercises(data.count);
 
     const raw = await callOpenAI(systemPrompt, lessonContext);
 
@@ -178,18 +232,22 @@ Rules:
 
 export const generateCultureCard = createServerFn()
   .validator(
-    (data: unknown): { lessonId: number } => {
+    (data: unknown): { lessonId: number; language: PracticeLanguage } => {
       const d = data as Record<string, unknown>;
       const lessonId = Number(d.lessonId);
+      const language = toPracticeLanguage(d.language);
       if (!Number.isFinite(lessonId) || lessonId < 1)
         throw new Error("Invalid lessonId");
-      return { lessonId };
+      return { lessonId, language };
     },
   )
   .handler(async ({ data }): Promise<CultureCard> => {
-    const lesson = latinLessons.find((l) => l.id === data.lessonId);
+    const lessons = LESSONS_BY_LANGUAGE[data.language] ?? latinLessons;
+    const lesson = lessons.find((l) => l.id === data.lessonId);
     if (!lesson) {
-      return { title: "Did You Know?", fact: "The Romans left us thousands of Latin inscriptions.", icon: "🏛️" };
+      return data.language === "english"
+        ? { title: "Did You Know?", fact: "Formal register still matters: 'commence' and 'obtain' carry a formality plain words do not.", icon: "📚" }
+        : { title: "Did You Know?", fact: "The Romans left us thousands of Latin inscriptions.", icon: "🏛️" };
     }
 
     const vocabSample = (lesson.vocabulary ?? [])
@@ -197,9 +255,7 @@ export const generateCultureCard = createServerFn()
       .map((v) => v.latin)
       .join(", ");
 
-    const systemPrompt = `You are a Roman historian sharing fascinating facts with high school Latin students.
-Based on the lesson topic and vocabulary, share ONE interesting, historically accurate fact about ancient Roman culture, daily life, history, or language.
-Return ONLY valid JSON: { "title": "Short title", "fact": "1-2 engaging sentences", "icon": "emoji representing the topic" }`;
+    const systemPrompt = SYSTEM_PROMPTS[data.language].culture;
 
     const raw = await callOpenAI(
       systemPrompt,
@@ -214,10 +270,12 @@ Return ONLY valid JSON: { "title": "Short title", "fact": "1-2 engaging sentence
         .trim();
       return JSON.parse(cleaned) as CultureCard;
     } catch {
-      return {
-        title: "Did You Know?",
-        fact: "The Romans left us thousands of Latin inscriptions — many visible today in Rome's ancient ruins.",
-        icon: "🏛️",
-      };
+      return data.language === "english"
+        ? { title: "Did You Know?", fact: "Many English words trace to Latin roots — 'predict' literally means 'say before'.", icon: "📚" }
+        : {
+            title: "Did You Know?",
+            fact: "The Romans left us thousands of Latin inscriptions — many visible today in Rome's ancient ruins.",
+            icon: "🏛️",
+          };
     }
   });

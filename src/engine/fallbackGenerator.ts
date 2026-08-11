@@ -93,7 +93,10 @@ function answerVariants(answer: string): string[] {
  * Returns null when the lesson has fewer than 4 vocab items (not enough for
  * a full option set).
  */
-function buildVocabMultipleChoice(lesson: Lesson): GeneratedExercise | null {
+function buildVocabMultipleChoice(
+  lesson: Lesson,
+  language: "latin" | "english" = "latin",
+): GeneratedExercise | null {
   const vocab = lesson.vocabulary ?? [];
   if (vocab.length < 4) return null;
 
@@ -115,12 +118,16 @@ function buildVocabMultipleChoice(lesson: Lesson): GeneratedExercise | null {
     type: "multiple-choice",
     prompt: latinToEnglish
       ? `What does "${target.latin}" mean?`
-      : `Which Latin word means "${target.english}"?`,
+      : language === "latin"
+        ? `Which Latin word means "${target.english}"?`
+        : `Which formal word means "${target.english}"?`,
     options,
     correctIndex: options.indexOf(correct),
     explanation: latinToEnglish
       ? `"${target.latin}" means "${target.english}".`
-      : `"${target.latin}" is the Latin word for "${target.english}".`,
+      : language === "latin"
+        ? `"${target.latin}" is the Latin word for "${target.english}".`
+        : `"${target.latin}" is the formal word for "${target.english}".`,
   };
 }
 
@@ -195,7 +202,10 @@ function buildFillInBlank(lesson: Lesson): GeneratedExercise | null {
  * pair order is scrambled (the UI additionally scrambles the right column).
  * Returns null when the lesson has fewer than 4 vocab items.
  */
-function buildMatching(lesson: Lesson): GeneratedExercise | null {
+function buildMatching(
+  lesson: Lesson,
+  language: "latin" | "english" = "latin",
+): GeneratedExercise | null {
   const vocab = lesson.vocabulary ?? [];
   if (vocab.length < 4) return null;
 
@@ -203,7 +213,10 @@ function buildMatching(lesson: Lesson): GeneratedExercise | null {
   const chosen = shuffle(vocab).slice(0, count);
   return {
     type: "matching",
-    prompt: "Match each Latin word with its meaning",
+    prompt:
+      language === "latin"
+        ? "Match each Latin word with its meaning"
+        : "Match each word with its meaning",
     pairs: shuffle(
       chosen.map((v) => ({ left: v.latin, right: v.english })),
     ),
@@ -235,10 +248,22 @@ const ENGLISH_STOPWORDS = new Set([
   "who", "whom", "whose", "will", "would", "should", "could", "does",
 ]);
 
-/** Latin words drawn from other lessons, used only as concept-fallback distractors. */
-function extraLatinDistractors(exclude: string, count: number): string[] {
+/**
+ * Distractor words drawn from other lessons (the caller's curriculum), used
+ * only as concept-fallback distractors. Latin draws from the Latin
+ * curriculum; English draws from the distractor pool passed by the caller
+ * (the English route passes `englishLessons`).
+ */
+function extraDistractors(
+  exclude: string,
+  count: number,
+  language: "latin" | "english" = "latin",
+  distractorLessons?: Lesson[],
+): string[] {
   if (count <= 0) return [];
-  const words = latinLessons
+  const source =
+    language === "english" ? (distractorLessons ?? []) : latinLessons;
+  const words = source
     .flatMap((l) => l.vocabulary ?? [])
     .map((v: VocabularyItem) => v.latin)
     .filter((w) => w !== exclude);
@@ -253,7 +278,11 @@ function extraLatinDistractors(exclude: string, count: number): string[] {
  * appears in the concept (distractors come from other lessons, so exactly
  * one option is correct).
  */
-function buildConceptFallback(lesson: Lesson): GeneratedExercise {
+function buildConceptFallback(
+  lesson: Lesson,
+  language: "latin" | "english" = "latin",
+  distractorLessons?: Lesson[],
+): GeneratedExercise {
   // 1) Word-order MC from the first italicized Latin phrase in the concept.
   const phrase = lesson.concept.match(/<em>\s*([a-zāēīōūĀĒĪŌŪ][a-zāēīōūĀĒĪŌŪ\s.,]*?)<\/em>/i)?.[1];
   const words = phrase?.trim().split(/\s+/).filter(Boolean);
@@ -268,7 +297,10 @@ function buildConceptFallback(lesson: Lesson): GeneratedExercise {
     const options = shuffle([...permutations]);
     return {
       type: "multiple-choice",
-      prompt: "Which shows the correct Latin word order?",
+      prompt:
+        language === "latin"
+          ? "Which shows the correct Latin word order?"
+          : "Which shows the correct word order?",
       options,
       correctIndex: options.indexOf(correctOrder),
       explanation: `The correct word order is "${correctOrder}".`,
@@ -288,12 +320,20 @@ function buildConceptFallback(lesson: Lesson): GeneratedExercise {
     return {
       type: "multiple-choice",
       prompt: "Which of these best describes this lesson?",
-      options: [
-        lesson.subtitle ?? lesson.title,
-        "Ancient Roman cuisine",
-        "Greek mythology",
-        "Latin pronunciation",
-      ],
+      options:
+        language === "latin"
+          ? [
+              lesson.subtitle ?? lesson.title,
+              "Ancient Roman cuisine",
+              "Greek mythology",
+              "Latin pronunciation",
+            ]
+          : [
+              lesson.subtitle ?? lesson.title,
+              "Formal writing conventions",
+              "Greek mythology",
+              "English pronunciation",
+            ],
       correctIndex: 0,
       explanation: `This lesson is about ${lesson.title}.`,
     };
@@ -301,11 +341,14 @@ function buildConceptFallback(lesson: Lesson): GeneratedExercise {
   const correct = pick(ownLatinWords);
   const options = shuffle([
     correct,
-    ...extraLatinDistractors(correct, 3),
+    ...extraDistractors(correct, 3, language, distractorLessons),
   ]);
   return {
     type: "multiple-choice",
-    prompt: "Which Latin word appears in this lesson's concept?",
+    prompt:
+      language === "latin"
+        ? "Which Latin word appears in this lesson's concept?"
+        : "Which word from this lesson appears in its concept?",
     options,
     correctIndex: options.indexOf(correct),
     explanation: `"${correct}" is introduced in this lesson's concept.`,
@@ -322,6 +365,11 @@ function buildConceptFallback(lesson: Lesson): GeneratedExercise {
  * @param mode   "mc" → vocabulary multiple choice only;
  *               "fill" → declension/chart fill-in-blank only;
  *               "mixed" (default) → rotate MC / fill / matching
+ * @param language "latin" (default) keeps today's exact prompts/distractors;
+ *               "english" uses formal-register wording and the caller's
+ *               curriculum for distractors
+ * @param distractorLessons curriculum array used for concept-fallback
+ *               distractors (English passes `englishLessons`; Latin omits it)
  *
  * Every returned exercise has a valid `type` and the required fields for
  * that type. If the lesson lacks vocabulary and a reference table, exercises
@@ -331,18 +379,20 @@ export function generateFallbackExercises(
   lesson: Lesson,
   count: number,
   mode: FallbackMode = "mixed",
+  language: "latin" | "english" = "latin",
+  distractorLessons?: Lesson[],
 ): GeneratedExercise[] {
   const n = Math.max(0, Math.floor(count));
   if (n === 0) return [];
 
   const builders: Record<FallbackMode, (() => GeneratedExercise | null)[]> = {
-    mc: [() => buildVocabMultipleChoice(lesson)],
+    mc: [() => buildVocabMultipleChoice(lesson, language)],
     fill: [() => buildFillInBlank(lesson)],
     conjugation: [() => buildConjugation(lesson)],
     mixed: [
-      () => buildVocabMultipleChoice(lesson),
+      () => buildVocabMultipleChoice(lesson, language),
       () => buildFillInBlank(lesson),
-      () => buildMatching(lesson),
+      () => buildMatching(lesson, language),
       () => buildConjugation(lesson),
     ],
   };
@@ -353,7 +403,9 @@ export function generateFallbackExercises(
   const out: GeneratedExercise[] = [];
   for (let i = 0; i < n; i++) {
     const build = rotate[i % rotate.length];
-    out.push(build() ?? buildConceptFallback(lesson));
+    out.push(
+      build() ?? buildConceptFallback(lesson, language, distractorLessons),
+    );
   }
   return out;
 }

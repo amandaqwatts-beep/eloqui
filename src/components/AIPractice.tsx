@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import { generatePractice, generateCultureCard } from "~/server/aiPractice";
 import type { CultureCard, PracticeResult } from "~/server/aiPractice";
 import { generateFallbackExercises, type GeneratedExercise } from "~/engine/fallbackGenerator";
-import latinLessons from "~/data/latinLessons";
+import type { Lesson } from "~/data/latinLessons";
+import type { Language } from "~/data/languages";
 import MultipleChoice from "~/components/MultipleChoice";
 import FillInBlank from "~/components/FillInBlank";
 import MatchingPairs from "~/components/MatchingPairs";
@@ -11,19 +12,22 @@ import type { PronMode } from "~/lib/pronunciation";
 // ── Types ────────────────────────────────────────────────────
 
 interface AIPracticeProps {
-  lessonId: number;
-  lessonTitle: string;
+  lesson: Lesson;
   pronMode: PronMode;
   onBack: () => void;
   /** When false, exercises are generated locally (free tier) — no AI, no culture cards. */
   aiEnabled: boolean;
+  /** Language of the lesson; defaults to latin. Drives server prompts + copy. */
+  language?: Language;
+  /** Curriculum used for fallback distractors (English passes englishLessons; Latin omits it). */
+  distractorLessons?: Lesson[];
 }
 
 type AIState = "idle" | "loading" | "practicing" | "complete";
 
 // ── Component ────────────────────────────────────────────────
 
-export default function AIPractice({ lessonId, lessonTitle, pronMode, onBack, aiEnabled }: AIPracticeProps) {
+export default function AIPractice({ lesson, pronMode, onBack, aiEnabled, language = "latin", distractorLessons }: AIPracticeProps) {
   const [state, setState] = useState<AIState>("idle");
   const [exercises, setExercises] = useState<GeneratedExercise[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -38,13 +42,20 @@ export default function AIPractice({ lessonId, lessonTitle, pronMode, onBack, ai
 
       // Free tier: generate locally from lesson data — instant, zero API calls.
       if (!aiEnabled) {
-        const lesson = latinLessons.find((l) => l.id === lessonId);
         if (!lesson) {
           setError("Lesson not found — cannot generate practice");
           setState("idle");
           return;
         }
-        setExercises(generateFallbackExercises(lesson, count));
+        setExercises(
+          generateFallbackExercises(
+            lesson,
+            count,
+            "mixed",
+            language === "english" ? "english" : "latin",
+            distractorLessons,
+          ),
+        );
         setCulture(null); // fallback never produces culture cards
         setCurrentIdx(0);
         setResults([]);
@@ -55,7 +66,8 @@ export default function AIPractice({ lessonId, lessonTitle, pronMode, onBack, ai
 
       setState("loading");
       try {
-        const result = await (generatePractice as unknown as (data: { lessonId: number; count: number }) => Promise<PracticeResult>)({ lessonId, count });
+        // TanStack Start server functions expect the payload under `data`.
+        const result = await (generatePractice as unknown as (data: { data: { lessonId: number; count: number; language?: Language } }) => Promise<PracticeResult>)({ data: { lessonId: lesson.id, count, language } });
         if (result.error) throw new Error(result.error);
         setExercises(result.exercises as unknown as GeneratedExercise[]);
         setCulture(result.culture);
@@ -68,7 +80,7 @@ export default function AIPractice({ lessonId, lessonTitle, pronMode, onBack, ai
         setState("idle");
       }
     },
-    [lessonId, aiEnabled],
+    [lesson, aiEnabled, language, distractorLessons],
   );
 
   const handleExerciseComplete = useCallback(
@@ -101,13 +113,13 @@ export default function AIPractice({ lessonId, lessonTitle, pronMode, onBack, ai
       return;
     }
     try {
-      const card = await (generateCultureCard as unknown as (data: { lessonId: number }) => Promise<CultureCard>)({ lessonId });
+      const card = await (generateCultureCard as unknown as (data: { data: { lessonId: number; language?: Language } }) => Promise<CultureCard>)({ data: { lessonId: lesson.id, language } });
       setCulture(card);
       setShowCulture(true);
     } catch {
       // silent fallback
     }
-  }, [culture, showCulture, lessonId]);
+  }, [culture, showCulture, lesson, language]);
 
   // ── Render: Idle ───────────────────────────────────────────
 
@@ -125,7 +137,7 @@ export default function AIPractice({ lessonId, lessonTitle, pronMode, onBack, ai
               : "Generate fresh exercises from this lesson — no AI needed, works offline."}
           </p>
           <p className="text-sm text-gray-400 mb-6">
-            Based on: {lessonTitle}
+            Based on: {lesson.title}
           </p>
 
           <div className="flex flex-col gap-3 items-center">
@@ -254,7 +266,7 @@ export default function AIPractice({ lessonId, lessonTitle, pronMode, onBack, ai
                   </>
                 ) : (
                   <>
-                    💡 Tap for a Roman culture fact
+                    💡 Tap for a {language === "latin" ? "Roman" : "cultural"} fact
                   </>
                 )}
               </span>
