@@ -357,5 +357,17 @@ q(117,2,"praesum, praeesse, praefuī means…",["be in charge of, preside over",
 q(118,1,"Appellor Rōmānus means…",["I am called a Roman","I call a Roman","The Roman calls me","I am calling the Roman"],0,"Passive of a verb of calling + predicate nominative: 'I am called a Roman'."),
 q(118,2,"After a passive verb of calling, the predicate stands in the…",["nominative","accusative","ablative","dative"],0,"Appellor Rōmānus — the predicate is nominative, agreeing with the subject."),
 
+// Level 119 — The Perfect and Future Infinitives Active
+q(119,1,"The perfect active infinitive of laudō is…",["laudāvisse","laudāre","laudātūrus esse","laudātus esse"],0,"Perfect active infinitive = perfect stem + isse: laudāv- + isse = laudāvisse, 'to have praised'."),
+q(119,2,"The future active infinitive of mittō is…",["missūrus esse","mīsisse","mittere","missus esse"],0,"Future active infinitive = future participle + esse: missūrus esse, 'to be about to send'."),
+// Level 120 — The Accusative with the Infinitive: Introduction
+q(120,1,"Caesar dīcit sē pugnāre means…",["Caesar says that he is fighting","Caesar can fight","Caesar orders him to fight","Caesar is fighting"],0,"ACI: accusative subject (sē) + present infinitive (pugnāre) = 'Caesar says that he is fighting'."),
+q(120,2,"In the accusative-with-infinitive, the subject of the infinitive is in the…",["accusative","nominative","genitive","dative"],0,"The ACI puts the subject of the reported idea in the accusative and the verb as an infinitive — no 'that' in Latin."),
+// Level 121 — The Accusative with the Infinitive: Continued
+q(121,1,"Caesar dīcit sē pugnāvisse means…",["Caesar says that he fought","Caesar says that he is fighting","Caesar says that he will fight","Caesar fought him"],0,"The perfect infinitive (pugnāvisse) marks action earlier than the main verb: 'he fought / has fought'."),
+q(121,2,"Caesar dīcit sē pugnātūrum esse means…",["Caesar says that he will fight","Caesar says that he fought","Caesar says that he is fighting","Caesar will say that he fights"],0,"The future infinitive (pugnātūrum esse) marks action later than the main verb: 'he will fight'."),
+// Level 122 — Passive Infinitives in Indirect Statement
+q(122,1,"The present passive infinitive of laudō is…",["laudārī","laudāre","laudātus esse","laudātum īrī"],0,"Present passive infinitive (1st conj.) = stem + -ārī: laudārī, 'to be praised'."),
+q(122,2,"Caesar dīcit mīlitēs laudātōs esse means…",["Caesar says that the soldiers were praised","Caesar says that the soldiers are being praised","Caesar says that the soldiers will be praised","The soldiers say that Caesar was praised"],0,"Perfect passive infinitive = PPP (laudātōs, agreeing with mīlitēs) + esse: 'were praised'."),
 ];
 export default placementQuestions;
