@@ -1,6 +1,16 @@
 import { DEFAULT_PRONUNCIATION_MODE, PLACEMENT_TOTAL_LEVELS } from "~/data/settings";
+import {
+  DIAGNOSTICS_WINDOW_DAYS,
+  MAX_DIAGNOSTICS_EVENTS,
+} from "~/data/settings";
 import type { PronMode } from "~/data/settings";
-import type { AccuracyEntry, FeedbackEntry, VerbumSettings } from "~/engine/types";
+import type {
+  AccuracyEntry,
+  AttemptRecord,
+  DiagnosticEvent,
+  FeedbackEntry,
+  VerbumSettings,
+} from "~/engine/types";
 import { SETTINGS_DEFAULTS } from "~/data/settings";
 import type { Language } from "~/data/languages";
 
@@ -10,7 +20,44 @@ export const STORAGE_KEYS = {
   SETTINGS: "verbum-settings",
   ACCURACY: "verbum-accuracy",
   FEEDBACK: "verbum-feedback",
+  DIAGNOSTICS: "verbum-diagnostics",
 } as const;
+
+export const DIAGNOSTICS_SCHEMA_VERSION = 1;
+
+/** Persisted payload shape: version inside the payload, key stable across versions. */
+export interface DiagnosticsPayload {
+  v: number;
+  events: DiagnosticEvent[];
+}
+
+/** v1: identity. Future versions transform events; unknown future version drops (fail safe). */
+export function migrateDiagnostics(payload: DiagnosticsPayload): DiagnosticEvent[] {
+  if (payload.v === DIAGNOSTICS_SCHEMA_VERSION) return payload.events ?? [];
+  return [];
+}
+
+/**
+ * Prune an event log to the rolling window and hard cap (spec §3/§4):
+ * 1. drop events older than now − windowDays, plus future events (clock skew > 1 day);
+ * 2. keep only the newest MAX_DIAGNOSTICS_EVENTS.
+ * Pure; used on every diagnostics write and defensively on read.
+ */
+export function pruneEvents(events: DiagnosticEvent[], now?: Date): DiagnosticEvent[] {
+  const n = now ?? new Date();
+  const dayMs = 86_400_000;
+  const windowStart = n.getTime() - DIAGNOSTICS_WINDOW_DAYS * dayMs;
+  const maxFuture = n.getTime() + dayMs;
+  let kept = events.filter((e) => {
+    const t = new Date(e.ts).getTime();
+    return !Number.isNaN(t) && t >= windowStart && t <= maxFuture;
+  });
+  if (kept.length > MAX_DIAGNOSTICS_EVENTS) {
+    // ISO UTC strings sort lexicographically = chronologically; keep newest.
+    kept = [...kept].sort((a, b) => a.ts.localeCompare(b.ts)).slice(-MAX_DIAGNOSTICS_EVENTS);
+  }
+  return kept;
+}
 
 export function isClient(): boolean { return typeof window !== "undefined"; }
 
@@ -56,6 +103,43 @@ export function recordAccuracy(conceptId: string, correct: boolean, language: La
   const entries = loadAccuracy(language); const entry = entries.find((x) => x.conceptId === conceptId);
   if (entry) { entry.total++; if (correct) entry.correct++; } else entries.push({ conceptId, correct: correct ? 1 : 0, total: 1 });
   saveAccuracy(entries, language);
+}
+
+// ── Diagnostics storage (owner direction 2026-08-11) ────────────
+// Raw event log under verbum-diagnostics-<lang> (schema { v: 1, events });
+// namespaced per language with the same legacy latin-unscoped fallback as
+// the other keys (no legacy diagnostics key exists — fallback is harmless).
+// Adding DIAGNOSTICS to STORAGE_KEYS means clearAllData already wipes it.
+
+export function loadDiagnostics(language: Language = "latin"): DiagnosticEvent[] {
+  const payload = loadJSON<unknown>(STORAGE_KEYS.DIAGNOSTICS, null, language);
+  if (!payload || typeof payload !== "object") return [];
+  const p = payload as Partial<DiagnosticsPayload>;
+  if (!Array.isArray(p.events)) return [];
+  const events = migrateDiagnostics({ v: typeof p.v === "number" ? p.v : DIAGNOSTICS_SCHEMA_VERSION, events: p.events });
+  // Defensive pruning on read covers crashed/aborted writes (spec §7).
+  return pruneEvents(events);
+}
+
+export function saveDiagnostics(events: DiagnosticEvent[], language: Language = "latin"): void {
+  saveJSON(STORAGE_KEYS.DIAGNOSTICS, { v: DIAGNOSTICS_SCHEMA_VERSION, events }, language);
+}
+
+let diagSeq = 0;
+/** `${Date.now()}-${seq}` ids; seq disambiguates same-millisecond attempts. */
+function nextEventId(): string {
+  diagSeq = (diagSeq + 1) % 1_000_000;
+  return `${Date.now()}-${diagSeq}`;
+}
+
+/** Load → append → prune → save; dedupes on id (StrictMode double-invoke guard). */
+export function recordAttempt(record: AttemptRecord, language: Language = "latin"): void {
+  if (!isClient()) return;
+  const id = nextEventId();
+  const events = loadDiagnostics(language);
+  if (events.some((e) => e.id === id)) return;
+  const event: DiagnosticEvent = { ...record, id, ts: record.ts ?? new Date().toISOString() };
+  saveDiagnostics(pruneEvents([...events, event]), language);
 }
 export function clearAllData(language: Language = "latin"): void {
   if (!isClient()) return;
