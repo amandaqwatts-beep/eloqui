@@ -394,5 +394,17 @@ q(129,2,"nactus sum means…",["I obtained, I have obtained","I was obtained","I
 // Level 130 — Infinitives of Deponent Verbs
 q(130,1,"The present infinitive of conor is…",["conārī","conāre","conātus esse","conātūrus esse"],0,"The present infinitive of a deponent is the passive infinitive: conārī = 'to try'."),
 q(130,2,"The future infinitive of loquor is…",["locūtūrus esse","locūtus esse","loquī","locūtum īrī"],0,"The future infinitive of a deponent is the ACTIVE -ūrus esse: locūtūrus esse, 'to be about to speak'."),
+// Level 131 — The Indicative of Eō
+q(131,1,"The present of eō: eō, īs, it, īmus, ītis, ___",["eunt","eant","ībant","erunt"],0,"eunt is the 3rd-person plural present of eō — one of the two irregular forms (with eō itself); ī- + endings covers the rest."),
+q(131,2,"īvī means…",["I went","I go","I was going","I had gone"],0,"īvī = perfect of eō (perfect stem īv- + -ī): 'I went'."),
+// Level 132 — The Subjunctive of Eō
+q(132,1,"The present subjunctive of eō (3rd sg) is…",["eat","it","eant","īret"],0,"eam, eās, eat, eāmus, eātis, eant — the present subjunctive; it (short i) is the present indicative."),
+q(132,2,"Eāmus! means…",["Let's go!","We go","We went","They go"],0,"Eāmus! is the hortatory subjunctive (lesson 91): 'Let's go!'"),
+// Level 133 — The Infinitives of Eō
+q(133,1,"The perfect active infinitive of eō is…",["īsse","īre","itūrus esse","īvī"],0,"Perfect stem īv- + -isse = īsse, 'to have gone' — the lesson-119 rule."),
+q(133,2,"The future active infinitive of eō is…",["itūrus esse","īsse","īre","itum esse"],0,"Future participle itūrus + esse = 'to be about to go' (lesson 119)."),
+// Level 134 — Mastery Review No. 3
+q(134,1,"Caesar dīxit hostēs vēnisse means…",["Caesar said that the enemies had come","Caesar says that the enemies are coming","The enemies said that Caesar had come","Caesar came to the enemies"],0,"ACI (Unit 12): perfect infinitive vēnisse after the past main verb dīxit = earlier time: 'had come'."),
+q(134,2,"Rēx eōs in Italiam dūcī iussit means…",["The king ordered them to be led into Italy","The king led them into Italy","They ordered the king to be led into Italy","The king ordered them to lead into Italy"],0,"iubeō + accusative + passive infinitive (Units 10/12): dūcī = 'to be led'."),
 ];
 export default placementQuestions;
