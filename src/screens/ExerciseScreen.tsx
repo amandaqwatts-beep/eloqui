@@ -1,7 +1,7 @@
 import type { Exercise, Lesson } from "~/data/latinLessons";
 import type { PronMode } from "~/lib/pronunciation";
 import type { ExerciseResultDetail } from "~/engine/types";
-import NavBar from "~/components/NavBar"; import ReferenceTable from "~/components/ReferenceTable"; import ProgressBar from "~/components/ProgressBar"; import MultipleChoice from "~/components/MultipleChoice"; import FillInBlank from "~/components/FillInBlank"; import MatchingPairs from "~/components/MatchingPairs"; import Flashcard from "~/components/Flashcard"; import ReadingPassage from "~/components/ReadingPassage";
+import NavBar from "~/components/NavBar"; import ReferenceTable from "~/components/ReferenceTable"; import ProgressBar from "~/components/ProgressBar"; import MultipleChoice from "~/components/MultipleChoice"; import FillInBlank from "~/components/FillInBlank"; import MatchingPairs from "~/components/MatchingPairs"; import Flashcard from "~/components/Flashcard"; import ReadingPassage from "~/components/ReadingPassage"; import CultureQuestion from "~/components/CultureQuestion";
 
 /**
  * ExerciseRenderer — MC and fill-in-blank forward wrong/expected through the
@@ -17,6 +17,7 @@ function ExerciseRenderer({exercise,onComplete,onResult,pronMode}:{exercise:Exer
     case "matching": return <MatchingPairs exercise={exercise} onComplete={(correct)=>{onComplete({correct})}} pronMode={pronMode}/>;
     case "flashcard": return <Flashcard exercise={exercise} onComplete={(correct)=>{onComplete({correct})}}/>;
     case "reading-passage": return <ReadingPassage exercise={exercise} pronMode={pronMode} onComplete={(correct)=>{onComplete({correct})}}/>;
+    case "culture-question": return <CultureQuestion exercise={exercise} onComplete={(c)=>{onComplete({correct:c})}} onResult={onResult}/>;
     default: return <p className="text-red-500">Unknown exercise type</p>
   }
 }
