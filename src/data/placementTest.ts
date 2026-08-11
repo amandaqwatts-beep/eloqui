@@ -311,6 +311,24 @@ q(102,1,"The ablative of separation is used with verbs and adjectives of…",["f
 q(102,2,"In Caesar mīlitēs perīculō līberāvit, perīculō is…",["the ablative of separation (from danger)","the dative","accusative","genitive"],0,"perīculō is the ablative: freed the soldiers FROM danger."),
 // Level 103 — Review of Ablative Constructions
 q(103,1,"Agent is expressed by…",["ā/ab + a person","a bare ablative of a thing","cum + a person","ex/ab/dē + a place"],0,"The personal agent in a passive sentence is ā/ab + ablative."),
-q(103,2,"'From Rome' is…",["Rōmā","ex Rōmā","ab Rōmā","dē Rōmā"],0,"Names of towns use the bare ablative for place from which: Rōmā discēdō, 'I depart from Rome.'"),
+q(103,2,"'From Rome' is…",["Rōmā","ex Rōmā","ab Rōmā","dē Rōmā"],0,"Names of towns use the bare ablative for place from which: Rōmā discēdō, 'I depart from Rome.'"),// Level 104 — Possum: Present, Imperfect, Future
+q(104,1,"possum, posse, potuī means…",["be able, can","be absent, away","be well, be strong","begin"],0,"possum is a compound of pot- ('able') and sum: 'be able, can'."),
+q(104,2,"The present 3rd-person plural of possum is…",["possunt","potestis","poterunt","possint"],0,"pot + sunt → possunt: the t of pot- assimilates to the following s."),
+// Level 105 — Possum: Perfect System and Subjunctive
+q(105,1,"The perfect 1st-person singular of possum is…",["potuī","potueram","poteram","possim"],0,"The perfect stem of possum is potu-: potuī, 'I was able'."),
+q(105,2,"The present subjunctive of possum (1st sg.) is…",["possim","possem","potuerim","possum"],0,"The present subjunctive is possim, possīs, possit, possīmus, possītis, possint."),
+// Level 106 — The Infinitive as Subject
+q(106,1,"Errare est hūmānum means…",["To err is human","Error is human nature","To err is harmful","Human beings always err"],0,"The infinitive errāre is the subject of est — the infinitive used as a noun."),
+q(106,2,"An infinitive used as a noun is ___ singular.",["neuter","masculine","feminine","always plural"],0,"The infinitive-noun is neuter singular: errāre est hūmānum, not *hūmānus."),
+// Level 107 — The Infinitive as Object
+q(107,1,"Possum pugnāre means…",["I can fight","I am fighting","I will fight","I fight well"],0,"possum + infinitive = 'I am able to fight' = 'I can fight'."),
+q(107,2,"Oportet pugnāre means…",["It is necessary to fight","It is possible to fight","We must not fight","To fight is easy"],0,"oportet is impersonal — 'it is necessary' — and takes the infinitive."),
+// Level 108 — Numerals
+q(108,1,"The genitive singular of ūnus (all genders) is…",["ūnīus","ūnus","ūnī","ūnōrum"],0,"ūnus follows the -īus pattern of the nine irregular adjectives: genitive ūnīus, dative ūnī."),
+q(108,2,"mīlia mīlitum means…",["thousands of soldiers","a thousand soldiers","a thousand armies","very many soldiers"],0,"mīlia is the plural noun 'thousands' and takes a genitive: thousands of soldiers."),
+// Level 109 — Irregular Adjectives
+q(109,1,"The nine irregular adjectives have genitive singular ___ for all genders.",["-īus","-ae","-īs","-ium"],0,"alius, alter, neuter, nūllus, ūllus, sōlus, tōtus, ūnus, uter take -īus in the genitive singular and -ī in the dative."),
+q(109,2,"The genitive singular of alius is…",["alīus","aliīus","aliī","aliud"],0,"alius is irregular even within the set: genitive alīus, dative aliī, neuter aliud."),
+
 ];
 export default placementQuestions;
