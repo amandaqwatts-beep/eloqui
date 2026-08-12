@@ -17,7 +17,14 @@
  * books/chapters by id. Display order derives from ARRAY INDEX (unlock order);
  * `subLessonIds` arrays are membership sets only. See bookshelfModel.ts.
  */
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type { Lesson, CultureQuestionExercise } from "~/data/latinLessons";
 import type { BookLesson } from "~/data/bookLessons";
 import type { SideLesson } from "~/data/latinSideLessons";
@@ -338,7 +345,7 @@ function BookshelfV2({
   const isLocked = (book: ShelfBook) => book.unlockIdx >= unlockedLessons;
 
   return (
-    <div ref={capacityRef} className="space-y-9">
+    <div ref={capacityRef} className="library-wall space-y-9">
       {packed.map((shelf) => (
         <section
           key={shelf.shelfIndex}
@@ -377,7 +384,7 @@ function BookshelfV2({
             ))}
           </div>
           {/* Shelf board */}
-          <div className="border-b-4 border-amber-900/40" />
+          <div className="shelf-board" />
         </section>
       ))}
     </div>
@@ -472,6 +479,22 @@ function bookmarkFor(book: ShelfBook, progressById: Map<number, LessonProgress>)
   return avg >= 80 ? "gold" : "pale";
 }
 
+/** F6 — reword the book subtitle's "IDs 1–5" developer jargon into a
+ *  lessons-based caption ("Lessons 1–5 · Terra → Genitive Case"). */
+function lessonsCaption(subtitle: string): string {
+  return subtitle.replace(/^IDs?\s+([\d–-]+)/, (_m, nums: string) =>
+    nums.includes("–") || nums.includes("-") ? `Lessons ${nums}` : `Lesson ${nums}`,
+  );
+}
+
+/** Henle 4-tone palette rotation — CSS gradient endpoints for `.spine-henle`. */
+const HENLE_TONES = [
+  { a: "var(--color-burgundy-700)", b: "var(--color-burgundy-800)", label: "var(--color-gold-300)" },
+  { a: "var(--color-gold-500)", b: "var(--color-gold-600)", label: "var(--color-burgundy-950)" },
+  { a: "var(--color-burgundy-800)", b: "var(--color-burgundy-900)", label: "var(--color-gold-300)" },
+  { a: "var(--color-cream-300)", b: "var(--color-cream-400)", label: "var(--color-burgundy-900)" },
+] as const;
+
 function Spine({
   book,
   locked,
@@ -487,17 +510,34 @@ function Spine({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const base = locked
-    ? "cursor-not-allowed border border-gray-300 bg-gray-200 text-gray-400 shadow-none"
-    : isCurrent
-      ? "-translate-y-2 bg-gold-500 text-burgundy-950 shadow-xl ring-2 ring-gold-500 sm:-translate-y-3 z-10"
-      : book.kind === "review"
-        ? "bg-burgundy-900 text-cream-50 shadow-md hover:brightness-110"
-        : book.kind === "culture"
-          ? "bg-amber-700 text-cream-50 shadow-md hover:brightness-110"
-          : book.kind === "explore"
-            ? "bg-emerald-700 text-cream-50 shadow-md hover:brightness-110"
-            : `shadow-md ${UNLOCKED_PALETTE[Math.abs(book.firstIdx) % 4]} hover:brightness-110`;
+  // Theme classes (§5.3): `.spine` base cloth + per-kind tone; locked spines
+  // get the dusted `.spine-locked` treatment regardless of kind.
+  const kindClass = locked
+    ? "spine-locked"
+    : book.kind === "review"
+      ? "spine-review"
+      : book.kind === "culture"
+        ? "spine-culture"
+        : book.kind === "explore"
+          ? "spine-explore"
+          : "spine-henle";
+  const tone = HENLE_TONES[Math.abs(book.firstIdx) % HENLE_TONES.length];
+  // Inline gradient endpoints (custom props / background) — the henle
+  // rotation, and the gold "current" book (raised + ringed, same as v2).
+  const spineStyle =
+    locked
+      ? undefined
+      : isCurrent
+        ? {
+            background: "linear-gradient(180deg, var(--color-gold-400), var(--color-gold-500))",
+            "--spine-label": "var(--color-burgundy-950)",
+          }
+        : book.kind === "henle"
+          ? {
+              background: `linear-gradient(180deg, ${tone.a}, ${tone.b})`,
+              "--spine-label": tone.label,
+            }
+          : undefined;
   const label =
     book.kind === "henle"
       ? book.henleNumber
@@ -506,12 +546,20 @@ function Spine({
         : book.kind === "culture"
           ? "🏛️"
           : "✨";
+  // F5 — explore spines carry a tiny index number under the glyph so the 16
+  // side-lesson books are distinguishable on touch (tooltips don't exist).
+  const sideLessonId =
+    book.kind === "explore" && book.content && "sideLessonId" in book.content
+      ? book.content.sideLessonId
+      : null;
   const chapters = book.chapterIds.length;
+  // F14 — review spines use the canonical BookLesson title ("Review of Unit
+  // 1", "Mastery Review Vocab #1") instead of the generic "Review · Unit N".
   const ariaLabel =
     book.kind === "henle"
       ? `Lesson ${book.henleNumber} · ${book.title} — ${chapters} chapter${chapters === 1 ? "" : "s"}`
       : book.kind === "review"
-        ? `Review · Unit ${book.unit}`
+        ? `${book.title} — ${chapters} chapter${chapters === 1 ? "" : "s"}`
         : book.kind === "culture"
           ? `Culture Corner — Unit ${book.unit}`
           : `Explore: ${book.title}`;
@@ -529,7 +577,12 @@ function Spine({
       aria-expanded={expanded || undefined}
       aria-label={ariaLabel}
       title={title}
-      className={`relative flex h-14 w-9 flex-col items-center rounded-t-sm pt-1 pb-1 sm:h-16 sm:w-11 ${base} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2`}
+      style={spineStyle as CSSProperties}
+      className={`spine ${kindClass} relative flex h-14 w-9 flex-col items-center pt-1 pb-1 sm:h-16 sm:w-11 ${
+        isCurrent
+          ? "-translate-y-2 shadow-xl ring-2 ring-gold-500 z-10 sm:-translate-y-3"
+          : ""
+      } ${!locked && !isCurrent ? "hover:brightness-110" : ""} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2`}
     >
       {bookmark && (
         <span
@@ -544,7 +597,20 @@ function Spine({
           <span key={i} className="h-0.5 w-1 rounded bg-black/20" />
         ))}
       </span>
-      <span className="mt-auto text-[10px] font-black leading-none sm:text-xs">{label}</span>
+      <span className="mt-auto flex flex-col items-center">
+        {book.kind === "culture" ? (
+          <span className="text-base leading-none">🏛️</span>
+        ) : book.kind === "explore" ? (
+          <>
+            <span className="text-base leading-none">✨</span>
+            <span className="spine-label font-book text-[8px] leading-none">
+              {sideLessonId}
+            </span>
+          </>
+        ) : (
+          <span className="spine-label text-[10px] leading-none sm:text-xs">{label}</span>
+        )}
+      </span>
     </button>
   );
 }
@@ -578,12 +644,12 @@ function ExpansionPanel({
     book.kind === "henle"
       ? `Henle Lesson ${book.henleNumber} · ${book.title}`
       : book.kind === "review"
-        ? `Review · Unit ${book.unit}`
+        ? book.title // F14 — canonical title ("Review of Unit 1"), not "Review · Unit N"
         : book.kind === "culture"
           ? `Culture Corner — Unit ${book.unit}`
           : `Explore: ${book.title}`;
   return (
-    <div className="mt-3 w-full rounded-2xl border border-burgundy-200 bg-cream-50 p-4">
+    <div className="book-panel mt-3 w-full p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h4 className="text-sm font-extrabold text-burgundy-900">{header}</h4>
         {book.kind === "henle" && (
@@ -592,6 +658,11 @@ function ExpansionPanel({
           </span>
         )}
       </div>
+      {/* F6 — render the book subtitle as a caption under the header,
+          reworded from "IDs 1–5" jargon to a lessons-based caption. */}
+      {book.subtitle && (
+        <p className="mb-3 -mt-1 text-xs text-gray-500">{lessonsCaption(book.subtitle)}</p>
+      )}
       {book.kind === "culture" ? (
         <CulturePanel
           book={book}
