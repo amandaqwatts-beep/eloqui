@@ -34,11 +34,193 @@
   --color-cream-800: #a57c35;
   --color-cream-900: #886530;
   --color-cream-950: #4a3518;
+
+  /* ── Bookshelf v2.1 theme tokens (spec §5.2) ─────────────────── */
+
+  /* wood — warm oak, tuned for contrast (text on wood ≥ 4.5:1 uses 700/800/900) */
+  --color-wood-50: #faf6ef;
+  --color-wood-100: #f1e7d6;
+  --color-wood-200: #e4d0b2;
+  --color-wood-300: #d4b587;
+  --color-wood-400: #c19a5f;
+  --color-wood-500: #a97f45; /* mid oak — decoration only, not a text bg */
+  --color-wood-600: #8f6634;
+  --color-wood-700: #74502a; /* AA-safe with cream-50 (≈5.4:1) */
+  --color-wood-800: #5b3d22;
+  --color-wood-900: #452e1a;
+  --color-wood-950: #2c1d10;
+
+  /* shadows — depth */
+  --shadow-shelf: 0 4px 6px -2px rgb(44 29 16 / 0.18), 0 12px 24px -12px rgb(44 29 16 / 0.28);
+  --shadow-spine: 0 2px 4px -1px rgb(44 29 16 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.25);
+  --shadow-book-panel: 0 8px 30px -12px rgb(44 29 16 / 0.35);
+
+  /* serif display for spine labels + book titles (system stack — no font download) */
+  --font-book: Georgia, "Iowan Old Style", "Times New Roman", serif;
 }
 
 @layer base {
   html,
   body {
     @apply bg-cream-50 text-gray-900 antialiased;
+  }
+}
+
+@layer components {
+  /* ── Bookshelf v2.1 theme (spec §5.3) ─────────────────────────── */
+
+  /* Menu-page library wall: warm parchment gradient, faint vertical panel
+     seams, and a soft "reading lamp" radial glow at the top. All static CSS
+     — no animation, reduced-motion safe by construction. */
+  .library-wall {
+    background:
+      radial-gradient(ellipse 70% 30% at 50% 0%, rgb(255 240 200 / 0.45), transparent),
+      repeating-linear-gradient(90deg, transparent 0 159px, rgb(69 46 26 / 0.04) 160px),
+      linear-gradient(180deg, #f7efe0, #efe2c6);
+  }
+
+  /* The horizontal board under each shelf row — replaces the flat
+     border-b-4 border-amber-900/40 strip with a real wooden board. */
+  .shelf-board {
+    border-top: 1px solid var(--color-wood-200);
+    border-bottom: 4px solid var(--color-wood-800);
+    border-radius: 4px;
+    background: linear-gradient(
+      180deg,
+      var(--color-wood-300),
+      var(--color-wood-500) 55%,
+      var(--color-wood-600)
+    );
+    box-shadow: var(--shadow-shelf);
+  }
+
+  /* §4 desk bar — the bookcase's wooden crown where controls sit like tools
+     on a desk. Token-only in PR-A; LessonMenu wiring lands with PR-C. */
+  .desk-bar {
+    border: 1px solid var(--color-wood-300);
+    border-radius: 1rem; /* rounded-2xl */
+    background: linear-gradient(180deg, var(--color-wood-100), var(--color-wood-200));
+    box-shadow: var(--shadow-shelf);
+  }
+
+  /* ── Spines ───────────────────────────────────────────────────── */
+
+  /* Base cloth treatment shared by every book spine: vertical cloth gradient
+     (tone endpoints via --spine-a/--spine-b custom props, set per kind class
+     below or inline from the JSX henle rotation), slightly rounded head
+     (rounded-t-md), left hinge shadow, bottom binding band, serif label. */
+  .spine {
+    --spine-label: var(--color-gold-300);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 0.375rem 0.375rem 0.125rem 0.125rem; /* rounded-t-md, soft foot */
+    box-shadow: var(--shadow-spine), inset 3px 0 3px -2px rgb(0 0 0 / 0.25);
+    background: linear-gradient(
+      180deg,
+      var(--spine-a, var(--color-wood-500)),
+      var(--spine-b, var(--color-wood-700))
+    );
+  }
+  /* Left hinge — the shadowed crease where the cover meets the pages
+     (pseudo-element so utility shadows/rings can never clobber it). */
+  .spine::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, rgb(0 0 0 / 0.18), transparent 3px);
+    pointer-events: none;
+  }
+  /* Bottom binding band — 2px darker line at the foot. */
+  .spine::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    border-radius: 0 0 0.125rem 0.125rem;
+    background: rgb(0 0 0 / 0.35);
+    pointer-events: none;
+  }
+  .spine .spine-label {
+    color: var(--spine-label);
+    font-family: var(--font-book);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  /* Henle books — the existing 4-tone palette rotation (burgundy-700 /
+     gold-500 / burgundy-800 / cream-300); tone endpoints arrive inline from
+     the JSX as --spine-a / --spine-b / --spine-label. */
+  .spine-henle {
+    background: linear-gradient(
+      180deg,
+      var(--spine-a, var(--color-burgundy-700)),
+      var(--spine-b, var(--color-burgundy-800))
+    );
+  }
+
+  /* Culture books — amber-800 (darkened from amber-700 for ≥4.5:1 with cream
+     text), 🏛️ glyph at text-base, gold-foil rim. */
+  .spine-culture {
+    --spine-label: var(--color-cream-50);
+    background: linear-gradient(180deg, var(--color-amber-800), var(--color-amber-900));
+    box-shadow: var(--shadow-spine), inset 3px 0 3px -2px rgb(0 0 0 / 0.25),
+      inset 0 1px 0 var(--color-gold-300); /* gold-foil rim */
+  }
+
+  /* Explore books — emerald-800, ✨ at text-base + tiny spine index number
+     (fixes F5: 16 identical green books are now distinguishable). */
+  .spine-explore {
+    --spine-label: var(--color-cream-50);
+    background: linear-gradient(180deg, var(--color-emerald-800), var(--color-emerald-900));
+  }
+
+  /* Mastery reviews (legacy) — burgundy-900 with cream "R{n}". The
+     --legacy muted variant is applied where a unit-review spine exists
+     (units 1/2/5/14) once review-system data lands (Q6 resolution). */
+  .spine-review {
+    --spine-label: var(--color-cream-50);
+    background: linear-gradient(180deg, var(--color-burgundy-900), var(--color-burgundy-950));
+  }
+  .spine-review--legacy {
+    opacity: 0.3;
+  }
+
+  /* Unit-review spines (review-system rework §2.2, books 47–56) — deep teal,
+     cream "U{n}", gold-foil rim. CSS readiness only in PR-A: the
+     Bookshelf/model branch for this kind ships with review-system data. */
+  .spine-unit-review {
+    --spine-label: var(--color-cream-50);
+    background: linear-gradient(180deg, var(--color-teal-800), var(--color-teal-900));
+    box-shadow: var(--shadow-spine), inset 3px 0 3px -2px rgb(0 0 0 / 0.25),
+      inset 0 1px 0 var(--color-gold-300); /* gold-foil rim */
+  }
+
+  /* Locked spines — desaturated dusted look with a faint stipple overlay,
+     label kept readable (wood-600 ≥4.5:1 on the wood-100/200 ground).
+     Declared last so it beats every kind class. */
+  .spine-locked {
+    --spine-label: var(--color-wood-600);
+    background:
+      repeating-linear-gradient(45deg, rgb(69 46 26 / 0.03) 0 2px, transparent 2px 5px),
+      linear-gradient(180deg, rgb(241 231 214 / 0.6), rgb(228 208 178 / 0.6));
+    border: 1px solid var(--color-wood-300);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  /* Open-book expansion panel — cream page on the wooden desk: translucent
+     cream ground, wood border, soft depth, thin gold top "page marker". */
+  .book-panel {
+    border: 1px solid var(--color-wood-200);
+    border-top: 4px solid var(--color-gold-500); /* page marker */
+    border-radius: 1rem; /* rounded-2xl */
+    background: rgb(254 253 251 / 0.95); /* cream-50/95 */
+    backdrop-filter: blur(4px); /* backdrop-blur-sm */
+    box-shadow: var(--shadow-book-panel);
   }
 }

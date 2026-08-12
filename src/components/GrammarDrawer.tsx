@@ -109,7 +109,7 @@ export default function GrammarDrawer({
           <div>
             <h2 className="text-lg font-extrabold text-burgundy-900">Grammar Index</h2>
             <p className="text-xs text-gray-500">
-              {topics.length} topics · cited from Henle <em>Grammar</em>
+              {topics.length} topics · Henle <em>Grammar</em> citations forthcoming
             </p>
           </div>
           <button
