@@ -48,3 +48,20 @@ export const IMPROVEMENT_ESCALATION_MILESTONES = [10, 20, 50, 100] as const;
 export const IMPROVEMENT_HISTORY_CAP = 120;
 export const BONUS_DRILL_DEFAULT_COUNT = 10;
 export const BONUS_DRILL_ESCALATED_COUNT = 15;
+// ── Sleep audio (owner direction 2026-08-11) ─────────────────────
+// Passive listening playlist + timer (research/sleep-audio-design.md §8).
+// Duration presets/defaults (5–120 min range), cadence defaults, and the
+// playlist weighting constants consumed by src/engine/sleepAudio.ts and the
+// sleep-audio payload in src/engine/storage.ts. Tunable without code changes.
+export const SLEEP_AUDIO_DEFAULT_DURATION_MIN = 20;
+export const SLEEP_AUDIO_PRESETS_MIN = [15, 20, 30, 45, 60] as const;
+export const SLEEP_AUDIO_MIN_MIN = 5;
+export const SLEEP_AUDIO_MAX_MIN = 120;
+export const SLEEP_AUDIO_DEFAULT_REPEAT = 2;
+export const SLEEP_AUDIO_DEFAULT_PAUSE_MS = 1500;
+export const SLEEP_AUDIO_DEFAULT_INCLUDE_ENGLISH = true;
+export const SLEEP_AUDIO_WEAK_BOOST = 3;
+export const SLEEP_AUDIO_MISTAKE_BOOST = 1;
+export const SLEEP_AUDIO_MAX_WEIGHT = 5;
+export const SLEEP_AUDIO_WORST_LIMIT = 20; // getWorstAreas limit
+export const SLEEP_AUDIO_PAIR_LIMIT = 10; // getConfusionPairs limit

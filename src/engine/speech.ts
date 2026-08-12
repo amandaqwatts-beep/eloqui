@@ -13,7 +13,7 @@ function available(): SpeechSynthesisVoice[] {
   }
   return voices;
 }
-function speak(text: string, language: "latin" | "english"): void {
+function speak(text: string, language: "latin" | "english", rate?: number): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
   const list = available();
   const voice = language === "latin"
@@ -24,14 +24,14 @@ function speak(text: string, language: "latin" | "english"): void {
   const utterance = new SpeechSynthesisUtterance(text);
   if (voice) utterance.voice = voice;
   utterance.lang = language === "latin" ? "it-IT" : "en-US";
-  utterance.rate = 0.85;
+  utterance.rate = rate ?? 0.85;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
-export function speakLatin(text: string, mode: LatinMode = "ecclesiastical"): void {
+export function speakLatin(text: string, mode: LatinMode = "ecclesiastical", rate?: number): void {
   // IPA speech quality depends on browser voice support. Italian voices
   // produce the closest phoneme match for Ecclesiastical Latin IPA.
-  speak(latinToIPA(text, mode), "latin");
+  speak(latinToIPA(text, mode), "latin", rate);
 }
-export function speakEnglish(text: string): void { speak(text, "english"); }
+export function speakEnglish(text: string, rate?: number): void { speak(text, "english", rate); }
 export function stopSpeech(): void { if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel(); }

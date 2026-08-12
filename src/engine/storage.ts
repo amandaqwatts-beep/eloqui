@@ -2,6 +2,10 @@ import { DEFAULT_PRONUNCIATION_MODE, PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE } from "
 import {
   DIAGNOSTICS_WINDOW_DAYS,
   MAX_DIAGNOSTICS_EVENTS,
+  SLEEP_AUDIO_DEFAULT_DURATION_MIN,
+  SLEEP_AUDIO_DEFAULT_INCLUDE_ENGLISH,
+  SLEEP_AUDIO_DEFAULT_PAUSE_MS,
+  SLEEP_AUDIO_DEFAULT_REPEAT,
 } from "~/data/settings";
 import type { PronMode } from "~/data/settings";
 import type {
@@ -23,6 +27,7 @@ export const STORAGE_KEYS = {
   FEEDBACK: "verbum-feedback",
   DIAGNOSTICS: "verbum-diagnostics",
   IMPROVEMENT_STREAK: "verbum-streak",
+  SLEEP_AUDIO: "verbum-sleep-audio",
   // Owned by progress.ts, which writes them directly (bypassing this module);
   // listed here so clearAllData wipes them too, incl. legacy unscoped Latin.
   PROGRESS: "verbum-progress",
@@ -196,4 +201,93 @@ export function loadStreakHistory(language: Language = "latin"): StreakPayload {
 
 export function saveStreakHistory(payload: StreakPayload, language: Language = "latin"): void {
   saveJSON(STORAGE_KEYS.IMPROVEMENT_STREAK, payload, language);
+}
+
+// ── Sleep-audio storage (owner direction 2026-08-11) ────────────
+// One namespaced key holding prefs + passive session counters
+// (research/sleep-audio-design.md §5). Listening NEVER writes DiagnosticEvents
+// — the counters here answer "has the student been listening?" without
+// corrupting mastery evidence. loadJSON's legacy latin-unscoped fallback
+// applies automatically (no legacy key exists — harmless, consistent with
+// diagnostics). Adding SLEEP_AUDIO to STORAGE_KEYS means clearAllData wipes it.
+
+export const SLEEP_AUDIO_SCHEMA_VERSION = 1;
+
+export interface SleepAudioPrefs {
+  durationMin: number;
+  repeatEach: number;
+  pauseMs: number;
+  includeEnglish: boolean;
+}
+
+export interface SleepAudioSessionStats {
+  lastSessionAt: string | null; // ISO UTC
+  lastSessionDurationMin: number; // elapsed minutes, rounded
+  lastSessionItems: number; // items played (currentItemIndex + 1)
+  totalListenSeconds: number;
+  totalSessions: number;
+}
+
+export interface SleepAudioPayload {
+  v: number;
+  prefs: SleepAudioPrefs;
+  stats: SleepAudioSessionStats;
+}
+
+export const SLEEP_AUDIO_PREFS_DEFAULTS: SleepAudioPrefs = {
+  durationMin: SLEEP_AUDIO_DEFAULT_DURATION_MIN /* 20 */,
+  repeatEach: SLEEP_AUDIO_DEFAULT_REPEAT /* 2 */,
+  pauseMs: SLEEP_AUDIO_DEFAULT_PAUSE_MS /* 1500 */,
+  includeEnglish: SLEEP_AUDIO_DEFAULT_INCLUDE_ENGLISH /* true */,
+};
+
+function numOr(v: unknown, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
+/** Deep-merge defaults; corrupt/absent payload → defaults. Never throws. */
+export function loadSleepAudio(language: Language = "latin"): SleepAudioPayload {
+  const raw = loadJSON<unknown>(STORAGE_KEYS.SLEEP_AUDIO, null, language);
+  if (!raw || typeof raw !== "object") {
+    return {
+      v: SLEEP_AUDIO_SCHEMA_VERSION,
+      prefs: { ...SLEEP_AUDIO_PREFS_DEFAULTS },
+      stats: { lastSessionAt: null, lastSessionDurationMin: 0, lastSessionItems: 0, totalListenSeconds: 0, totalSessions: 0 },
+    };
+  }
+  const p = raw as Partial<SleepAudioPayload>;
+  const prefs = (p.prefs ?? {}) as Partial<SleepAudioPrefs>;
+  const stats = (p.stats ?? {}) as Partial<SleepAudioSessionStats>;
+  return {
+    v: SLEEP_AUDIO_SCHEMA_VERSION,
+    prefs: {
+      durationMin: numOr(prefs.durationMin, SLEEP_AUDIO_PREFS_DEFAULTS.durationMin),
+      repeatEach: numOr(prefs.repeatEach, SLEEP_AUDIO_PREFS_DEFAULTS.repeatEach),
+      pauseMs: numOr(prefs.pauseMs, SLEEP_AUDIO_PREFS_DEFAULTS.pauseMs),
+      includeEnglish: typeof prefs.includeEnglish === "boolean" ? prefs.includeEnglish : SLEEP_AUDIO_PREFS_DEFAULTS.includeEnglish,
+    },
+    stats: {
+      lastSessionAt: typeof stats.lastSessionAt === "string" ? stats.lastSessionAt : null,
+      lastSessionDurationMin: numOr(stats.lastSessionDurationMin, 0),
+      lastSessionItems: numOr(stats.lastSessionItems, 0),
+      totalListenSeconds: numOr(stats.totalListenSeconds, 0),
+      totalSessions: numOr(stats.totalSessions, 0),
+    },
+  };
+}
+
+export function saveSleepAudio(payload: SleepAudioPayload, language: Language = "latin"): void {
+  saveJSON(STORAGE_KEYS.SLEEP_AUDIO, payload, language);
+}
+
+/** Load → bump counters → save. One call per ended session (spec §5). */
+export function recordSleepSession(partial: { durationSec: number; items: number }, language: Language = "latin"): void {
+  if (!isClient()) return;
+  const payload = loadSleepAudio(language);
+  payload.stats.lastSessionAt = new Date().toISOString();
+  payload.stats.lastSessionDurationMin = Math.round(partial.durationSec / 60);
+  payload.stats.lastSessionItems = partial.items;
+  payload.stats.totalListenSeconds += partial.durationSec;
+  payload.stats.totalSessions += 1;
+  saveSleepAudio(payload, language);
 }
