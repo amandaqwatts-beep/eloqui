@@ -19,7 +19,7 @@ interface Props {
   onOpenDrill: () => void; onOpenPlacement: () => void; onOpenAIPractice: (lessonId: number) => void;
   onPronModeChange: (mode: PronMode) => void;
   // Optional until the route integration phase wires them in (keeps build green).
-  onOpenSettings?: () => void; onOpenAudio?: () => void; onOpenProgress?: () => void; onOpenReview?: () => void;
+  onOpenSettings?: () => void; onOpenAudio?: () => void; onOpenSleepAudio?: () => void; onOpenProgress?: () => void; onOpenReview?: () => void;
   /** Backward-compat only — the Explore banner was removed in Bookshelf v2 (Explore books live on the shelf). */
   onOpenExplore?: () => void; devMode?: boolean;
   // Language-parameterized copy (English route passes its own; defaults keep Latin byte-identical).
@@ -44,7 +44,7 @@ const CHIP =
 
 export default function LessonMenu({
   lessons,unlockedLessons,onSelectLesson,onOpenDrill,onOpenPlacement,onOpenAIPractice,onPronModeChange,
-  onOpenSettings,onOpenAudio,onOpenProgress,onOpenReview,devMode=false,
+  onOpenSettings,onOpenAudio,onOpenSleepAudio,onOpenProgress,onOpenReview,devMode=false,
   title="Latin 101",description="Master Latin grammar through bite-sized, interactive lessons — from first declension through passive voice, following Henle's <em>First Year Latin</em>.",
   emoji="🏛️",showPronToggle=true,showAIPractice=true,backTo="/",lessonProgress,
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
@@ -81,6 +81,7 @@ export default function LessonMenu({
 
   const row2Members =
     (onOpenAudio ? 1 : 0) +
+    (onOpenSleepAudio ? 1 : 0) +
     (onOpenProgress ? 1 : 0) +
     (onOpenReview ? 1 : 0) +
     (showPronToggle ? 1 : 0) +
@@ -115,6 +116,7 @@ export default function LessonMenu({
           {row2Members > 0 && (
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {onOpenAudio && <button onClick={onOpenAudio} className={CHIP}>🎧 Listen</button>}
+              {onOpenSleepAudio && <button onClick={onOpenSleepAudio} className={CHIP}>🌙 Sleep</button>}
               {onOpenProgress && <button onClick={onOpenProgress} className={CHIP}>📊 Progress</button>}
               {onOpenReview && <button onClick={onOpenReview} className={CHIP}>🔍 Review</button>}
               {showPronToggle && (

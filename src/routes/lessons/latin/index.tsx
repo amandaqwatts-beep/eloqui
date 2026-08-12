@@ -61,6 +61,7 @@ import PlacementTest from "~/screens/PlacementTest";
 import AIPracticeScreen from "~/screens/AIPracticeScreen";
 import SettingsScreen from "~/screens/SettingsScreen";
 import AudioPlayerScreen from "~/screens/AudioPlayerScreen";
+import SleepAudioScreen from "~/screens/SleepAudioScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
 import { loadAccuracy, recordAccuracy } from "~/engine/storage";
@@ -89,6 +90,7 @@ function LatinLessons() {
   const [aiLessonId, setAiLessonId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAudio, setShowAudio] = useState(false);
+  const [showSleepAudio, setShowSleepAudio] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [showReview, setShowReview] = useState(false);
   // Diagnostics drill session meta (UI-spec §6): title/reference/exitLabel
@@ -307,6 +309,17 @@ function LatinLessons() {
   switch (lesson.screen) {
     case "menu":
       if (showAudio) return <AudioPlayerScreen lessons={latinLessons} unlockedLessons={lesson.unlockedLessons} onBack={()=>setShowAudio(false)} />;
+      if (showSleepAudio) return (
+        <SleepAudioScreen
+          lessons={latinLessons}
+          completedLessonIds={completedLessonIds}
+          currentLessonId={lesson.screen !== "menu" ? lesson.currentLesson.id : undefined}
+          events={diagnosticsEvents}
+          pronMode={pronMode}
+          language={language.id}
+          onBack={() => setShowSleepAudio(false)}
+        />
+      );
       if (showReview) return (
         <ReviewScreen
           accuracy={loadAccuracy(language.id)}
@@ -354,6 +367,7 @@ function LatinLessons() {
           onPronModeChange={(mode) => settingsEngine.updateSettings({ pronMode: mode })}
           onOpenSettings={() => setShowSettings(true)}
           onOpenAudio={() => setShowAudio(true)}
+          onOpenSleepAudio={() => setShowSleepAudio(true)}
           onOpenProgress={() => setShowProgress(true)}
           onOpenReview={() => setShowReview(true)}
           onOpenExplore={() => navigate({ to: "/lessons/latin/explore" })}
