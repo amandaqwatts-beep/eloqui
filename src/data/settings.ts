@@ -20,7 +20,6 @@ export const AI_MIN_EXERCISES = 3;
 export const AI_MAX_EXERCISES = 10;
 export const AI_DEFAULT_EXERCISES = 5;
 export const AI_DEFAULT_LESSON_ID = 1;
-export const STORAGE_KEYS = { placementResult: "verbum-placement-result", pronunciationMode: "verbum-pronunciation-mode" } as const;
 export const LATIN_LESSONS = 134;
 // ── Diagnostics (owner direction 2026-08-11) ────────────────────
 // Rolling 2-week per-concept tracking: window, event-log cap, and the
