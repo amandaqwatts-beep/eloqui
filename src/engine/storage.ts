@@ -11,6 +11,7 @@ import type {
   FeedbackEntry,
   VerbumSettings,
 } from "~/engine/types";
+import type { StreakDay } from "~/engine/improvementStreak";
 import { SETTINGS_DEFAULTS } from "~/data/settings";
 import type { Language } from "~/data/languages";
 
@@ -21,6 +22,7 @@ export const STORAGE_KEYS = {
   ACCURACY: "verbum-accuracy",
   FEEDBACK: "verbum-feedback",
   DIAGNOSTICS: "verbum-diagnostics",
+  IMPROVEMENT_STREAK: "verbum-streak",
 } as const;
 
 export const DIAGNOSTICS_SCHEMA_VERSION = 1;
@@ -153,4 +155,38 @@ export function enableDevMode(language: Language = "latin"): void {
 export function saveFeedback(lessonId: number, rating: number, comment?: string, language: Language = "latin"): void {
   const entries = loadJSON<FeedbackEntry[]>(STORAGE_KEYS.FEEDBACK, [], language);
   entries.push({ lessonId, rating, comment, createdAt: new Date().toISOString() }); saveJSON(STORAGE_KEYS.FEEDBACK, entries, language);
+}
+
+// ── Improvement-streak storage (owner direction 2026-08-11) ─────
+// One key, atomic payload: the accumulated per-day history (the 14-day event
+// log cannot reconstruct a 100-day streak, so the streak persists its own
+// history — improvement-streak-design.md §1) plus the one-claim-per-day bonus
+// flag. Namespaced per language like every other key; clearAllData wipes it
+// via the STORAGE_KEYS iteration. ~45 B/day × 120 entries ≈ 5.4 KB.
+
+export const IMPROVEMENT_STREAK_SCHEMA_VERSION = 1;
+
+/** Persisted payload: version inside, key stable across versions. */
+export interface StreakPayload {
+  v: number;
+  /** Ascending by date, capped at IMPROVEMENT_HISTORY_CAP. */
+  history: StreakDay[];
+  /** UTC YYYY-MM-DD of the last bonus-drill claim — one claim per day. */
+  bonusClaimedDate: string | null;
+}
+
+/** Corrupt/absent payload → empty history, never throws. */
+export function loadStreakHistory(language: Language = "latin"): StreakPayload {
+  const raw = loadJSON<unknown>(STORAGE_KEYS.IMPROVEMENT_STREAK, null, language);
+  if (!raw || typeof raw !== "object") return { v: IMPROVEMENT_STREAK_SCHEMA_VERSION, history: [], bonusClaimedDate: null };
+  const p = raw as Partial<StreakPayload>;
+  const history = Array.isArray(p.history)
+    ? (p.history as StreakDay[]).filter((d) => typeof d?.date === "string" && typeof d?.attempts === "number")
+    : [];
+  const bonusClaimedDate = typeof p.bonusClaimedDate === "string" ? p.bonusClaimedDate : null;
+  return { v: IMPROVEMENT_STREAK_SCHEMA_VERSION, history, bonusClaimedDate };
+}
+
+export function saveStreakHistory(payload: StreakPayload, language: Language = "latin"): void {
+  saveJSON(STORAGE_KEYS.IMPROVEMENT_STREAK, payload, language);
 }

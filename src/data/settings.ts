@@ -35,3 +35,17 @@ export const MIN_TOTAL_ATTEMPTS_FOR_RATE = 10;
 export const WEAK_SPOT_THRESHOLD = 0.6;
 export const WEAK_SPOT_MIN_ATTEMPTS = 1;
 export const WORST_AREA_MIN_ATTEMPTS = 3;
+// ── Proficiency trackers (owner direction 2026-08-11) ───────────
+// Daily worst-area lesson (research/daily-worst-area-lesson-design.md §5):
+// the top-N worst areas the daily pick rotates among (seeded, per UTC day).
+export const DAILY_LESSON_CANDIDATES = 5;
+// Improvement-based streak (research/improvement-streak-design.md §6):
+// floor = 10 attempts + 3-point delta; 3 improvement days activate the bonus;
+// escalation tiers at 10/20/50/100; history cap covers a 100-day streak.
+export const IMPROVEMENT_MIN_DAILY_ATTEMPTS = 10;
+export const IMPROVEMENT_MIN_POINTS = 3;
+export const IMPROVEMENT_ACTIVE_DAYS = 3;
+export const IMPROVEMENT_ESCALATION_MILESTONES = [10, 20, 50, 100] as const;
+export const IMPROVEMENT_HISTORY_CAP = 120;
+export const BONUS_DRILL_DEFAULT_COUNT = 10;
+export const BONUS_DRILL_ESCALATED_COUNT = 15;
