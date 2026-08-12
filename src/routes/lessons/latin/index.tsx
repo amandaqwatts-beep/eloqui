@@ -19,6 +19,9 @@ import { useCallback, useState } from "react";
 
 import latinLessons from "~/data/latinLessons";
 import placementQuestions from "~/data/placementTest";
+import { bookLessons } from "~/data/bookLessons";
+import { latinSideLessons } from "~/data/latinSideLessons";
+import { GRAMMAR_INDEX } from "~/data/grammarIndex";
 import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE, DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE } from "~/data/settings";
 import { LANGUAGES } from "~/data/languages";
 import { useLessonEngine } from "~/engine/lesson";
@@ -35,7 +38,7 @@ import {
   getConfusionPairs,
   recordLessonAttempt,
 } from "~/engine/diagnostics";
-import { loadDiagnostics } from "~/engine/storage";
+import { loadDiagnostics, recordAttempt } from "~/engine/storage";
 import type { ConfusionPair, ExerciseResultDetail } from "~/engine/types";
 import {
   buildWordDrillCards,
@@ -295,6 +298,25 @@ function LatinLessons() {
           onOpenExplore={() => navigate({ to: "/lessons/latin/explore" })}
           devMode={settingsEngine.settings.devMode}
           lessonProgress={loadProgress(language.id)}
+          bookLessons={bookLessons}
+          sideLessons={latinSideLessons}
+          grammarTopics={GRAMMAR_INDEX}
+          onCultureResult={(exercise, hostLessonId, detail) =>
+            recordAttempt(
+              {
+                conceptId: `culture:${exercise.id}`,
+                tags: [`lesson:${hostLessonId}`],
+                kind: "concept",
+                ok: detail.correct,
+                source: "review",
+                context: exercise.id,
+                mistake: detail.correct ? undefined : "unknown",
+                wrong: detail.wrong,
+                expected: detail.expected,
+              },
+              language.id,
+            )
+          }
         />
       );
 
