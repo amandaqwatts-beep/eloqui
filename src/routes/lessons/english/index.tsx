@@ -14,8 +14,10 @@ import { useCallback, useState } from "react";
 
 import englishLessons from "~/data/englishLessons";
 import englishPlacementQuestions from "~/data/englishPlacementTest";
-import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE } from "~/data/settings";
+import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
 import { LANGUAGES } from "~/data/languages";
+import { getDailyWorstLesson } from "~/engine/dailyLesson";
+import { getImprovementStreak, claimBonusDrill, buildBonusDrillDeck, recordStreakDay } from "~/engine/improvementStreak";
 import { useLessonEngine } from "~/engine/lesson";
 import { usePlacementEngine } from "~/engine/placement";
 import { useSettings } from "~/engine/settings";
@@ -43,6 +45,7 @@ import SettingsScreen from "~/screens/SettingsScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
 import AIPracticeScreen from "~/screens/AIPracticeScreen";
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
+import { DailyLessonCard, BonusLessonCard } from "~/components/ProficiencyCards";
 
 export const Route = createFileRoute("/lessons/english/")({
   component: EnglishLessons,
@@ -79,6 +82,69 @@ function EnglishLessons() {
   const [showSettings, setShowSettings] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [aiLessonId, setAiLessonId] = useState<number | null>(null);
+  // Bonus-drill session meta (P2): title/badge/instructionOverride for DrillView.
+  const [drillMeta, setDrillMeta] = useState<{
+    title?: string;
+    reference?: string;
+    exitLabel?: string;
+    instructionOverride?: Partial<Record<DrillKind, string>>;
+    badgeLine?: string;
+  } | null>(null);
+
+  // ── Proficiency cards (P2): daily worst-area lesson + improvement streak ──
+  // Pure reads; derived per render. English shares the language-parameterized
+  // engine modules (verbum-streak-english / english diagnostics events).
+  const diagnosticsEvents = loadDiagnostics(language.id);
+  const completedLessonIds = loadProgress(language.id).filter((p) => p.completed).map((p) => p.lessonId);
+  const dailyLesson = getDailyWorstLesson({
+    events: diagnosticsEvents,
+    lessons: englishLessons,
+    completedLessonIds,
+    unlockedLessons: lesson.unlockedLessons,
+    language: language.id,
+  });
+  const streak = getImprovementStreak(diagnosticsEvents, { language: language.id });
+  const dailyCompleted = dailyLesson ? completedLessonIds.includes(dailyLesson.lessonId) : false;
+  const bonusClaimable = streak.streakDays >= IMPROVEMENT_ACTIVE_DAYS && !streak.bonusClaimedToday;
+
+  // English data carries no type/gender — the engine's computeBonusInfo would
+  // label every card "1st declension". Strip it at the route.
+  const stripBonusInfo = (cards: DrillCard[]): DrillCard[] =>
+    cards.map((c) => ({ ...c, bonusInfo: undefined }));
+
+  // ── Proficiency cards (P2) handlers ───────────────────────────
+  const openDailyLesson = useCallback(() => {
+    if (!dailyLesson) return;
+    const idx = englishLessons.findIndex((l) => l.id === dailyLesson.lessonId);
+    if (idx >= 0 && idx < lesson.unlockedLessons) lesson.selectLesson(idx);
+  }, [dailyLesson, lesson]);
+
+  const startBonusDrill = useCallback(() => {
+    const claimed = claimBonusDrill(language.id);
+    if (!claimed) return;
+    const deck = buildBonusDrillDeck({
+      tier: streak.tier,
+      events: diagnosticsEvents,
+      lessons: englishLessons,
+      pronMode,
+    });
+    if (deck.cards.length === 0) {
+      const pool = shuffle(
+        buildDrillCards(englishLessons, lesson.unlockedLessons, "mixed", pronMode),
+      );
+      setDrillCards(stripBonusInfo(pool.slice(0, BONUS_DRILL_DEFAULT_COUNT)));
+    } else {
+      setDrillCards(stripBonusInfo(deck.cards));
+    }
+    setDrillMeta({
+      title: "⭐ Bonus Lesson",
+      reference: deck.reference,
+      exitLabel: "Back to Lessons",
+      instructionOverride: deck.instructionOverride,
+      badgeLine: "⭐ Bonus lesson unlocked",
+    });
+    lesson.goToDrill();
+  }, [streak.tier, diagnosticsEvents, pronMode, lesson]);
 
   // ── Navigation wrappers ──────────────────────────────────────
   const openDrill = useCallback(() => {
@@ -125,7 +191,7 @@ function EnglishLessons() {
       if (showProgress) return (
         <ProgressScreen
           lessons={englishLessons}
-          stats={getDashboardStats(englishLessons.length, [], language.id, loadDiagnostics(language.id))}
+          stats={getDashboardStats(englishLessons.length, [], language.id, diagnosticsEvents, streak.streakDays)}
           lessonProgress={loadProgress(language.id)}
           onBack={()=>setShowProgress(false)}
         />
@@ -159,6 +225,20 @@ function EnglishLessons() {
           emoji="📚"
           showPronToggle={false}
           backTo="/languages"
+          menuCards={
+            <>
+              <DailyLessonCard
+                dailyLesson={dailyLesson}
+                completed={dailyCompleted}
+                onOpen={openDailyLesson}
+              />
+              <BonusLessonCard
+                streak={streak}
+                claimable={bonusClaimable}
+                onClaim={startBonusDrill}
+              />
+            </>
+          }
         />
       );
 
@@ -192,6 +272,7 @@ function EnglishLessons() {
           lesson={lesson.currentLesson}
           exerciseIdx={lesson.exerciseIdx}
           pronMode={pronMode}
+          allLessons={englishLessons}
           onComplete={(detail: ExerciseResultDetail) => {
             recordAccuracy(`lesson-${lesson.currentLesson.id}`, detail.correct, language.id);
             recordLessonAttempt({ lesson: lesson.currentLesson, exerciseIdx: lesson.exerciseIdx, detail, language: language.id, allLessons: englishLessons });
@@ -203,6 +284,8 @@ function EnglishLessons() {
 
     case "complete":
       saveProgress(lesson.currentLesson.id, lesson.correctCount, lesson.totalAnswered, language.id);
+      // Improvement streak: idempotent per UTC date key (StrictMode-safe).
+      recordStreakDay(language.id);
       return (
         <LessonCompleteScreen
           lesson={lesson.currentLesson}
@@ -223,10 +306,14 @@ function EnglishLessons() {
         <DrillView
           key={drillCards.map((c) => c.id).join(",")}
           cards={drillCards}
-          onExit={lesson.backToMenu}
+          onExit={drillMeta ? () => { setDrillMeta(null); setDrillCards(null); lesson.backToMenu(); } : lesson.backToMenu}
           onRestartMissed={restartMissed}
           pronMode={pronMode}
-          instructionOverride={ENGLISH_DRILL_INSTRUCTIONS}
+          title={drillMeta?.title}
+          reference={drillMeta?.reference}
+          exitLabel={drillMeta?.exitLabel}
+          instructionOverride={drillMeta?.instructionOverride ?? ENGLISH_DRILL_INSTRUCTIONS}
+          badgeLine={drillMeta?.badgeLine}
         />
       ) : (
         <DrillSetup

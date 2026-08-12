@@ -22,8 +22,10 @@ import placementQuestions from "~/data/placementTest";
 import { bookLessons } from "~/data/bookLessons";
 import { latinSideLessons } from "~/data/latinSideLessons";
 import { GRAMMAR_INDEX } from "~/data/grammarIndex";
-import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE, DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE } from "~/data/settings";
+import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE, DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
 import { LANGUAGES } from "~/data/languages";
+import { getDailyWorstLesson } from "~/engine/dailyLesson";
+import { getImprovementStreak, claimBonusDrill, buildBonusDrillDeck, recordStreakDay } from "~/engine/improvementStreak";
 import { useLessonEngine } from "~/engine/lesson";
 import { usePlacementEngine } from "~/engine/placement";
 import { useSettings } from "~/engine/settings";
@@ -64,6 +66,7 @@ import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress
 import { loadAccuracy, recordAccuracy } from "~/engine/storage";
 import ReviewScreen from "~/screens/ReviewScreen";
 import PairDrillScreen from "~/screens/PairDrillScreen";
+import { DailyLessonCard, BonusLessonCard } from "~/components/ProficiencyCards";
 
 export const Route = createFileRoute("/lessons/latin/")({
   component: LatinLessons,
@@ -90,10 +93,14 @@ function LatinLessons() {
   const [showReview, setShowReview] = useState(false);
   // Diagnostics drill session meta (UI-spec §6): title/reference/exitLabel
   // passed through to DrillView; pendingPair gates the pair-drill intro.
+  // P2 adds instructionOverride (bonus deck tiers 3–4) and badgeLine (bonus
+  // drill chip) — both optional, absent → DrillView output byte-identical.
   const [drillMeta, setDrillMeta] = useState<{
     title?: string;
     reference?: string;
     exitLabel?: string;
+    instructionOverride?: Partial<Record<DrillKind, string>>;
+    badgeLine?: string;
   } | null>(null);
   const [pendingPair, setPendingPair] = useState<ConfusionPair | null>(null);
 
@@ -106,6 +113,22 @@ function LatinLessons() {
     weakSpots: getWeakSpots(diagnosticsEvents, latinLessons),
     confusionPairs: getConfusionPairs(diagnosticsEvents, latinLessons),
   };
+
+  // ── Proficiency cards (P2): daily worst-area lesson + improvement streak ──
+  // Both are pure reads (getDailyWorstLesson / getImprovementStreak write
+  // nothing); derived per render alongside the summary. Same (events,
+  // progress, language, UTC date) → byte-identical card.
+  const completedLessonIds = loadProgress(language.id).filter((p) => p.completed).map((p) => p.lessonId);
+  const dailyLesson = getDailyWorstLesson({
+    events: diagnosticsEvents,
+    lessons: latinLessons,
+    completedLessonIds,
+    unlockedLessons: lesson.unlockedLessons,
+    language: language.id,
+  });
+  const streak = getImprovementStreak(diagnosticsEvents, { language: language.id });
+  const dailyCompleted = dailyLesson ? completedLessonIds.includes(dailyLesson.lessonId) : false;
+  const bonusClaimable = streak.streakDays >= IMPROVEMENT_ACTIVE_DAYS && !streak.bonusClaimedToday;
 
   // Navigation wrappers: keep engine screen transitions in sync with
   // route-local state the screens don't own.
@@ -240,6 +263,44 @@ function LatinLessons() {
     [lesson],
   );
 
+  // ── Proficiency cards (P2) handlers ───────────────────────────
+  // Daily lesson card: SELECT_LESSON resets the run and opens at teaching.
+  const openDailyLesson = useCallback(() => {
+    if (!dailyLesson) return;
+    const idx = latinLessons.findIndex((l) => l.id === dailyLesson.lessonId);
+    if (idx >= 0 && idx < lesson.unlockedLessons) lesson.selectLesson(idx);
+  }, [dailyLesson, lesson]);
+
+  // Bonus drill card: claim first (gates + records the daily entitlement),
+  // then build the tiered deck. Empty deck (no worst area resolves) falls
+  // back to a generic mixed review deck (lead decision B).
+  const startBonusDrill = useCallback(() => {
+    const claimed = claimBonusDrill(language.id);
+    if (!claimed) return;
+    const deck = buildBonusDrillDeck({
+      tier: streak.tier,
+      events: diagnosticsEvents,
+      lessons: latinLessons,
+      pronMode,
+    });
+    if (deck.cards.length === 0) {
+      const pool = shuffle(
+        buildDrillCards(latinLessons, lesson.unlockedLessons, "mixed", pronMode),
+      );
+      setDrillCards(pool.slice(0, BONUS_DRILL_DEFAULT_COUNT));
+    } else {
+      setDrillCards(deck.cards);
+    }
+    setDrillMeta({
+      title: "⭐ Bonus Lesson",
+      reference: deck.reference,
+      exitLabel: "Back to Lessons",
+      instructionOverride: deck.instructionOverride,
+      badgeLine: "⭐ Bonus lesson unlocked",
+    });
+    lesson.goToDrill();
+  }, [streak.tier, diagnosticsEvents, pronMode, lesson]);
+
   const aiLesson =
     latinLessons.find((l) => l.id === aiLessonId) ?? lesson.currentLesson;
 
@@ -261,7 +322,7 @@ function LatinLessons() {
       if (showProgress) return (
         <ProgressScreen
           lessons={latinLessons}
-          stats={getDashboardStats(latinLessons.length, [], language.id, diagnosticsEvents)}
+          stats={getDashboardStats(latinLessons.length, [], language.id, diagnosticsEvents, streak.streakDays)}
           lessonProgress={loadProgress(language.id)}
           onBack={()=>setShowProgress(false)}
           onOpenReview={()=>{setShowProgress(false);setShowReview(true)}}
@@ -301,6 +362,20 @@ function LatinLessons() {
           bookLessons={bookLessons}
           sideLessons={latinSideLessons}
           grammarTopics={GRAMMAR_INDEX}
+          menuCards={
+            <>
+              <DailyLessonCard
+                dailyLesson={dailyLesson}
+                completed={dailyCompleted}
+                onOpen={openDailyLesson}
+              />
+              <BonusLessonCard
+                streak={streak}
+                claimable={bonusClaimable}
+                onClaim={startBonusDrill}
+              />
+            </>
+          }
           onCultureResult={(exercise, hostLessonId, detail) =>
             recordAttempt(
               {
@@ -347,6 +422,7 @@ function LatinLessons() {
           lesson={lesson.currentLesson}
           exerciseIdx={lesson.exerciseIdx}
           pronMode={pronMode}
+          allLessons={latinLessons}
           onComplete={(detail: ExerciseResultDetail) => {
             recordAccuracy(`lesson-${lesson.currentLesson.id}`, detail.correct, language.id);
             recordLessonAttempt({ lesson: lesson.currentLesson, exerciseIdx: lesson.exerciseIdx, detail, language: language.id, allLessons: latinLessons });
@@ -358,6 +434,9 @@ function LatinLessons() {
 
     case "complete":
       saveProgress(lesson.currentLesson.id, lesson.correctCount, lesson.totalAnswered, language.id);
+      // Improvement streak: idempotent per UTC date key (StrictMode-safe) —
+      // below-floor days are no-ops (pause, not break).
+      recordStreakDay(language.id);
       return (
         <LessonCompleteScreen
           lesson={lesson.currentLesson}
@@ -396,6 +475,8 @@ function LatinLessons() {
           title={drillMeta?.title}
           reference={drillMeta?.reference}
           exitLabel={drillMeta?.exitLabel}
+          instructionOverride={drillMeta?.instructionOverride}
+          badgeLine={drillMeta?.badgeLine}
         />
       ) : (
         <DrillSetup

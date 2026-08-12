@@ -10,6 +10,9 @@ export function saveProgress(lessonId:number,score:number,total:number,language:
 /**
  * Optional 4th param (diagnostics): when `events` is given, weakConcepts is
  * populated from getWeakSpots (limit 10) instead of the dead accuracy-0
- * placeholder. Without it, behavior is byte-identical to before.
+ * placeholder. Optional 5th param (improvement streak): when given,
+ * currentStreak/bestStreak reflect the improvement-based streak
+ * (improvementStreak.ts) instead of the hardcoded 0. Without either,
+ * behavior is byte-identical to before.
  */
-export function getDashboardStats(totalLessons:number,concepts:string[]=[],language:Language='latin',events?:DiagnosticEvent[]):DashboardStats{const p=loadProgress(language);let t={answered:0,correct:0};try{t=JSON.parse(localStorage.getItem(scoped(TOTAL,language))||'{"answered":0,"correct":0}')}catch{};let weakConcepts=concepts.map(c=>({conceptId:c,accuracy:0}));if(events&&events.length>0){weakConcepts=getWeakSpots(events,[],{limit:10}).map(w=>({conceptId:w.conceptId,accuracy:w.accuracy}))}return {lessonsCompleted:p.filter(x=>x.completed).length,totalLessons,overallAccuracy:t.answered?Math.round(t.correct/t.answered*100):0,currentStreak:0,bestStreak:0,totalExercisesAnswered:t.answered,totalCorrect:t.correct,weakConcepts}}
+export function getDashboardStats(totalLessons:number,concepts:string[]=[],language:Language='latin',events?:DiagnosticEvent[],improvementStreak?:number):DashboardStats{const p=loadProgress(language);let t={answered:0,correct:0};try{t=JSON.parse(localStorage.getItem(scoped(TOTAL,language))||'{"answered":0,"correct":0}')}catch{};let weakConcepts=concepts.map(c=>({conceptId:c,accuracy:0}));if(events&&events.length>0){weakConcepts=getWeakSpots(events,[],{limit:10}).map(w=>({conceptId:w.conceptId,accuracy:w.accuracy}))}return {lessonsCompleted:p.filter(x=>x.completed).length,totalLessons,overallAccuracy:t.answered?Math.round(t.correct/t.answered*100):0,currentStreak:improvementStreak??0,bestStreak:improvementStreak??0,totalExercisesAnswered:t.answered,totalCorrect:t.correct,weakConcepts}}
