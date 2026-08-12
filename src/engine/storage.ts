@@ -23,6 +23,10 @@ export const STORAGE_KEYS = {
   FEEDBACK: "verbum-feedback",
   DIAGNOSTICS: "verbum-diagnostics",
   IMPROVEMENT_STREAK: "verbum-streak",
+  // Owned by progress.ts, which writes them directly (bypassing this module);
+  // listed here so clearAllData wipes them too, incl. legacy unscoped Latin.
+  PROGRESS: "verbum-progress",
+  PROGRESS_TOTALS: "verbum-progress-totals",
 } as const;
 
 export const DIAGNOSTICS_SCHEMA_VERSION = 1;
@@ -143,6 +147,9 @@ export function recordAttempt(record: AttemptRecord, language: Language = "latin
   const event: DiagnosticEvent = { ...record, id, ts: record.ts ?? new Date().toISOString() };
   saveDiagnostics(pruneEvents([...events, event]), language);
 }
+// Wipes every app-owned key for the language — all of STORAGE_KEYS (incl.
+// verbum-progress / verbum-progress-totals, which progress.ts persists raw)
+// plus the legacy unscoped Latin forms, so no app data survives "Clear All".
 export function clearAllData(language: Language = "latin"): void {
   if (!isClient()) return;
   try { Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(languageKey(key, language))); if (language === "latin") Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key)); window.location.reload(); } catch { /* unavailable */ }
