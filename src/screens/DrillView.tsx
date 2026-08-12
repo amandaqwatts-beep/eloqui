@@ -11,6 +11,7 @@ export default function DrillView({
   reference,
   exitLabel,
   instructionOverride,
+  badgeLine,
 }: {
   cards: DrillCard[];
   onExit: () => void;
@@ -20,6 +21,7 @@ export default function DrillView({
   reference?: string;
   exitLabel?: string;
   instructionOverride?: Partial<Record<DrillKind, string>>;
+  badgeLine?: string;
 }) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -112,8 +114,15 @@ export default function DrillView({
         <span>
           Card {index + 1} / {cards.length}
         </span>
-        <span className={streak > 1 ? "animate-pulse" : ""}>
-          🔥 {streak} in a row
+        <span className="flex items-center gap-2">
+          {badgeLine ? (
+            <span className="rounded-full bg-gold-100 px-2.5 py-0.5 text-xs font-bold text-gold-800">
+              {badgeLine}
+            </span>
+          ) : null}
+          <span className={streak > 1 ? "animate-pulse" : ""}>
+            🔥 {streak} in a row
+          </span>
         </span>
       </div>
       {reference ? (
