@@ -410,8 +410,8 @@ export default function SleepAudioScreen({
 
         {summary && (
           <div className="mt-5 rounded-2xl border-2 border-gold-300 bg-gold-50 px-4 py-3 text-center text-sm font-bold text-burgundy-900">
-            {summary.completed ? "✓ Completed" : "■ Stopped"} — {summary.durationMin} min · {summary.items} words ·
-            🌙 {summary.totalSessions} sessions total
+            {summary.completed ? "✓ Completed" : "■ Stopped"} — {summary.durationMin} min · {summary.items} word
+            {summary.items === 1 ? "" : "s"} · 🌙 {summary.totalSessions} sessions total
           </div>
         )}
 
