@@ -6,7 +6,7 @@ import {
   lessonTitles,
   type DiagnosticsSummary,
 } from "~/lib/diagnosticUi";
-import NavBar from "~/components/NavBar";
+import WindowFrame from "~/components/WindowFrame";
 import WeakSpotRow from "~/components/WeakSpotRow";
 import ConfusionPairCard from "~/components/ConfusionPairCard";
 import WeakSpotDetail from "~/components/WeakSpotDetail";
@@ -59,8 +59,7 @@ export default function ReviewScreen({
         (p) => p.a === selectedSpot.conceptId || p.b === selectedSpot.conceptId,
       ) ?? null;
     return (
-      <div className="min-h-dvh bg-cream-50 text-burgundy-900">
-        <NavBar />
+      <WindowFrame title="Review" onBack={onBack} variant="overlay">
         <main className="mx-auto max-w-2xl px-4 py-8">
           <WeakSpotDetail
             spot={selectedSpot}
@@ -73,7 +72,7 @@ export default function ReviewScreen({
             onOpenLesson={onOpenLesson}
           />
         </main>
-      </div>
+      </WindowFrame>
     );
   }
 
@@ -81,12 +80,8 @@ export default function ReviewScreen({
   const pairs = summary?.confusionPairs ?? [];
 
   return (
-    <div className="min-h-dvh bg-cream-50 text-burgundy-900">
-      <NavBar />
+    <WindowFrame title="Review" onBack={onBack} variant="overlay">
       <main className="mx-auto max-w-2xl px-4 py-8">
-        <button onClick={onBack} className="mb-6 text-sm font-bold text-burgundy-700 hover:underline">
-          ← Back
-        </button>
         <h1 className="text-3xl font-black">🔍 Review Weak Spots</h1>
 
         <section className="mt-6 space-y-3" aria-label="Diagnostics">
@@ -191,6 +186,6 @@ export default function ReviewScreen({
           </div>
         )}
       </main>
-    </div>
+    </WindowFrame>
   );
 }

@@ -1,5 +1,94 @@
 import type { PronMode } from "~/lib/pronunciation";
-import NavBar from "~/components/NavBar"; import PronunciationToggle from "~/components/PronunciationToggle";
-interface Props {drillMode:string;drillCount:number|string;onModeChange:(mode:string)=>void;onCountChange:(count:number|string)=>void;onPronModeChange:(mode:PronMode)=>void;onStart:()=>void;onBack:()=>void;kinds?:readonly (readonly [string,string])[];showPronToggle?:boolean}
-const DEFAULT_KINDS: readonly (readonly [string,string])[] = [['vocab-latin','Vocabulary (Latin → English)'],['vocab-english','Vocabulary (English → Latin)'],['conjugation','Conjugations'],['declension','Declensions'],['mixed','Mixed']];
-export default function DrillSetup({drillMode,drillCount,onModeChange,onCountChange,onPronModeChange,onStart,onBack,kinds=DEFAULT_KINDS,showPronToggle=true}:Props){return <div className="min-h-dvh flex flex-col"><NavBar/><main className="flex-1 px-4 py-8"><div className="mx-auto max-w-xl"><button onClick={onBack} className="text-sm text-gray-400 hover:text-burgundy-600">← Back to Lessons</button><div className="mt-8 rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg"><h1 className="text-3xl font-black text-burgundy-900">🗡️ Drill Mode</h1><p className="mt-2 text-gray-600">Rapid-fire practice from all your unlocked lessons.</p>{showPronToggle&&<div className="mt-6 flex justify-center"><PronunciationToggle onChange={onPronModeChange}/></div>}<h2 className="mt-7 font-bold text-burgundy-800">What to drill?</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{kinds.map(([value,label])=><button key={value} onClick={()=>onModeChange(value)} className={`rounded-xl border-2 p-3 text-left text-sm font-semibold ${drillMode===value?'border-burgundy-600 bg-burgundy-50 text-burgundy-800':'border-gray-200 text-gray-600'}`}>{drillMode===value?'✓ ':''}{label}</button>)}</div><h2 className="mt-7 font-bold text-burgundy-800">How many cards?</h2><div className="mt-3 flex gap-2">{([10,20,'all'] as const).map(count=><button key={count} onClick={()=>onCountChange(count)} className={`flex-1 rounded-xl border-2 py-3 font-bold ${drillCount===count?'border-gold-500 bg-gold-100 text-burgundy-900':'border-gray-200 text-gray-600'}`}>{count==='all'?'All':count}</button>)}</div><button onClick={onStart} className="mt-8 w-full rounded-xl bg-burgundy-700 py-4 text-lg font-black text-white shadow-lg hover:bg-burgundy-800">Start Drill</button></div></div></main></div>}
+import PronunciationToggle from "~/components/PronunciationToggle";
+import WindowFrame from "~/components/WindowFrame";
+
+interface Props {
+  drillMode: string;
+  drillCount: number | string;
+  onModeChange: (mode: string) => void;
+  onCountChange: (count: number | string) => void;
+  onPronModeChange: (mode: PronMode) => void;
+  onStart: () => void;
+  onBack: () => void;
+  kinds?: readonly (readonly [string, string])[];
+  showPronToggle?: boolean;
+}
+
+const DEFAULT_KINDS: readonly (readonly [string, string])[] = [
+  ["vocab-latin", "Vocabulary (Latin → English)"],
+  ["vocab-english", "Vocabulary (English → Latin)"],
+  ["conjugation", "Conjugations"],
+  ["declension", "Declensions"],
+  ["mixed", "Mixed"],
+];
+
+export default function DrillSetup({
+  drillMode,
+  drillCount,
+  onModeChange,
+  onCountChange,
+  onPronModeChange,
+  onStart,
+  onBack,
+  kinds = DEFAULT_KINDS,
+  showPronToggle = true,
+}: Props) {
+  return (
+    <WindowFrame title="Drill" onBack={onBack}>
+      <main className="flex-1 px-4 py-8">
+        <div className="mx-auto max-w-xl">
+          <div className="mt-2 rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg">
+            <h1 className="text-3xl font-black text-burgundy-900">🗡️ Drill Mode</h1>
+            <p className="mt-2 text-gray-600">
+              Rapid-fire practice from all your unlocked lessons.
+            </p>
+            {showPronToggle && (
+              <div className="mt-6 flex justify-center">
+                <PronunciationToggle onChange={onPronModeChange} />
+              </div>
+            )}
+            <h2 className="mt-7 font-bold text-burgundy-800">What to drill?</h2>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {kinds.map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => onModeChange(value)}
+                  className={`rounded-xl border-2 p-3 text-left text-sm font-semibold ${
+                    drillMode === value
+                      ? "border-burgundy-600 bg-burgundy-50 text-burgundy-800"
+                      : "border-gray-200 text-gray-600"
+                  }`}
+                >
+                  {drillMode === value ? "✓ " : ""}
+                  {label}
+                </button>
+              ))}
+            </div>
+            <h2 className="mt-7 font-bold text-burgundy-800">How many cards?</h2>
+            <div className="mt-3 flex gap-2">
+              {([10, 20, "all"] as const).map((count) => (
+                <button
+                  key={count}
+                  onClick={() => onCountChange(count)}
+                  className={`flex-1 rounded-xl border-2 py-3 font-bold ${
+                    drillCount === count
+                      ? "border-gold-500 bg-gold-100 text-burgundy-900"
+                      : "border-gray-200 text-gray-600"
+                  }`}
+                >
+                  {count === "all" ? "All" : count}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={onStart}
+              className="mt-8 w-full rounded-xl bg-burgundy-700 py-4 text-lg font-black text-white shadow-lg hover:bg-burgundy-800"
+            >
+              Start Drill
+            </button>
+          </div>
+        </div>
+      </main>
+    </WindowFrame>
+  );
+}

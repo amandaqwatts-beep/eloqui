@@ -4,8 +4,11 @@
  * array it is given; gated on the `topics` prop upstream so the build stays
  * green even when the data has not landed.
  *
- * a11y: role="dialog" + aria-modal, Escape / backdrop / ✕ close, focus
- * retained inside while open, reduced-motion safe (no animation on close).
+ * a11y (bookshelf v2.1 F12): role="dialog" + aria-modal, Escape / backdrop / ✕
+ * close, Tab cycles within the dialog (focus trap), body scroll locked while
+ * open, focus returns to the 📖 opener on close, reduced-motion safe (no
+ * animation on close). Drawer + backdrop sit at z-[70] — above the window
+ * layer (z-60), which sits above the NavBar (z-50).
  */
 import { useEffect, useRef } from "react";
 import type { GrammarCategory, GrammarTopic } from "~/data/grammarIndex";
@@ -63,16 +66,51 @@ export default function GrammarDrawer({
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 
-  // Escape closes; focus stays inside while open.
+  // F12 — Escape closes, Tab cycles within the dialog (focus trap), body
+  // scroll locked while open, focus moves into the panel and returns to the
+  // opener (the 📖 button) on close.
   useEffect(() => {
     if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeRef.current();
+      if (e.key === "Escape") {
+        closeRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(
+        (el) => !el.hasAttribute("disabled") && el.getAttribute("aria-hidden") !== "true",
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !panel.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     const panel = panelRef.current;
     if (panel) (panel.querySelector<HTMLElement>("button") ?? panel).focus();
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+      opener?.focus();
+    };
   }, [open]);
 
   // Scroll the requested topic into view (instant — reduced-motion safe).
@@ -94,7 +132,7 @@ export default function GrammarDrawer({
   return (
     <>
       <div
-        className="fixed inset-0 z-30 bg-black/40"
+        className="fixed inset-0 z-[70] bg-black/40"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -103,7 +141,7 @@ export default function GrammarDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="Grammar Index"
-        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col bg-cream-50 shadow-2xl"
+        className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-sm flex-col bg-cream-50 shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-burgundy-200 px-5 py-4">
           <div>

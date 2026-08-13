@@ -22,7 +22,7 @@ interface Props {
   title?: string; description?: string; emoji?: string; showAIPractice?: boolean; backTo?: string;
   // Per-book progress for shelf bookmark tabs (route passes loadProgress(language.id)).
   lessonProgress?: LessonProgress[];
-  // ── Bookshelf v2 (optional — absent → TOC fallback, e.g. English route) ──
+  // Bookshelf v2 (optional — absent → TOC fallback, e.g. English route) ──
   bookLessons?: BookLesson[];
   sideLessons?: SideLesson[];
   grammarTopics?: GrammarTopic[];
@@ -33,6 +33,11 @@ interface Props {
     hostLessonId: number,
     detail: ExerciseResultDetail,
   ) => void;
+  /** F13 — sessionStorage frontier key scope (per-language). Default "latin". */
+  languageId?: string;
+  /** F13 — route tells the shelf to skip the scroll-to-frontier on mode
+   *  returns (frontier unchanged since last menu mount). Expansion kept. */
+  suppressFrontierScroll?: boolean;
 }
 
 /** Base class for the desk bar's 44px icon tiles (📖 ⚙ 🎧 🌙 📊 🎯). */
@@ -45,6 +50,7 @@ export default function LessonMenu({
   title="Latin 101",description="Master Latin grammar through bite-sized, interactive lessons — from first declension through passive voice, following Henle's <em>First Year Latin</em>.",
   emoji="🏛️",showAIPractice=true,backTo="/",lessonProgress,
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
+  languageId="latin",suppressFrontierScroll=false,
 }: Props) {
   const hasShelf = (bookLessons?.length ?? 0) > 0;
 
@@ -70,10 +76,35 @@ export default function LessonMenu({
   const openExploreBook = (sideLessonId: number) => {
     setFocusRequest((s) => ({ bookKey: `explore-${sideLessonId}`, nonce: (s?.nonce ?? 0) + 1 }));
   };
+
+  /** Book key for the shelf book that contains a sub-lesson id (henle/review
+   *  books own all sub-lesson ids; culture/explore books own none). */
+  const bookKeyForLesson = (lessonId: number): string | null => {
+    if (!bookLessons) return null;
+    for (const bl of bookLessons) {
+      if (bl.subLessonIds.includes(lessonId)) {
+        return bl.kind === "mastery-review" ? `review-u${bl.unitNumber}` : `henle-${bl.henleNumber}`;
+      }
+    }
+    return null;
+  };
+
   const openGrammarLesson = (lessonId: number) => {
     const idx = lessons.findIndex((l) => l.id === lessonId);
     setDrawerOpen(false);
-    if (idx >= 0) onSelectLesson(idx);
+    if (idx < 0) return;
+    if (idx < unlockedLessons) {
+      onSelectLesson(idx);
+      return;
+    }
+    // F3 — locked-topic "Open": the engine would silently no-op (SELECT_LESSON
+    // gates on the unlock frontier), so expand the containing book on the
+    // shelf instead — the student sees where the topic lives and why it's
+    // locked. The shelf's focusRequest effect scrolls + expands the book.
+    const bookKey = bookKeyForLesson(lessonId);
+    if (bookKey) {
+      setFocusRequest((s) => ({ bookKey, nonce: (s?.nonce ?? 0) + 1 }));
+    }
   };
 
   return (
@@ -204,6 +235,8 @@ export default function LessonMenu({
               sideLessons={sideLessons}
               onCultureResult={onCultureResult}
               focusRequest={focusRequest}
+              languageId={languageId}
+              suppressFrontierScroll={suppressFrontierScroll}
             />
           ) : (
             <LessonTOC

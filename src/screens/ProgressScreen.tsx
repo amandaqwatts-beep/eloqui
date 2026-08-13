@@ -11,6 +11,7 @@ import WeakSpotRow from "~/components/WeakSpotRow";
 import ConfusionPairCard from "~/components/ConfusionPairCard";
 import WeakSpotDetail from "~/components/WeakSpotDetail";
 import DiagnosticsEmptyState from "~/components/DiagnosticsEmptyState";
+import WindowFrame from "~/components/WindowFrame";
 
 /**
  * ProgressScreen — dashboard. Extended per UI-spec §5: a Diagnostics section
@@ -59,20 +60,22 @@ export default function ProgressScreen({
         (p) => p.a === selectedSpot.conceptId || p.b === selectedSpot.conceptId,
       ) ?? null;
     return (
-      <main className="min-h-dvh bg-cream-50 px-4 py-10 text-burgundy-900">
-        <div className="mx-auto max-w-2xl">
-          <WeakSpotDetail
-            spot={selectedSpot}
-            pair={pair}
-            gloss={conceptGloss(selectedSpot.conceptId, lessons)}
-            lessonTitles={titles}
-            onBack={() => setSelectedSpotId(null)}
-            onDrillWord={() => onDrillWord?.(selectedSpot.conceptId)}
-            onDrillPair={pair ? () => onDrillPair?.(pair) : undefined}
-            onOpenLesson={onOpenLesson}
-          />
-        </div>
-      </main>
+      <WindowFrame title="Progress" onBack={onBack} variant="overlay">
+        <main className="px-4 py-8 text-burgundy-900">
+          <div className="mx-auto max-w-2xl">
+            <WeakSpotDetail
+              spot={selectedSpot}
+              pair={pair}
+              gloss={conceptGloss(selectedSpot.conceptId, lessons)}
+              lessonTitles={titles}
+              onBack={() => setSelectedSpotId(null)}
+              onDrillWord={() => onDrillWord?.(selectedSpot.conceptId)}
+              onDrillPair={pair ? () => onDrillPair?.(pair) : undefined}
+              onOpenLesson={onOpenLesson}
+            />
+          </div>
+        </main>
+      </WindowFrame>
     );
   }
 
@@ -81,12 +84,10 @@ export default function ProgressScreen({
   const focusCount = (summary?.weakSpots.length ?? 0) + pairs.length;
 
   return (
-    <main className="min-h-dvh bg-cream-50 px-4 py-10 text-burgundy-900">
-      <div className="mx-auto max-w-2xl">
-        <button onClick={onBack} className="mb-6 text-sm font-bold text-burgundy-700 hover:underline">
-          ← Back
-        </button>
-        <div className="flex items-start justify-between gap-3">
+    <WindowFrame title="Progress" onBack={onBack} variant="overlay">
+      <main className="px-4 py-8 text-burgundy-900">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-black">📊 Your Progress</h1>
             {summary && !summary.enoughData && (
@@ -225,6 +226,7 @@ export default function ProgressScreen({
           })}
         </div>
       </div>
-    </main>
+      </main>
+    </WindowFrame>
   );
 }

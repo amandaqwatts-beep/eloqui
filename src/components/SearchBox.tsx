@@ -127,6 +127,9 @@ export default function SearchBox({
           aria-label="Search lessons, vocabulary, and grammar"
           aria-expanded={showDropdown}
           aria-controls="search-results"
+          aria-activedescendant={
+            showDropdown && results.length > 0 ? `search-option-${highlight}` : undefined
+          }
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -165,6 +168,7 @@ export default function SearchBox({
                   key={`${result.kind}:${"topicId" in result ? result.topicId : "lessonId" in result ? result.lessonId : result.sideLessonId}:${result.match.slice(0, 24)}`}
                   type="button"
                   role="option"
+                  id={`search-option-${i}`}
                   aria-selected={i === highlight}
                   onMouseEnter={() => setHighlight(i)}
                   onClick={() => activate(result)}
