@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import type { Lesson, TeachingStep } from "~/data/latinLessons";
+import type { Lesson } from "~/data/latinLessons";
 import NavBar from "~/components/NavBar";
+import TeachingStepCard from "~/components/TeachingStepCard";
 
 interface Props {
   lesson: Lesson; // from ~/data/latinLessons
@@ -9,43 +10,6 @@ interface Props {
 }
 
 type Phase = "teaching" | "check" | "review" | "success";
-
-/** One teaching step rendered as a card (used in teaching + review phases). */
-function TeachingStepCard({
-  step,
-  index,
-  total,
-}: {
-  step: TeachingStep;
-  index: number;
-  total: number;
-}) {
-  return (
-    <div className="rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg sm:p-8">
-      <span className="inline-block rounded-full bg-burgundy-100 px-3 py-1 text-xs font-semibold text-burgundy-700">
-        Step {index} of {total}
-      </span>
-      <h2 className="mt-3 text-xl font-extrabold text-burgundy-900 sm:text-2xl">
-        {step.title}
-      </h2>
-      <p className="mt-3 text-sm leading-relaxed text-gray-700 sm:text-base">
-        {step.explanation}
-      </p>
-      <blockquote className="mt-5 rounded-r-xl border-l-4 border-gold-500 bg-cream-100 px-4 py-3">
-        <p className="text-lg italic text-burgundy-900 sm:text-xl">
-          {step.exampleLatin}
-        </p>
-      </blockquote>
-      <p className="mt-2 text-sm italic text-gray-500">{step.exampleEnglish}</p>
-      {step.tip && (
-        <div className="mt-5 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
-          <span aria-hidden>💡</span>
-          <p className="font-medium text-amber-900">{step.tip}</p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
   const steps = lesson.teachingSteps ?? [];
