@@ -84,6 +84,11 @@ interface BookshelfProps {
     detail: ExerciseResultDetail,
   ) => void;
   focusRequest?: { bookKey: string; nonce: number } | null;
+  /** F13 — sessionStorage frontier key scope (per-language). Default "latin". */
+  languageId?: string;
+  /** F13 — skip the scroll-to-frontier on mode returns (frontier unchanged
+   *  since the last menu mount); the frontier book still expands. */
+  suppressFrontierScroll?: boolean;
 }
 
 export default function Bookshelf(props: BookshelfProps) {
@@ -264,6 +269,8 @@ function BookshelfV2({
   sideLessons = [],
   onCultureResult,
   focusRequest,
+  languageId = "latin",
+  suppressFrontierScroll = false,
 }: BookshelfProps) {
   const model = useMemo(
     () => buildBookshelfModel(lessons, bookLessons, sideLessons),
@@ -327,18 +334,34 @@ function BookshelfV2({
   // the fold without yanking the page). The timeout lets the panel commit
   // after setExpandedBookKey. `capacity` is a dependency (F15) so the
   // capacity-8 → measured re-pack re-scrolls instead of orphaning the target.
+  //
+  // F13 gate (design §1.3): the route sets suppressFrontierScroll when the
+  // menu remounts from a mode (drill / placement / AI) with the frontier
+  // unchanged since the last visit — the scroll is the "yank" users felt;
+  // mode returns keep the expansion but skip both scrolls. Fresh mounts and
+  // frontier moves scroll as before. The route persists the last viewed
+  // frontier in sessionStorage (keyed by language) to make that call.
+  const frontierStorageKey = `eloqui:frontier:${languageId}`;
   useEffect(() => {
     if (!currentBook) return;
-    const shelf = packedRef.current.find((p) => p.units.some((u) => u.unit === currentBook!.unit));
-    const el = shelf ? shelfRefs.current.get(shelf.shelfIndex) : null;
-    if (el) el.scrollIntoView({ block: "start" });
+    let t = 0;
+    if (!suppressFrontierScroll) {
+      const shelf = packedRef.current.find((p) => p.units.some((u) => u.unit === currentBook!.unit));
+      const el = shelf ? shelfRefs.current.get(shelf.shelfIndex) : null;
+      if (el) el.scrollIntoView({ block: "start" });
+      t = window.setTimeout(() => {
+        const frontierRow = document.querySelector<HTMLElement>("[data-frontier]");
+        frontierRow?.scrollIntoView({ block: "nearest" });
+      }, 0);
+      try {
+        sessionStorage.setItem(frontierStorageKey, String(unlockedLessons));
+      } catch {
+        /* storage unavailable — scroll behavior unchanged */
+      }
+    }
     setExpandedBookKey(currentBook.bookKey);
-    const t = window.setTimeout(() => {
-      const frontierRow = document.querySelector<HTMLElement>("[data-frontier]");
-      frontierRow?.scrollIntoView({ block: "nearest" });
-    }, 0);
     return () => window.clearTimeout(t);
-  }, [currentBook, capacity]);
+  }, [currentBook, capacity, suppressFrontierScroll, frontierStorageKey, unlockedLessons]);
 
   // focusRequest (search / explore navigation): same scroll + expand for the
   // requested book, re-fired when the nonce bumps.

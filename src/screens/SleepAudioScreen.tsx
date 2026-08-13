@@ -85,7 +85,6 @@ export default function SleepAudioScreen({
   events,
   pronMode,
   language = "latin",
-  onBack,
 }: Props) {
   // ── Prefs + session stats (one namespaced payload, spec §5/§8) ──
   const [prefs, setPrefs] = useState<SleepAudioPrefs>(() => loadSleepAudio(language).prefs);
@@ -400,9 +399,6 @@ export default function SleepAudioScreen({
   return (
     <main className="min-h-dvh bg-cream-50 px-4 py-8 text-burgundy-900 sm:py-12">
       <div className="mx-auto max-w-xl">
-        <button onClick={onBack} className="mb-6 text-sm font-bold text-burgundy-700 hover:text-burgundy-900">
-          ← Back
-        </button>
         <h1 className="text-3xl font-black">🌙 Sleep Audio</h1>
         <p className="mt-1 text-sm text-gray-600">
           A passive review playlist built from the words you've met — weak spots first — that stops by itself.

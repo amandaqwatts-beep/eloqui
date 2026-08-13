@@ -1,5 +1,137 @@
 import type { MultipleChoiceExercise } from "~/data/latinLessons";
-import NavBar from "~/components/NavBar"; import ProgressBar from "~/components/ProgressBar"; import MultipleChoice from "~/components/MultipleChoice";
-interface Props {idx:number;passed:boolean[];totalLevels:number;complete:boolean;startLevel:number|null;questions:MultipleChoiceExercise[];onStart:()=>void;onAnswer:(correct:boolean)=>void;onQuit:()=>void;onRetake:()=>void;onChooseStart:(level:number)=>void;introBlurb?:string;resultBlurb?:string}
-export default function PlacementTest({idx,passed,totalLevels,complete,startLevel,questions,onStart,onAnswer,onQuit,onRetake,onChooseStart,introBlurb="Answer questions about Latin grammar and vocabulary. We'll figure out where you should start.",resultBlurb="Here’s how your Latin 101 levels went:"}:Props){if(complete){const allPassed=passed.length>0&&passed.every(Boolean),start=startLevel??1;return <div className="min-h-dvh flex flex-col"><NavBar/><main className="flex-1 px-4 py-8 sm:py-12"><div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg sm:p-10"><div className="text-center"><div className="text-5xl">🎉</div><h1 className="mt-3 text-2xl font-black text-burgundy-900 sm:text-3xl">{allPassed?`You've mastered all ${totalLevels}!`:`You're ready for Lesson ${start}!`}</h1><p className="mt-2 text-gray-600">{resultBlurb}</p></div><div className="mt-7 space-y-2">{Array.from({length:totalLevels},(_,i)=>i).map(i=>{const ok=passed[i];return <div key={i} className={`flex items-center justify-between rounded-xl px-4 py-3 ${ok?"bg-green-50 text-green-800":"bg-red-50 text-red-700"}`}><span className="font-semibold">Lesson {i+1}</span><span className="font-bold">{ok?"✓ Passed":"✕ Try later"}</span></div>})}</div><div className="mt-7 space-y-3"><button onClick={()=>onChooseStart(start)} className="w-full rounded-xl bg-burgundy-700 py-3.5 font-bold text-white shadow hover:bg-burgundy-800">Start from Lesson {start}</button><button onClick={()=>onChooseStart(1)} className="w-full rounded-xl border-2 border-burgundy-200 py-3.5 font-bold text-burgundy-700 hover:bg-burgundy-50">Start from Lesson 1</button><button onClick={onRetake} className="w-full py-2 text-sm font-semibold text-gold-700 hover:text-burgundy-700">Retake Test</button></div></div></main></div>}
-if(idx<0)return <div className="min-h-dvh flex flex-col"><NavBar/><main className="flex-1 px-4 py-8 sm:py-12 flex items-center"><div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-7 text-center shadow-lg sm:p-10"><div className="text-5xl">📋</div><h1 className="mt-4 text-3xl font-black text-burgundy-900">Placement Test</h1><p className="mt-4 text-gray-600 leading-relaxed">{introBlurb}</p><p className="mt-2 text-sm font-semibold text-gold-700">~{questions.length} questions</p><button onClick={onStart} className="mt-8 w-full rounded-xl bg-burgundy-700 py-3.5 text-lg font-bold text-white shadow hover:bg-burgundy-800">Start Test</button><button onClick={onQuit} className="mt-4 text-sm text-gray-400 hover:text-burgundy-600">← Back to Lessons</button></div></main></div>;const q=questions[idx];if(!q)return null;return <div className="min-h-dvh flex flex-col"><NavBar/><main className="flex-1 px-4 py-6 sm:py-10"><div className="mx-auto w-full max-w-2xl"><div className="mb-6 flex items-center justify-between text-sm font-semibold text-burgundy-700"><span>Question {idx+1} / {questions.length}</span><button onClick={onQuit} className="text-gray-400 hover:text-burgundy-600">Quit</button></div><ProgressBar current={idx} total={questions.length}/><div className="mt-8 rounded-3xl border border-burgundy-200 bg-white p-5 shadow-lg sm:p-8"><div className="mb-5 text-xs font-bold uppercase tracking-widest text-gold-700">Level {idx / 2 + 1}</div><MultipleChoice key={q.id} exercise={q} onComplete={onAnswer}/></div></div></main></div>}
+import ProgressBar from "~/components/ProgressBar";
+import MultipleChoice from "~/components/MultipleChoice";
+import WindowFrame from "~/components/WindowFrame";
+
+interface Props {
+  idx: number;
+  passed: boolean[];
+  totalLevels: number;
+  complete: boolean;
+  startLevel: number | null;
+  questions: MultipleChoiceExercise[];
+  onStart: () => void;
+  onAnswer: (correct: boolean) => void;
+  onQuit: () => void;
+  onRetake: () => void;
+  onChooseStart: (level: number) => void;
+  introBlurb?: string;
+  resultBlurb?: string;
+}
+
+export default function PlacementTest({
+  idx,
+  passed,
+  totalLevels,
+  complete,
+  startLevel,
+  questions,
+  onStart,
+  onAnswer,
+  onQuit,
+  onRetake,
+  onChooseStart,
+  introBlurb = "Answer questions about Latin grammar and vocabulary. We'll figure out where you should start.",
+  resultBlurb = "Here’s how your Latin 101 levels went:",
+}: Props) {
+  if (complete) {
+    const allPassed = passed.length > 0 && passed.every(Boolean);
+    const start = startLevel ?? 1;
+    return (
+      <WindowFrame title="Placement" onBack={onQuit}>
+        <main className="flex-1 px-4 py-8 sm:py-12">
+          <div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg sm:p-10">
+            <div className="text-center">
+              <div className="text-5xl">🎉</div>
+              <h1 className="mt-3 text-2xl font-black text-burgundy-900 sm:text-3xl">
+                {allPassed ? `You've mastered all ${totalLevels}!` : `You're ready for Lesson ${start}!`}
+              </h1>
+              <p className="mt-2 text-gray-600">{resultBlurb}</p>
+            </div>
+            <div className="mt-7 space-y-2">
+              {Array.from({ length: totalLevels }, (_, i) => i).map((i) => {
+                const ok = passed[i];
+                return (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between rounded-xl px-4 py-3 ${
+                      ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"
+                    }`}
+                  >
+                    <span className="font-semibold">Lesson {i + 1}</span>
+                    <span className="font-bold">{ok ? "✓ Passed" : "✕ Try later"}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-7 space-y-3">
+              <button
+                onClick={() => onChooseStart(start)}
+                className="w-full rounded-xl bg-burgundy-700 py-3.5 font-bold text-white shadow hover:bg-burgundy-800"
+              >
+                Start from Lesson {start}
+              </button>
+              <button
+                onClick={() => onChooseStart(1)}
+                className="w-full rounded-xl border-2 border-burgundy-200 py-3.5 font-bold text-burgundy-700 hover:bg-burgundy-50"
+              >
+                Start from Lesson 1
+              </button>
+              <button
+                onClick={onRetake}
+                className="w-full py-2 text-sm font-semibold text-gold-700 hover:text-burgundy-700"
+              >
+                Retake Test
+              </button>
+            </div>
+          </div>
+        </main>
+      </WindowFrame>
+    );
+  }
+
+  if (idx < 0)
+    return (
+      <WindowFrame title="Placement" onBack={onQuit}>
+        <main className="flex flex-1 items-center px-4 py-8 sm:py-12">
+          <div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-7 text-center shadow-lg sm:p-10">
+            <div className="text-5xl">📋</div>
+            <h1 className="mt-4 text-3xl font-black text-burgundy-900">Placement Test</h1>
+            <p className="mt-4 text-gray-600 leading-relaxed">{introBlurb}</p>
+            <p className="mt-2 text-sm font-semibold text-gold-700">~{questions.length} questions</p>
+            <button
+              onClick={onStart}
+              className="mt-8 w-full rounded-xl bg-burgundy-700 py-3.5 text-lg font-bold text-white shadow hover:bg-burgundy-800"
+            >
+              Start Test
+            </button>
+          </div>
+        </main>
+      </WindowFrame>
+    );
+
+  const q = questions[idx];
+  if (!q) return null;
+
+  return (
+    <WindowFrame title="Placement" onBack={onQuit}>
+      <main className="flex-1 px-4 py-6 sm:py-10">
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="mb-6 flex items-center justify-between text-sm font-semibold text-burgundy-700">
+            <span>Question {idx + 1} / {questions.length}</span>
+            <button onClick={onQuit} className="text-gray-400 hover:text-burgundy-600">
+              Quit
+            </button>
+          </div>
+          <ProgressBar current={idx} total={questions.length} />
+          <div className="mt-8 rounded-3xl border border-burgundy-200 bg-white p-5 shadow-lg sm:p-8">
+            <div className="mb-5 text-xs font-bold uppercase tracking-widest text-gold-700">
+              Level {idx / 2 + 1}
+            </div>
+            <MultipleChoice key={q.id} exercise={q} onComplete={onAnswer} />
+          </div>
+        </div>
+      </main>
+    </WindowFrame>
+  );
+}

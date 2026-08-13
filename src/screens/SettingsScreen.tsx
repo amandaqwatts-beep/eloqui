@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { VerbumSettings } from "~/engine/types";
-import NavBar from "~/components/NavBar";
+import WindowFrame from "~/components/WindowFrame";
 
 interface Props {
   settings: VerbumSettings; // from ~/engine/types
@@ -61,16 +61,9 @@ export default function SettingsScreen({
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <div className="min-h-dvh flex flex-col">
-      <NavBar />
+    <WindowFrame title="Settings" onBack={onBack} variant="overlay">
       <main className="flex-1 px-4 py-6 sm:py-10">
         <div className="mx-auto w-full max-w-xl">
-          <button
-            onClick={onBack}
-            className="mb-4 inline-block text-sm text-gray-400 transition hover:text-burgundy-600"
-          >
-            ← Back
-          </button>
           <h1 className="text-3xl font-extrabold text-burgundy-900">
             Settings
           </h1>
@@ -198,6 +191,6 @@ export default function SettingsScreen({
           </div>
         </div>
       </main>
-    </div>
+    </WindowFrame>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPronunciation, type PronMode } from "~/lib/pronunciation";
 import type { DrillCard, DrillKind } from "~/lib/drillUtils";
+import WindowFrame from "~/components/WindowFrame";
 
 export default function DrillView({
   cards,
@@ -31,56 +32,64 @@ export default function DrillView({
   const [done, setDone] = useState(false);
   const card = cards[index];
 
+  // Origin-aware breadcrumb origin (§1.3): "Back to Review" → "Review",
+  // "Back to Progress" → "Progress"; plain drills keep the "Bookshelf" default.
+  const frameBackLabel = exitLabel ? exitLabel.replace(/^Back to /, "") : "Bookshelf";
+
   if (done)
     return (
-      <div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-6 sm:p-10 text-center shadow-lg">
-        <div className="text-5xl">🏆</div>
-        <h1 className="mt-3 text-3xl font-black text-burgundy-900">
-          Drill Complete!
-        </h1>
-        <p className="mt-4 text-5xl font-black text-burgundy-700">
-          {gotIt.length} / {cards.length}
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-green-50 p-3 text-green-700">
-            <b>{gotIt.length}</b>
-            <br />
-            Mastered
+      <WindowFrame title="Drill" onBack={onExit} backLabel={frameBackLabel}>
+        <main className="flex-1 px-4 py-8">
+          <div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-6 text-center shadow-lg sm:p-10">
+            <div className="text-5xl">🏆</div>
+            <h1 className="mt-3 text-3xl font-black text-burgundy-900">
+              Drill Complete!
+            </h1>
+            <p className="mt-4 text-5xl font-black text-burgundy-700">
+              {gotIt.length} / {cards.length}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-green-50 p-3 text-green-700">
+                <b>{gotIt.length}</b>
+                <br />
+                Mastered
+              </div>
+              <div className="rounded-xl bg-red-50 p-3 text-red-700">
+                <b>{missed.length}</b>
+                <br />
+                Needs Work
+              </div>
+            </div>
+            {missed.length > 0 && (
+              <div className="mt-6 text-left">
+                <h2 className="font-bold text-burgundy-800">Review these next:</h2>
+                <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                  {missed.map((c) => (
+                    <li key={c.id}>
+                      • {c.prompt} — {c.answer}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={() => onRestartMissed(missed)}
+                disabled={!missed.length}
+                className="flex-1 rounded-xl bg-burgundy-700 py-3 font-bold text-white disabled:opacity-40"
+              >
+                Drill Missed Again
+              </button>
+              <button
+                onClick={onExit}
+                className="flex-1 rounded-xl border-2 border-burgundy-200 py-3 font-bold text-burgundy-700"
+              >
+                {exitLabel ?? "Back to Lessons"}
+              </button>
+            </div>
           </div>
-          <div className="rounded-xl bg-red-50 p-3 text-red-700">
-            <b>{missed.length}</b>
-            <br />
-            Needs Work
-          </div>
-        </div>
-        {missed.length > 0 && (
-          <div className="mt-6 text-left">
-            <h2 className="font-bold text-burgundy-800">Review these next:</h2>
-            <ul className="mt-2 space-y-1 text-sm text-gray-600">
-              {missed.map((c) => (
-                <li key={c.id}>
-                  • {c.prompt} — {c.answer}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <button
-            onClick={() => onRestartMissed(missed)}
-            disabled={!missed.length}
-            className="flex-1 rounded-xl bg-burgundy-700 py-3 font-bold text-white disabled:opacity-40"
-          >
-            Drill Missed Again
-          </button>
-          <button
-            onClick={onExit}
-            className="flex-1 rounded-xl border-2 border-burgundy-200 py-3 font-bold text-burgundy-700"
-          >
-            {exitLabel ?? "Back to Lessons"}
-          </button>
-        </div>
-      </div>
+        </main>
+      </WindowFrame>
     );
 
   if (!card) return null;
@@ -104,85 +113,89 @@ export default function DrillView({
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-xl">
-      {title ? (
-        <p className="mb-3 text-xs font-bold uppercase tracking-widest text-gold-700">
-          {title}
-        </p>
-      ) : null}
-      <div className="mb-5 flex items-center justify-between text-sm font-semibold text-burgundy-700">
-        <span>
-          Card {index + 1} / {cards.length}
-        </span>
-        <span className="flex items-center gap-2">
-          {badgeLine ? (
-            <span className="rounded-full bg-gold-100 px-2.5 py-0.5 text-xs font-bold text-gold-800">
-              {badgeLine}
-            </span>
-          ) : null}
-          <span className={streak > 1 ? "animate-pulse" : ""}>
-            🔥 {streak} in a row
-          </span>
-        </span>
-      </div>
-      {reference ? (
-        <p className="mb-3 rounded-lg border border-gold-200 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800">
-          {reference}
-        </p>
-      ) : null}
-      <div
-        onClick={() => setRevealed(true)}
-        className={`min-h-[240px] cursor-pointer select-none rounded-3xl border-2 p-8 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-300 ${
-          revealed
-            ? "border-gold-400 bg-cream-50"
-            : "border-burgundy-400 bg-burgundy-50 hover:scale-[1.01]"
-        }`}
-      >
-        <p className="mb-3 text-xs font-bold uppercase tracking-widest text-burgundy-500">
-          Think of your answer, then tap to reveal
-        </p>
-        <p className="mb-2 text-sm font-semibold text-burgundy-600">{instruction}</p>
-        <p className="text-3xl font-black text-burgundy-900">{card.prompt}</p>
-        {cardPron && (
-          <p className="mt-2 text-sm italic text-gray-400">{cardPron}</p>
-        )}
-        {revealed && (
-          <div className="mt-8">
-            <p className="text-2xl font-extrabold text-burgundy-900">
-              {card.answer}
+    <WindowFrame title="Drill" onBack={onExit} backLabel={frameBackLabel}>
+      <main className="flex-1 px-4 py-8">
+        <div className="mx-auto w-full max-w-xl">
+          {title ? (
+            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-gold-700">
+              {title}
             </p>
-            {card.bonusInfo && (
-              <>
-                <div className="mx-auto mt-3 w-12 border-t border-burgundy-200" />
-                <p className="mt-2 text-sm italic text-gray-400">
-                  {card.bonusInfo}
+          ) : null}
+          <div className="mb-5 flex items-center justify-between text-sm font-semibold text-burgundy-700">
+            <span>
+              Card {index + 1} / {cards.length}
+            </span>
+            <span className="flex items-center gap-2">
+              {badgeLine ? (
+                <span className="rounded-full bg-gold-100 px-2.5 py-0.5 text-xs font-bold text-gold-800">
+                  {badgeLine}
+                </span>
+              ) : null}
+              <span className={streak > 1 ? "animate-pulse" : ""}>
+                🔥 {streak} in a row
+              </span>
+            </span>
+          </div>
+          {reference ? (
+            <p className="mb-3 rounded-lg border border-gold-200 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800">
+              {reference}
+            </p>
+          ) : null}
+          <div
+            onClick={() => setRevealed(true)}
+            className={`min-h-[240px] cursor-pointer select-none rounded-3xl border-2 p-8 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-300 ${
+              revealed
+                ? "border-gold-400 bg-cream-50"
+                : "border-burgundy-400 bg-burgundy-50 hover:scale-[1.01]"
+            }`}
+          >
+            <p className="mb-3 text-xs font-bold uppercase tracking-widest text-burgundy-500">
+              Think of your answer, then tap to reveal
+            </p>
+            <p className="mb-2 text-sm font-semibold text-burgundy-600">{instruction}</p>
+            <p className="text-3xl font-black text-burgundy-900">{card.prompt}</p>
+            {cardPron && (
+              <p className="mt-2 text-sm italic text-gray-400">{cardPron}</p>
+            )}
+            {revealed && (
+              <div className="mt-8">
+                <p className="text-2xl font-extrabold text-burgundy-900">
+                  {card.answer}
                 </p>
-              </>
+                {card.bonusInfo && (
+                  <>
+                    <div className="mx-auto mt-3 w-12 border-t border-burgundy-200" />
+                    <p className="mt-2 text-sm italic text-gray-400">
+                      {card.bonusInfo}
+                    </p>
+                  </>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
-      {revealed ? (
-        <div className="mt-5 flex gap-3">
-          <button
-            onClick={() => rate(false)}
-            className="flex-1 rounded-xl border-2 border-red-300 bg-red-50 py-4 text-base font-bold text-red-700"
-          >
-            Still Learning ❌
-          </button>
-          <button
-            onClick={() => rate(true)}
-            className="flex-1 rounded-xl border-2 border-green-300 bg-green-50 py-4 text-base font-bold text-green-700"
-          >
-            Got It ✅
-          </button>
+          {revealed ? (
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => rate(false)}
+                className="flex-1 rounded-xl border-2 border-red-300 bg-red-50 py-4 text-base font-bold text-red-700"
+              >
+                Still Learning ❌
+              </button>
+              <button
+                onClick={() => rate(true)}
+                className="flex-1 rounded-xl border-2 border-green-300 bg-green-50 py-4 text-base font-bold text-green-700"
+              >
+                Got It ✅
+              </button>
+            </div>
+          ) : (
+            <p className="mt-4 text-center text-sm text-gray-400">
+              Tap the card when you're ready to check.
+            </p>
+          )}
         </div>
-      ) : (
-        <p className="mt-4 text-center text-sm text-gray-400">
-          Tap the card when you're ready to check.
-        </p>
-      )}
-    </div>
+      </main>
+    </WindowFrame>
   );
 
   function rate(correct: boolean) {
@@ -200,3 +213,4 @@ export default function DrillView({
     }
   }
 }
+

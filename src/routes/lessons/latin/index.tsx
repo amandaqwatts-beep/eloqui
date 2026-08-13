@@ -15,7 +15,7 @@
  * optional DrillView meta (title/reference/exitLabel).
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import latinLessons from "~/data/latinLessons";
 import placementQuestions from "~/data/placementTest";
@@ -68,6 +68,7 @@ import { loadAccuracy, recordAccuracy } from "~/engine/storage";
 import ReviewScreen from "~/screens/ReviewScreen";
 import PairDrillScreen from "~/screens/PairDrillScreen";
 import { DailyLessonCard, BonusLessonCard } from "~/components/ProficiencyCards";
+import WindowFrame from "~/components/WindowFrame";
 
 export const Route = createFileRoute("/lessons/latin/")({
   component: LatinLessons,
@@ -92,6 +93,9 @@ function LatinLessons() {
   const [showSleepAudio, setShowSleepAudio] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  // Origin-aware drill exits (§1.3): diagnostics drills launched from the
+  // Progress / Review overlays return to that overlay instead of the menu.
+  const [drillOrigin, setDrillOrigin] = useState<"menu" | "progress" | "review">("menu");
   // Diagnostics drill session meta (UI-spec §6): title/reference/exitLabel
   // passed through to DrillView; pendingPair gates the pair-drill intro.
   // P2 adds instructionOverride (bonus deck tiers 3–4) and badgeLine (bonus
@@ -135,6 +139,7 @@ function LatinLessons() {
   // route-local state the screens don't own.
   const openDrill = useCallback(() => {
     setDrillCards(null); // re-enter drill from the setup screen
+    setDrillOrigin("menu"); // plain menu drill exits to the menu
     lesson.goToDrill();
   }, [lesson]);
 
@@ -166,7 +171,9 @@ function LatinLessons() {
   );
 
   // ── Diagnostics drill wiring (UI-spec §6) ────────────────────
-  const exitLabelForOrigin = showProgress ? "Back to Progress" : "Back to Review";
+  // Exit label + return target derive from the origin overlay (drillOrigin),
+  // captured when the drill starts — the overlays unmount during the drill
+  // run, so the live showProgress/showReview booleans are unreliable mid-run.
 
   const startWordDrill = useCallback(
     (conceptId: string) => {
@@ -181,6 +188,8 @@ function LatinLessons() {
         lessons: latinLessons,
         pronMode,
       });
+      const origin = showProgress ? "progress" : "review";
+      setDrillOrigin(origin);
       setPendingPair(null);
       setDrillMeta({
         title: "🎯 Word Drill",
@@ -200,7 +209,7 @@ function LatinLessons() {
               latinLessons,
             )
           : undefined,
-        exitLabel: exitLabelForOrigin,
+        exitLabel: origin === "progress" ? "Back to Progress" : "Back to Review",
       });
       if (cards.length === 0) {
         lesson.backToMenu();
@@ -209,16 +218,17 @@ function LatinLessons() {
       setDrillCards(cards);
       lesson.goToDrill();
     },
-    [summary.weakSpots, pronMode, lesson, exitLabelForOrigin],
+    [summary.weakSpots, pronMode, lesson, showProgress],
   );
 
   const beginPairDrill = useCallback(
     (pair: ConfusionPair) => {
+      setDrillOrigin(showProgress ? "progress" : "review");
       setDrillCards(null);
       setPendingPair(pair);
       lesson.goToDrill();
     },
-    [lesson],
+    [lesson, showProgress],
   );
 
   const startPairDrill = useCallback(
@@ -233,24 +243,34 @@ function LatinLessons() {
         lesson.backToMenu();
         return;
       }
+      const exitLabel =
+        drillOrigin === "progress"
+          ? "Back to Progress"
+          : drillOrigin === "review"
+            ? "Back to Review"
+            : "Back to Lessons";
       setPendingPair(null);
       setDrillCards(cards);
       setDrillMeta({
         title: "⚔️ Confusion Drill",
         reference: pairCheatLine(pair, latinLessons),
-        exitLabel: exitLabelForOrigin,
+        exitLabel,
       });
       lesson.goToDrill();
     },
-    [pronMode, lesson, exitLabelForOrigin],
+    [pronMode, lesson, drillOrigin],
   );
 
   const exitDiagnosticsDrill = useCallback(() => {
     setDrillMeta(null);
     setDrillCards(null);
     setPendingPair(null);
+    // §1.3 origin-aware exits: drills launched from the Progress / Review
+    // overlays return to that overlay; plain menu drills return to the menu.
+    if (drillOrigin === "progress") setShowProgress(true);
+    else if (drillOrigin === "review") setShowReview(true);
     lesson.backToMenu();
-  }, [lesson]);
+  }, [lesson, drillOrigin]);
 
   const openLessonFromDiagnostics = useCallback(
     (lessonId: number) => {
@@ -278,6 +298,7 @@ function LatinLessons() {
   const startBonusDrill = useCallback(() => {
     const claimed = claimBonusDrill(language.id);
     if (!claimed) return;
+    setDrillOrigin("menu"); // bonus drills always exit to the menu
     const deck = buildBonusDrillDeck({
       tier: streak.tier,
       events: diagnosticsEvents,
@@ -305,105 +326,144 @@ function LatinLessons() {
   const aiLesson =
     latinLessons.find((l) => l.id === aiLessonId) ?? lesson.currentLesson;
 
+  // ── F13: gate the shelf's scroll-to-frontier (§1.3) ──────────
+  // The menu mounts fresh on page load (auto-open to the frontier — the
+  // ratified v2 behavior) but also remounts when a mode (drill / placement /
+  // AI) exits. The shelf scroll on a mode return is the "yank" — so once the
+  // menu has mounted this page load, the scroll fires only when the frontier
+  // moved past the last viewed one (persisted in sessionStorage, keyed by
+  // language, written by Bookshelf). The frontier book still expands.
+  const menuMountedRef = useRef(false);
+  useEffect(() => {
+    if (lesson.screen === "menu") menuMountedRef.current = true;
+  }, [lesson.screen]);
+  const frontierKey = `eloqui:frontier:${language.id}`;
+  let suppressFrontierScroll = false;
+  if (menuMountedRef.current) {
+    try {
+      suppressFrontierScroll =
+        Number(sessionStorage.getItem(frontierKey)) === lesson.unlockedLessons;
+    } catch {
+      suppressFrontierScroll = false; // storage unavailable — scroll as before
+    }
+  }
+
   switch (lesson.screen) {
     case "menu":
-      if (showAudio) return <AudioPlayerScreen lessons={latinLessons} unlockedLessons={lesson.unlockedLessons} onBack={()=>setShowAudio(false)} />;
-      if (showSleepAudio) return (
-        <SleepAudioScreen
-          lessons={latinLessons}
-          completedLessonIds={completedLessonIds}
-          currentLessonId={lesson.screen !== "menu" ? lesson.currentLesson.id : undefined}
-          events={diagnosticsEvents}
-          pronMode={pronMode}
-          language={language.id}
-          onBack={() => setShowSleepAudio(false)}
-        />
-      );
-      if (showReview) return (
-        <ReviewScreen
-          accuracy={loadAccuracy(language.id)}
-          lessons={latinLessons}
-          onBack={()=>setShowReview(false)}
-          onPracticeLesson={openAIPractice}
-          summary={summary}
-          onDrillWord={startWordDrill}
-          onDrillPair={beginPairDrill}
-          onOpenLesson={openLessonFromDiagnostics}
-        />
-      );
-      if (showProgress) return (
-        <ProgressScreen
-          lessons={latinLessons}
-          stats={getDashboardStats(latinLessons.length, [], language.id, diagnosticsEvents, streak.streakDays)}
-          lessonProgress={loadProgress(language.id)}
-          onBack={()=>setShowProgress(false)}
-          onOpenReview={()=>{setShowProgress(false);setShowReview(true)}}
-          summary={summary}
-          onDrillWord={startWordDrill}
-          onDrillPair={beginPairDrill}
-          onOpenLesson={openLessonFromDiagnostics}
-        />
-      );
-      if (showSettings) {
-        return (
-          <SettingsScreen
-            settings={settingsEngine.settings}
-            onUpdateSettings={settingsEngine.updateSettings}
-            onClearData={settingsEngine.clearAllData}
-            onEnableDevMode={settingsEngine.enableDevMode}
-            onBack={() => setShowSettings(false)}
-          />
-        );
-      }
+      // Overlay stack (design §1.1/§1.2): the shelf NEVER unmounts while a
+      // window is open. LessonMenu renders always; utility windows mount as
+      // WindowFrame overlays (z-60) on top, so scroll position, expanded
+      // book, and open culture section survive every round trip.
       return (
-        <LessonMenu
-          lessons={latinLessons}
-          unlockedLessons={lesson.unlockedLessons}
-          onSelectLesson={lesson.selectLesson}
-          onOpenDrill={openDrill}
-          onOpenPlacement={lesson.goToPlacement}
-          onOpenAIPractice={openAIPractice}
-          onOpenSettings={() => setShowSettings(true)}
-          onOpenAudio={() => setShowAudio(true)}
-          onOpenSleep={() => setShowSleepAudio(true)}
-          onOpenProgress={() => setShowProgress(true)}
-          onOpenReview={() => setShowReview(true)}
-          devMode={settingsEngine.settings.devMode}
-          lessonProgress={loadProgress(language.id)}
-          bookLessons={bookLessons}
-          sideLessons={latinSideLessons}
-          grammarTopics={GRAMMAR_INDEX}
-          menuCards={
-            <>
-              <DailyLessonCard
-                dailyLesson={dailyLesson}
-                completed={dailyCompleted}
-                onOpen={openDailyLesson}
+        <>
+          <LessonMenu
+            lessons={latinLessons}
+            unlockedLessons={lesson.unlockedLessons}
+            onSelectLesson={lesson.selectLesson}
+            onOpenDrill={openDrill}
+            onOpenPlacement={lesson.goToPlacement}
+            onOpenAIPractice={openAIPractice}
+            onOpenSettings={() => setShowSettings(true)}
+            onOpenAudio={() => setShowAudio(true)}
+            onOpenSleep={() => setShowSleepAudio(true)}
+            onOpenProgress={() => setShowProgress(true)}
+            onOpenReview={() => setShowReview(true)}
+            devMode={settingsEngine.settings.devMode}
+            lessonProgress={loadProgress(language.id)}
+            bookLessons={bookLessons}
+            sideLessons={latinSideLessons}
+            grammarTopics={GRAMMAR_INDEX}
+            languageId={language.id}
+            suppressFrontierScroll={suppressFrontierScroll}
+            menuCards={
+              <>
+                <DailyLessonCard
+                  dailyLesson={dailyLesson}
+                  completed={dailyCompleted}
+                  onOpen={openDailyLesson}
+                />
+                <BonusLessonCard
+                  streak={streak}
+                  claimable={bonusClaimable}
+                  onClaim={startBonusDrill}
+                />
+              </>
+            }
+            onCultureResult={(exercise, hostLessonId, detail) =>
+              recordAttempt(
+                {
+                  conceptId: `culture:${exercise.id}`,
+                  tags: [`lesson:${hostLessonId}`],
+                  kind: "concept",
+                  ok: detail.correct,
+                  source: "review",
+                  context: exercise.id,
+                  mistake: detail.correct ? undefined : "unknown",
+                  wrong: detail.wrong,
+                  expected: detail.expected,
+                },
+                language.id,
+              )
+            }
+          />
+          {showSettings && (
+            <SettingsScreen
+              settings={settingsEngine.settings}
+              onUpdateSettings={settingsEngine.updateSettings}
+              onClearData={settingsEngine.clearAllData}
+              onEnableDevMode={settingsEngine.enableDevMode}
+              onBack={() => setShowSettings(false)}
+            />
+          )}
+          {showProgress && (
+            <ProgressScreen
+              lessons={latinLessons}
+              stats={getDashboardStats(latinLessons.length, [], language.id, diagnosticsEvents, streak.streakDays)}
+              lessonProgress={loadProgress(language.id)}
+              onBack={() => setShowProgress(false)}
+              onOpenReview={() => { setShowProgress(false); setShowReview(true); }}
+              summary={summary}
+              onDrillWord={startWordDrill}
+              onDrillPair={beginPairDrill}
+              onOpenLesson={openLessonFromDiagnostics}
+            />
+          )}
+          {showReview && (
+            <ReviewScreen
+              accuracy={loadAccuracy(language.id)}
+              lessons={latinLessons}
+              onBack={() => setShowReview(false)}
+              onPracticeLesson={openAIPractice}
+              summary={summary}
+              onDrillWord={startWordDrill}
+              onDrillPair={beginPairDrill}
+              onOpenLesson={openLessonFromDiagnostics}
+            />
+          )}
+          {showAudio && (
+            <AudioPlayerScreen
+              lessons={latinLessons}
+              unlockedLessons={lesson.unlockedLessons}
+              onBack={() => setShowAudio(false)}
+            />
+          )}
+          {showSleepAudio && (
+            <WindowFrame
+              title="Sleep Audio"
+              onBack={() => setShowSleepAudio(false)}
+              variant="overlay"
+            >
+              <SleepAudioScreen
+                lessons={latinLessons}
+                completedLessonIds={completedLessonIds}
+                events={diagnosticsEvents}
+                pronMode={pronMode}
+                language={language.id}
+                onBack={() => setShowSleepAudio(false)}
               />
-              <BonusLessonCard
-                streak={streak}
-                claimable={bonusClaimable}
-                onClaim={startBonusDrill}
-              />
-            </>
-          }
-          onCultureResult={(exercise, hostLessonId, detail) =>
-            recordAttempt(
-              {
-                conceptId: `culture:${exercise.id}`,
-                tags: [`lesson:${hostLessonId}`],
-                kind: "concept",
-                ok: detail.correct,
-                source: "review",
-                context: exercise.id,
-                mistake: detail.correct ? undefined : "unknown",
-                wrong: detail.wrong,
-                expected: detail.expected,
-              },
-              language.id,
-            )
-          }
-        />
+            </WindowFrame>
+          )}
+        </>
       );
 
     case "teaching":
@@ -472,7 +532,7 @@ function LatinLessons() {
             glossA={conceptGloss(pendingPair.a, latinLessons)}
             glossB={conceptGloss(pendingPair.b, latinLessons)}
             onStart={() => startPairDrill(pendingPair)}
-            onBack={() => { setPendingPair(null); lesson.backToMenu(); }}
+            onBack={exitDiagnosticsDrill}
           />
         );
       }

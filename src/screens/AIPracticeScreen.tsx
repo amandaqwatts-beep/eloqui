@@ -2,6 +2,7 @@ import type { Lesson } from "~/data/latinLessons";
 import type { Language } from "~/data/languages";
 import type { PronMode } from "~/lib/pronunciation";
 import AIPractice from "~/components/AIPractice";
+import WindowFrame from "~/components/WindowFrame";
 interface Props {
   lesson: Lesson;
   pronMode: PronMode;
@@ -14,13 +15,15 @@ interface Props {
 }
 export default function AIPracticeScreen({lesson,pronMode,onBack,aiEnabled,language,distractorLessons}:Props){
   return (
-    <AIPractice
-      lesson={lesson}
-      pronMode={pronMode}
-      onBack={onBack}
-      aiEnabled={aiEnabled}
-      language={language}
-      distractorLessons={distractorLessons}
-    />
+    <WindowFrame title="AI Practice" onBack={onBack}>
+      <AIPractice
+        lesson={lesson}
+        pronMode={pronMode}
+        onBack={onBack}
+        aiEnabled={aiEnabled}
+        language={language}
+        distractorLessons={distractorLessons}
+      />
+    </WindowFrame>
   );
 }

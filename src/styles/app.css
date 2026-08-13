@@ -223,4 +223,25 @@
     backdrop-filter: blur(4px); /* backdrop-blur-sm */
     box-shadow: var(--shadow-book-panel);
   }
+
+  /* Window layer (design §1.2) — the one entry transition for every window
+     the shelf opens: 160ms ease-out, gentle 8px rise, nothing else. Applied
+     to WindowFrame roots; disabled under prefers-reduced-motion. No exit
+     animation (React unmounts — consistent, cheap, safe). */
+  .window-in {
+    animation: window-in 160ms ease-out;
+  }
+}
+
+@keyframes window-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .window-in {
+    animation: none;
+  }
 }
