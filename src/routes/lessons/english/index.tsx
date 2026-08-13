@@ -216,14 +216,12 @@ function EnglishLessons() {
           onOpenDrill={openDrill}
           onOpenPlacement={lesson.goToPlacement}
           onOpenAIPractice={openAIPractice}
-          onPronModeChange={() => {}}
           onOpenSettings={() => setShowSettings(true)}
           onOpenProgress={() => setShowProgress(true)}
           devMode={settingsEngine.settings.devMode}
           title="English 101"
           description="Master formal register and academic vocabulary — the language of essays, applications, and professional writing."
           emoji="📚"
-          showPronToggle={false}
           backTo="/languages"
           menuCards={
             <>

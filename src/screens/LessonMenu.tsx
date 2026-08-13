@@ -4,11 +4,9 @@ import type { Lesson, CultureQuestionExercise } from "~/data/latinLessons";
 import type { BookLesson } from "~/data/bookLessons";
 import type { SideLesson } from "~/data/latinSideLessons";
 import type { GrammarTopic } from "~/data/grammarIndex";
-import type { PronMode } from "~/lib/pronunciation";
 import type { LessonProgress } from "~/engine/progress";
 import type { ExerciseResultDetail } from "~/engine/types";
 import NavBar from "~/components/NavBar";
-import PronunciationToggle from "~/components/PronunciationToggle";
 import Bookshelf from "~/components/Bookshelf";
 import SearchBox from "~/components/SearchBox";
 import GrammarDrawer from "~/components/GrammarDrawer";
@@ -17,13 +15,11 @@ import { buildSearchIndex } from "~/lib/searchIndex";
 interface Props {
   lessons: Lesson[]; unlockedLessons: number; onSelectLesson: (idx: number) => void;
   onOpenDrill: () => void; onOpenPlacement: () => void; onOpenAIPractice: (lessonId: number) => void;
-  onPronModeChange: (mode: PronMode) => void;
   // Optional until the route integration phase wires them in (keeps build green).
-  onOpenSettings?: () => void; onOpenAudio?: () => void; onOpenSleepAudio?: () => void; onOpenProgress?: () => void; onOpenReview?: () => void;
-  /** Backward-compat only — the Explore banner was removed in Bookshelf v2 (Explore books live on the shelf). */
-  onOpenExplore?: () => void; devMode?: boolean;
+  onOpenSettings?: () => void; onOpenAudio?: () => void; onOpenSleep?: () => void; onOpenProgress?: () => void; onOpenReview?: () => void;
+  devMode?: boolean;
   // Language-parameterized copy (English route passes its own; defaults keep Latin byte-identical).
-  title?: string; description?: string; emoji?: string; showPronToggle?: boolean; showAIPractice?: boolean; backTo?: string;
+  title?: string; description?: string; emoji?: string; showAIPractice?: boolean; backTo?: string;
   // Per-book progress for shelf bookmark tabs (route passes loadProgress(language.id)).
   lessonProgress?: LessonProgress[];
   // ── Bookshelf v2 (optional — absent → TOC fallback, e.g. English route) ──
@@ -39,14 +35,15 @@ interface Props {
   ) => void;
 }
 
-const CHIP =
-  "rounded-xl border-2 border-burgundy-200 bg-cream-50 px-3.5 py-2 text-sm font-bold text-burgundy-800 shadow-sm transition hover:border-burgundy-400 hover:bg-white";
+/** Base class for the desk bar's 44px icon tiles (📖 ⚙ 🎧 🌙 📊 🎯). */
+const ICON_TILE =
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-wood-300 bg-cream-50 text-lg shadow-sm transition hover:border-wood-500 hover:bg-white";
 
 export default function LessonMenu({
-  lessons,unlockedLessons,onSelectLesson,onOpenDrill,onOpenPlacement,onOpenAIPractice,onPronModeChange,
-  onOpenSettings,onOpenAudio,onOpenSleepAudio,onOpenProgress,onOpenReview,devMode=false,
+  lessons,unlockedLessons,onSelectLesson,onOpenDrill,onOpenPlacement,onOpenAIPractice,
+  onOpenSettings,onOpenAudio,onOpenSleep,onOpenProgress,onOpenReview,devMode=false,
   title="Latin 101",description="Master Latin grammar through bite-sized, interactive lessons — from first declension through passive voice, following Henle's <em>First Year Latin</em>.",
-  emoji="🏛️",showPronToggle=true,showAIPractice=true,backTo="/",lessonProgress,
+  emoji="🏛️",showAIPractice=true,backTo="/",lessonProgress,
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
 }: Props) {
   const hasShelf = (bookLessons?.length ?? 0) > 0;
@@ -79,20 +76,12 @@ export default function LessonMenu({
     if (idx >= 0) onSelectLesson(idx);
   };
 
-  const row2Members =
-    (onOpenAudio ? 1 : 0) +
-    (onOpenSleepAudio ? 1 : 0) +
-    (onOpenProgress ? 1 : 0) +
-    (onOpenReview ? 1 : 0) +
-    (showPronToggle ? 1 : 0) +
-    (onOpenSettings ? 1 : 0);
-
   return (
     <div className="min-h-dvh flex flex-col">
       <NavBar />
       <main className="flex-1 px-4 py-8 sm:py-12">
         <div className="mx-auto max-w-2xl">
-          <div className="text-center mb-10">
+          <div className="text-center mb-6">
             <span className="text-5xl mb-4 block">{emoji}</span>
             <div className="flex items-center justify-center gap-2">
               <h1 className="text-3xl font-extrabold text-burgundy-900 sm:text-4xl">{title}</h1>
@@ -103,59 +92,106 @@ export default function LessonMenu({
             <p className="mt-3 text-gray-600 leading-relaxed max-w-md mx-auto" dangerouslySetInnerHTML={{ __html: description }} />
           </div>
 
-          {/* Toolbar row 1 — primary actions */}
-          <div className="mb-4 grid gap-2 sm:grid-cols-3 sm:gap-3">
-            <button onClick={onOpenDrill} className="w-full rounded-2xl bg-gold-400 py-4 text-lg font-black text-burgundy-950 shadow-lg transition hover:bg-gold-300 hover:shadow-xl">🗡️ Drill</button>
-            {showAIPractice && (
-              <button onClick={() => onOpenAIPractice(aiTargetLessonId)} className="w-full rounded-2xl bg-purple-100 border-2 border-purple-300 py-4 text-lg font-black text-purple-800 shadow transition hover:bg-purple-200 hover:shadow-lg">🤖 AI Practice</button>
-            )}
-            <button onClick={onOpenPlacement} className="w-full rounded-2xl border-2 border-gold-600 bg-cream-50 py-4 text-lg font-black text-burgundy-800 shadow transition hover:bg-gold-50 hover:shadow-lg">📋 Placement</button>
-          </div>
-
-          {/* Toolbar row 2 — compact chips + pron toggle + settings */}
-          {row2Members > 0 && (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {onOpenAudio && <button onClick={onOpenAudio} className={CHIP}>🎧 Listen</button>}
-              {onOpenSleepAudio && <button onClick={onOpenSleepAudio} className={CHIP}>🌙 Sleep</button>}
-              {onOpenProgress && <button onClick={onOpenProgress} className={CHIP}>📊 Progress</button>}
-              {onOpenReview && <button onClick={onOpenReview} className={CHIP}>🔍 Review</button>}
-              {showPronToggle && (
-                <span className="ml-auto">
-                  <PronunciationToggle onChange={onPronModeChange} />
-                </span>
+          {/*
+            ── Desk bar (v2.1 §4.1) — integrated controls ──────────────
+            One wood-tone chrome strip anchored above the shelf: every
+            control is 44px (h-11 / w-11, glyphs text-lg). Mobile: row A =
+            search + 📖 + ⚙️, row B = the remaining actions in a 3-col grid.
+            sm+: both rows merge into one wrapping row — search · 📖 · 🗡️ ·
+            📋 · 🤖 · 🎧 · 🌙 · 📊 · 🎯 · ⚙️ (⚙️ re-orders to the end).
+            Conditional rendering unchanged: each route's prop subset renders
+            only its own tiles.
+          */}
+          <div className="desk-bar mb-4 flex flex-col gap-2 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
+            {/* Row A — search + grammar + settings */}
+            <div className="flex items-stretch gap-2 sm:contents">
+              <SearchBox
+                index={searchIndex}
+                lessons={lessons}
+                onSelectLesson={onSelectLesson}
+                onOpenGrammar={openGrammarTopic}
+                onOpenExplore={openExploreBook}
+                className="min-w-[180px]"
+              />
+              {grammarTopics && grammarTopics.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  title="Grammar Index"
+                  aria-label="Open Grammar Index"
+                  className={ICON_TILE}
+                >
+                  📖
+                </button>
               )}
               {onOpenSettings && (
-                <button onClick={onOpenSettings} title="Settings" aria-label="Settings" className="flex w-14 items-center justify-center self-stretch rounded-xl border-2 border-gray-300 bg-white text-xl text-gray-500 shadow-sm transition hover:border-gray-400 hover:bg-cream-50 hover:text-burgundy-700">⚙️</button>
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  title="Settings"
+                  aria-label="Settings"
+                  className={`${ICON_TILE} sm:order-10`}
+                >
+                  ⚙️
+                </button>
               )}
             </div>
-          )}
+
+            {/* Row B — remaining actions (3-col grid on mobile) */}
+            <div className="grid grid-cols-3 gap-2 sm:contents">
+              <button
+                type="button"
+                onClick={onOpenDrill}
+                className="flex h-11 flex-col items-center justify-center gap-0 rounded-xl bg-gold-400 px-1 text-burgundy-950 shadow transition hover:bg-gold-300 sm:flex-row sm:gap-1.5 sm:px-4"
+              >
+                <span aria-hidden="true" className="text-lg leading-none">🗡️</span>
+                <span className="text-[10px] font-black leading-tight sm:text-base">Drill</span>
+              </button>
+              {showAIPractice && (
+                <button
+                  type="button"
+                  onClick={() => onOpenAIPractice(aiTargetLessonId)}
+                  className="flex h-11 flex-col items-center justify-center gap-0 rounded-xl border-2 border-purple-300 bg-purple-100 px-1 text-purple-800 shadow-sm transition hover:bg-purple-200 sm:flex-row sm:gap-1.5 sm:px-4"
+                >
+                  <span aria-hidden="true" className="text-lg leading-none">🤖</span>
+                  <span className="text-[10px] font-black leading-tight sm:text-base">AI Practice</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onOpenPlacement}
+                className="flex h-11 flex-col items-center justify-center gap-0 rounded-xl border-2 border-gold-600 bg-cream-50 px-1 text-burgundy-800 shadow-sm transition hover:bg-gold-50 sm:flex-row sm:gap-1.5 sm:px-4"
+              >
+                <span aria-hidden="true" className="text-lg leading-none">📋</span>
+                <span className="text-[10px] font-black leading-tight sm:text-base">Placement</span>
+              </button>
+              {onOpenAudio && (
+                <button type="button" onClick={onOpenAudio} title="Listen" aria-label="Listen" className={ICON_TILE}>
+                  🎧
+                </button>
+              )}
+              {onOpenSleep && (
+                <button type="button" onClick={onOpenSleep} title="Sleep" aria-label="Sleep" className={ICON_TILE}>
+                  🌙
+                </button>
+              )}
+              {onOpenProgress && (
+                <button type="button" onClick={onOpenProgress} title="Progress" aria-label="Progress" className={ICON_TILE}>
+                  📊
+                </button>
+              )}
+              {onOpenReview && (
+                <button type="button" onClick={onOpenReview} title="Review" aria-label="Review" className={ICON_TILE}>
+                  🎯
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Reserved slot for daily-lesson / improvement-streak cards */}
           {menuCards && (
             <div className="mb-4 grid gap-3 sm:grid-cols-2">{menuCards}</div>
           )}
-
-          {/* Search row + grammar drawer opener */}
-          <div className="mb-6 flex items-stretch gap-2">
-            <SearchBox
-              index={searchIndex}
-              lessons={lessons}
-              onSelectLesson={onSelectLesson}
-              onOpenGrammar={openGrammarTopic}
-              onOpenExplore={openExploreBook}
-            />
-            {grammarTopics && grammarTopics.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(true)}
-                title="Grammar Index"
-                aria-label="Open Grammar Index"
-                className="flex w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-burgundy-200 bg-cream-50 text-lg shadow-sm transition hover:border-burgundy-400 hover:bg-white"
-              >
-                📖
-              </button>
-            )}
-          </div>
 
           {/* Shelf area: v2 packed shelves when bookLessons is present, else TOC */}
           {hasShelf ? (

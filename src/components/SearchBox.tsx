@@ -25,6 +25,8 @@ interface Props {
   onSelectLesson: (idx: number) => void;
   onOpenGrammar: (topicId: string) => void;
   onOpenExplore: (sideLessonId: number) => void;
+  /** Extra classes merged onto the root (desk bar sizing, e.g. min-w). */
+  className?: string;
 }
 
 export default function SearchBox({
@@ -33,6 +35,7 @@ export default function SearchBox({
   onSelectLesson,
   onOpenGrammar,
   onOpenExplore,
+  className,
 }: Props) {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -110,7 +113,7 @@ export default function SearchBox({
     lessons.find((l) => l.id === lessonId)?.title ?? "";
 
   return (
-    <div ref={rootRef} className="relative flex-1">
+    <div ref={rootRef} className={`relative flex-1 ${className ?? ""}`}>
       <div className="relative">
         <span
           aria-hidden="true"
