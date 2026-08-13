@@ -14,7 +14,7 @@
  * from the free drill engine and enter the existing drill screen with
  * optional DrillView meta (title/reference/exitLabel).
  */
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 
 import latinLessons from "~/data/latinLessons";
@@ -81,7 +81,6 @@ function LatinLessons() {
   const placement = usePlacementEngine(placementQuestions, totalLevels, language.id);
   const settingsEngine = useSettings(language.id);
   const pronMode = settingsEngine.settings.pronMode;
-  const navigate = useNavigate();
 
   // ── Route-local UI state ─────────────────────────────────────
   const [drillMode, setDrillMode] = useState<DrillKind | "mixed">("mixed");
@@ -364,13 +363,11 @@ function LatinLessons() {
           onOpenDrill={openDrill}
           onOpenPlacement={lesson.goToPlacement}
           onOpenAIPractice={openAIPractice}
-          onPronModeChange={(mode) => settingsEngine.updateSettings({ pronMode: mode })}
           onOpenSettings={() => setShowSettings(true)}
           onOpenAudio={() => setShowAudio(true)}
-          onOpenSleepAudio={() => setShowSleepAudio(true)}
+          onOpenSleep={() => setShowSleepAudio(true)}
           onOpenProgress={() => setShowProgress(true)}
           onOpenReview={() => setShowReview(true)}
-          onOpenExplore={() => navigate({ to: "/lessons/latin/explore" })}
           devMode={settingsEngine.settings.devMode}
           lessonProgress={loadProgress(language.id)}
           bookLessons={bookLessons}
