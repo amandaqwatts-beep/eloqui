@@ -320,15 +320,25 @@ function BookshelfV2({
   packedRef.current = packed;
 
   // Auto-open on mount / unlockedLessons change: scroll the packed shelf
-  // containing the current unit into view (instant — reduced-motion safe),
-  // then expand the current book.
+  // containing the frontier unit into view (instant — reduced-motion safe),
+  // expand the frontier book, then bring the frontier chapter ROW into view
+  // (spec §2.2 / audit F2-retargeted: with the "current" marker gone the row
+  // itself is where the student actually is; block:"nearest" keeps it inside
+  // the fold without yanking the page). The timeout lets the panel commit
+  // after setExpandedBookKey. `capacity` is a dependency (F15) so the
+  // capacity-8 → measured re-pack re-scrolls instead of orphaning the target.
   useEffect(() => {
     if (!currentBook) return;
     const shelf = packedRef.current.find((p) => p.units.some((u) => u.unit === currentBook!.unit));
     const el = shelf ? shelfRefs.current.get(shelf.shelfIndex) : null;
     if (el) el.scrollIntoView({ block: "start" });
     setExpandedBookKey(currentBook.bookKey);
-  }, [currentBook]);
+    const t = window.setTimeout(() => {
+      const frontierRow = document.querySelector<HTMLElement>("[data-frontier]");
+      frontierRow?.scrollIntoView({ block: "nearest" });
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [currentBook, capacity]);
 
   // focusRequest (search / explore navigation): same scroll + expand for the
   // requested book, re-fired when the nonce bumps.
@@ -346,47 +356,63 @@ function BookshelfV2({
 
   return (
     <div ref={capacityRef} className="library-wall space-y-9">
-      {packed.map((shelf) => (
-        <section
-          key={shelf.shelfIndex}
-          ref={(el) => {
-            if (el) shelfRefs.current.set(shelf.shelfIndex, el);
-            else shelfRefs.current.delete(shelf.shelfIndex);
-          }}
-          aria-label={`Shelf ${shelf.shelfIndex + 1} — Units ${shelf.units.map((u) => u.unit).join(", ")}`}
-          className="scroll-mt-24"
-        >
-          <div className="flex flex-wrap items-end gap-3">
-            {shelf.units.map((pu, ui) => (
-              <Fragment key={pu.unit}>
-                {ui > 0 && (
-                  <div aria-hidden="true" className="w-px self-stretch bg-amber-900/25" />
-                )}
-                <UnitCluster
-                  unit={pu.unit}
-                  books={booksByUnit.get(pu.unit) ?? []}
-                  lessons={lessons}
-                  idToIdx={idToIdx}
-                  progressById={progressById}
-                  sideLessonById={sideLessonById}
-                  unlockedLessons={unlockedLessons}
-                  currentIdx={currentIdx}
-                  currentBookKey={currentBook?.bookKey}
-                  expandedBookKey={expandedBookKey}
-                  openCultureId={openCultureId}
-                  setExpandedBookKey={setExpandedBookKey}
-                  setOpenCultureId={setOpenCultureId}
-                  onSelectLesson={onSelectLesson}
-                  onCultureResult={onCultureResult}
-                  isLocked={isLocked}
-                />
-              </Fragment>
-            ))}
-          </div>
-          {/* Shelf board */}
-          <div className="shelf-board" />
-        </section>
-      ))}
+      {packed.map((shelf) => {
+        // F1 — the expansion panel renders at shelf level (below the book
+        // row, before the board), so it spans the full shelf width instead of
+        // being trapped inside a unit cluster's flex row (which capped it at
+        // the cluster width and misaligned sibling clusters via items-end).
+        const shelfExpandedBook = shelf.units
+          .flatMap((u) => booksByUnit.get(u.unit) ?? [])
+          .find((b) => b.bookKey === expandedBookKey);
+        return (
+          <section
+            key={shelf.shelfIndex}
+            ref={(el) => {
+              if (el) shelfRefs.current.set(shelf.shelfIndex, el);
+              else shelfRefs.current.delete(shelf.shelfIndex);
+            }}
+            aria-label={`Shelf ${shelf.shelfIndex + 1} — Units ${shelf.units.map((u) => u.unit).join(", ")}`}
+            className="scroll-mt-24"
+          >
+            <div className="flex flex-wrap items-start gap-3">
+              {shelf.units.map((pu, ui) => (
+                <Fragment key={pu.unit}>
+                  {ui > 0 && (
+                    <div aria-hidden="true" className="w-px self-stretch bg-amber-900/25" />
+                  )}
+                  <UnitCluster
+                    unit={pu.unit}
+                    books={booksByUnit.get(pu.unit) ?? []}
+                    progressById={progressById}
+                    currentBookKey={currentBook?.bookKey}
+                    expandedBookKey={expandedBookKey}
+                    setExpandedBookKey={setExpandedBookKey}
+                    isLocked={isLocked}
+                  />
+                </Fragment>
+              ))}
+            </div>
+            {shelfExpandedBook && (
+              <ExpansionPanel
+                key={shelfExpandedBook.bookKey}
+                book={shelfExpandedBook}
+                lessons={lessons}
+                idToIdx={idToIdx}
+                progressById={progressById}
+                sideLessonById={sideLessonById}
+                unlockedLessons={unlockedLessons}
+                currentIdx={currentIdx}
+                openCultureId={openCultureId}
+                setOpenCultureId={setOpenCultureId}
+                onSelectLesson={onSelectLesson}
+                onCultureResult={onCultureResult}
+              />
+            )}
+            {/* Shelf board */}
+            <div className="shelf-board" />
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -394,41 +420,22 @@ function BookshelfV2({
 interface ClusterProps {
   unit: number;
   books: ShelfBook[];
-  lessons: Lesson[];
-  idToIdx: Map<number, number>;
   progressById: Map<number, LessonProgress>;
-  sideLessonById: Map<number, SideLesson>;
-  unlockedLessons: number;
-  currentIdx: number;
   currentBookKey?: string;
   expandedBookKey: string | null;
-  openCultureId: string | null;
   setExpandedBookKey: (key: string | null) => void;
-  setOpenCultureId: (id: string | null) => void;
-  onSelectLesson: (idx: number) => void;
-  onCultureResult?: BookshelfProps["onCultureResult"];
   isLocked: (book: ShelfBook) => boolean;
 }
 
 function UnitCluster({
   unit,
   books,
-  lessons,
-  idToIdx,
   progressById,
-  sideLessonById,
-  unlockedLessons,
-  currentIdx,
   currentBookKey,
   expandedBookKey,
-  openCultureId,
   setExpandedBookKey,
-  setOpenCultureId,
-  onSelectLesson,
-  onCultureResult,
   isLocked,
 }: ClusterProps) {
-  const expandedBook = books.find((b) => b.bookKey === expandedBookKey);
   return (
     <div className="flex max-w-full flex-none flex-col">
       <h3 className="mb-1 text-[10px] font-black uppercase tracking-wider text-burgundy-800">
@@ -442,6 +449,7 @@ function UnitCluster({
             locked={isLocked(book)}
             isCurrent={book.bookKey === currentBookKey}
             bookmark={bookmarkFor(book, progressById)}
+            progress={chapterProgress(book, progressById)}
             expanded={expandedBookKey === book.bookKey}
             onToggle={() =>
               setExpandedBookKey(expandedBookKey === book.bookKey ? null : book.bookKey)
@@ -449,21 +457,6 @@ function UnitCluster({
           />
         ))}
       </div>
-      {expandedBook && (
-        <ExpansionPanel
-          book={expandedBook}
-          lessons={lessons}
-          idToIdx={idToIdx}
-          progressById={progressById}
-          sideLessonById={sideLessonById}
-          unlockedLessons={unlockedLessons}
-          currentIdx={currentIdx}
-          openCultureId={openCultureId}
-          setOpenCultureId={setOpenCultureId}
-          onSelectLesson={onSelectLesson}
-          onCultureResult={onCultureResult}
-        />
-      )}
     </div>
   );
 }
@@ -477,6 +470,14 @@ function bookmarkFor(book: ShelfBook, progressById: Map<number, LessonProgress>)
   if (entries.length < book.chapterIds.length) return "pale";
   const avg = entries.reduce((s, p) => s + p.bestScore, 0) / entries.length;
   return avg >= 80 ? "gold" : "pale";
+}
+
+/** Completed/total chapter ratio (0..1) for the spine progress strip
+ *  (spec §2.1, optional: a subtle wood-tone fill along the spine foot). */
+function chapterProgress(book: ShelfBook, progressById: Map<number, LessonProgress>): number {
+  if (book.chapterIds.length === 0) return 0;
+  const done = book.chapterIds.filter((id) => progressById.get(id)?.completed).length;
+  return done / book.chapterIds.length;
 }
 
 /** F6 — reword the book subtitle's "IDs 1–5" developer jargon into a
@@ -500,6 +501,7 @@ function Spine({
   locked,
   isCurrent,
   bookmark,
+  progress,
   expanded,
   onToggle,
 }: {
@@ -507,6 +509,8 @@ function Spine({
   locked: boolean;
   isCurrent: boolean;
   bookmark: BookmarkTone;
+  /** Completed/total chapter ratio (0..1) — drives the spine progress strip. */
+  progress: number;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -611,6 +615,21 @@ function Spine({
           <span className="spine-label text-[10px] leading-none sm:text-xs">{label}</span>
         )}
       </span>
+      {/* §2.1 — subtle wood-tone progress strip along the spine foot:
+          completed/total chapters (bookmark aggregates already encode
+          complete/partial; this adds the aggregate as a thin fill). Sits
+          just above the `.spine::after` binding band. */}
+      {progress > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0.5 h-0.5 bg-black/15"
+        >
+          <span
+            className="block h-full bg-wood-400"
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </span>
+      )}
     </button>
   );
 }
@@ -685,25 +704,34 @@ function ExpansionPanel({
             const lesson = lessons[idx];
             if (!lesson) return null;
             const locked = idx >= unlockedLessons;
-            const isCurrent = idx === currentIdx;
+            // Frontier = first unlocked chapter with no completion. With
+            // contiguous-prefix unlocks the frontier chapter row is the
+            // student's actual place — the auto-scroll targets it via
+            // data-frontier (spec §2.2 / F2-retargeted). No "current" marker
+            // is rendered (owner point 2): the row states are complete /
+            // available-incomplete / locked, nothing else.
+            const isFrontier = idx === currentIdx;
             const p = progressById.get(id);
-            const chip = p?.completed
-              ? p.bestScore >= 80
-                ? "bg-gold-400"
-                : "bg-gold-200"
-              : "bg-burgundy-100 text-burgundy-600";
+            // Number chip by bookmark: gold ≥80 / pale <80 / burgundy
+            // (available-incomplete) / gray + 🔒 (locked).
+            const chip = locked
+              ? "bg-gray-100 text-gray-400"
+              : p?.completed
+                ? p.bestScore >= 80
+                  ? "bg-gold-400 text-burgundy-950"
+                  : "bg-gold-200 text-burgundy-900"
+                : "bg-burgundy-100 text-burgundy-600";
             return (
               <button
                 key={id}
                 type="button"
+                data-frontier={isFrontier ? "true" : undefined}
                 onClick={() => onSelectLesson(idx)}
                 disabled={locked}
                 className={`flex w-full items-center gap-3 rounded-xl border-2 p-2.5 text-left transition ${
                   locked
                     ? "cursor-not-allowed border-gray-100 bg-gray-50 opacity-50"
-                    : isCurrent
-                      ? "translate-x-1 border-gold-500 bg-white shadow-md ring-1 ring-gold-500"
-                      : "border-transparent bg-white hover:border-burgundy-300 hover:shadow-sm"
+                    : "border-transparent bg-white hover:border-burgundy-300 hover:shadow-sm"
                 }`}
               >
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${chip}`}>
@@ -717,11 +745,6 @@ function ExpansionPanel({
                     <span className="block truncate text-xs text-gray-500">{lesson.subtitle}</span>
                   )}
                 </span>
-                {isCurrent && (
-                  <span className="shrink-0 rounded-full bg-gold-100 px-2 py-0.5 text-[10px] font-bold text-gold-800">
-                    Current
-                  </span>
-                )}
               </button>
             );
           })}
