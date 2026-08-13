@@ -28,6 +28,7 @@ export const STORAGE_KEYS = {
   DIAGNOSTICS: "verbum-diagnostics",
   IMPROVEMENT_STREAK: "verbum-streak",
   SLEEP_AUDIO: "verbum-sleep-audio",
+  UNIT_REVIEW: "verbum-unit-review",
   // Owned by progress.ts, which writes them directly (bypassing this module);
   // listed here so clearAllData wipes them too, incl. legacy unscoped Latin.
   PROGRESS: "verbum-progress",
@@ -290,4 +291,64 @@ export function recordSleepSession(partial: { durationSec: number; items: number
   payload.stats.totalListenSeconds += partial.durationSec;
   payload.stats.totalSessions += 1;
   saveSleepAudio(payload, language);
+}
+
+// ── Unit-review storage (owner direction 2026-08-12) ─────────────
+// Per-unit review completion under verbum-unit-review-<lang>. Key separation:
+// review progress NEVER enters verbum-progress, so getDashboardStats.
+// lessonsCompleted and the book bookmarks stay untouched (design §2.4).
+// clearAllData wipes it via the STORAGE_KEYS iteration (storage.ts:158-161).
+
+export const UNIT_REVIEW_SCHEMA_VERSION = 1;
+
+export interface UnitReviewCompletedEntry {
+  completedAt: string; // ISO UTC
+  score: number; // fraction correct 0..1
+  timesCompleted: number;
+}
+
+/** Persisted payload: version inside, key stable across versions. */
+export interface UnitReviewPayload {
+  v: number;
+  /** key = String(unitNumber). */
+  completed: Record<string, UnitReviewCompletedEntry>;
+}
+
+/** Corrupt/absent payload → empty map, never throws (loadStreakHistory pattern). */
+export function loadUnitReviews(language: Language = "latin"): UnitReviewPayload {
+  const raw = loadJSON<unknown>(STORAGE_KEYS.UNIT_REVIEW, null, language);
+  if (!raw || typeof raw !== "object") return { v: UNIT_REVIEW_SCHEMA_VERSION, completed: {} };
+  const p = raw as Partial<UnitReviewPayload>;
+  const completed: Record<string, UnitReviewCompletedEntry> = {};
+  if (p.completed && typeof p.completed === "object") {
+    for (const [k, v] of Object.entries(p.completed)) {
+      const e = v as Partial<UnitReviewCompletedEntry> | undefined;
+      if (e && typeof e.completedAt === "string" && typeof e.score === "number" && typeof e.timesCompleted === "number") {
+        completed[k] = { completedAt: e.completedAt, score: e.score, timesCompleted: e.timesCompleted };
+      }
+    }
+  }
+  return { v: UNIT_REVIEW_SCHEMA_VERSION, completed };
+}
+
+export function saveUnitReviews(payload: UnitReviewPayload, language: Language = "latin"): void {
+  saveJSON(STORAGE_KEYS.UNIT_REVIEW, payload, language);
+}
+
+/**
+ * Idempotent upsert by unitNumber (StrictMode double-invoke safe, risk 2).
+ * Fired from the completion EVENT HANDLER (never render-body side effects —
+ * risk 2), so a double invoke converges on one entry. Never calls saveProgress.
+ */
+export function recordUnitReviewCompletion(unitNumber: number, score: number, language: Language = "latin"): void {
+  if (!isClient()) return;
+  const payload = loadUnitReviews(language);
+  const key = String(unitNumber);
+  const prev = payload.completed[key];
+  payload.completed[key] = {
+    completedAt: new Date().toISOString(),
+    score: Math.max(0, Math.min(1, score)),
+    timesCompleted: (prev?.timesCompleted ?? 0) + 1,
+  };
+  saveUnitReviews(payload, language);
 }

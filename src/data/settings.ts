@@ -65,3 +65,13 @@ export const SLEEP_AUDIO_MISTAKE_BOOST = 1;
 export const SLEEP_AUDIO_MAX_WEIGHT = 5;
 export const SLEEP_AUDIO_WORST_LIMIT = 20; // getWorstAreas limit
 export const SLEEP_AUDIO_PAIR_LIMIT = 10; // getConfusionPairs limit
+// ── Review-system rework (owner direction 2026-08-12) ───────────
+// Unbounded translation generation over the learned universe + 14 per-unit
+// reviews (research/review-system-rework-design.md §1–§2). Tunable without
+// code changes.
+export const UNIT_REVIEW_ITEM_COUNT = 10; // items per unit review
+export const UNIT_REVIEW_PASS_THRESHOLD = 0.8; // fraction correct to pass
+export const TRANSLATION_TOKEN_OVERLAP = 0.6; // checkTranslation token-set threshold
+export const AI_CONTEXT_WORD_CAP = 300; // universe word list cap for the AI seam (P2)
+export const UNIT_REVIEW_CANDIDATE_POOL = 12; // MC distractor candidate pool cap
+export const TRANSLATION_DIRECTION_SWITCH = 0.5; // difficulty at which production direction starts
