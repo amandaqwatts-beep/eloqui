@@ -187,6 +187,9 @@ export default function SearchBox({
                       {sub}
                       {host ? ` · ${host}` : ""}
                     </span>
+                    <span className="mt-0.5 block truncate text-xs text-gray-400">
+                      {result.match}
+                    </span>
                   </span>
                   <span aria-hidden="true" className="mt-0.5 text-[10px] text-gray-300">
                     ↵

@@ -33,7 +33,9 @@ import type { ExerciseResultDetail } from "~/engine/types";
 import { buildBookshelfModel, type ShelfBook } from "~/lib/bookshelfModel";
 import { packShelves, type PackableUnit } from "~/lib/shelfPacking";
 import { useBookshelfCapacity } from "~/lib/useBookshelfCapacity";
+import { CULTURE_TEACHING } from "~/data/cultureTeaching";
 import CultureQuestion from "~/components/CultureQuestion";
+import TeachingStepCard from "~/components/TeachingStepCard";
 import MultipleChoice from "~/components/MultipleChoice";
 import MatchingPairs from "~/components/MatchingPairs";
 
@@ -321,7 +323,6 @@ function BookshelfV2({
     : undefined;
 
   const [expandedBookKey, setExpandedBookKey] = useState<string | null>(null);
-  const [openCultureId, setOpenCultureId] = useState<string | null>(null);
   const shelfRefs = useRef(new Map<number, HTMLElement | null>());
   const packedRef = useRef(packed);
   packedRef.current = packed;
@@ -425,8 +426,6 @@ function BookshelfV2({
                 sideLessonById={sideLessonById}
                 unlockedLessons={unlockedLessons}
                 currentIdx={currentIdx}
-                openCultureId={openCultureId}
-                setOpenCultureId={setOpenCultureId}
                 onSelectLesson={onSelectLesson}
                 onCultureResult={onCultureResult}
               />
@@ -665,8 +664,6 @@ function ExpansionPanel({
   sideLessonById,
   unlockedLessons,
   currentIdx,
-  openCultureId,
-  setOpenCultureId,
   onSelectLesson,
   onCultureResult,
 }: {
@@ -677,8 +674,6 @@ function ExpansionPanel({
   sideLessonById: Map<number, SideLesson>;
   unlockedLessons: number;
   currentIdx: number;
-  openCultureId: string | null;
-  setOpenCultureId: (id: string | null) => void;
   onSelectLesson: (idx: number) => void;
   onCultureResult?: BookshelfProps["onCultureResult"];
 }) {
@@ -709,8 +704,6 @@ function ExpansionPanel({
         <CulturePanel
           book={book}
           lessons={lessons}
-          openCultureId={openCultureId}
-          setOpenCultureId={setOpenCultureId}
           onCultureResult={onCultureResult}
         />
       ) : book.kind === "explore" ? (
@@ -786,79 +779,332 @@ const UNIT_CULTURE_INTROS: Record<number, string> = {
   4: "The past and the family: Hannibal, schooling, the household, and Roman names.",
   5: "Slavery and freedom: manumission, the familia, the freedman, and Spartacus.",
 };
+
+/** One culture-book entry: a culture-question exercise + its host lesson id. */
+interface CultureEntry {
+  hostLessonId: number;
+  exerciseId: string;
+  exercise: CultureQuestionExercise;
+}
+
+/**
+ * Dense culture book (PR-E / owner point 3): read-then-quiz, one book per unit.
+ *
+ * LEARN — the unit's CULTURE_TEACHING bundles as accordion sections, one open
+ * at a time (auto-open section 1). Each section names its host lesson so a
+ * locked host still gives the student context (F9). "Skip to practice →" is
+ * always available at the top — enrichment, never gated.
+ *
+ * PRACTICE — the unit's quizzes one at a time: the bundle's advisory check,
+ * then the quiz via CultureQuestion with teaching skipped (startAt="quiz").
+ * After submit: existing feedback + fact-check caption + "Next section →"
+ * (or "Finish" on the last). Completion footer: nothing saved to progress.
+ *
+ * Enrichment policy: every question is playable regardless of host-lesson
+ * lock, and onComplete/onResult fire only on quiz submit (diagnostics only —
+ * no progress writes, unchanged).
+ */
 function CulturePanel({
   book,
   lessons,
-  openCultureId,
-  setOpenCultureId,
   onCultureResult,
 }: {
   book: ShelfBook;
   lessons: Lesson[];
-  openCultureId: string | null;
-  setOpenCultureId: (id: string | null) => void;
   onCultureResult?: BookshelfProps["onCultureResult"];
 }) {
-  const questions = (book.content && "questions" in book.content ? book.content.questions : []).map(
-    (q) => {
+  const questions: CultureEntry[] = (
+    book.content && "questions" in book.content ? book.content.questions : []
+  )
+    .map((q) => {
       const host = lessons.find((l) => l.id === q.hostLessonId);
       const exercise = host?.exercises.find((e) => e.id === q.exerciseId);
-      return { ...q, exercise, host };
-    },
-  );
-  return (
+      return exercise?.type === "culture-question"
+        ? { hostLessonId: q.hostLessonId, exerciseId: q.exerciseId, exercise }
+        : null;
+    })
+    .filter((q): q is CultureEntry => q !== null);
+
+  const [phase, setPhase] = useState<"learn" | "practice">("learn");
+  const [openSection, setOpenSection] = useState(0);
+  const [readUpTo, setReadUpTo] = useState(0); // sections < readUpTo carry "✓ read"
+  const [quizIdx, setQuizIdx] = useState(0);
+  const [checkSelected, setCheckSelected] = useState<number | null>(null);
+  const [checkGraded, setCheckGraded] = useState(false);
+  const [checkDone, setCheckDone] = useState(false);
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [finished, setFinished] = useState(false);
+
+  if (questions.length === 0) {
+    return <p className="text-sm text-gray-400">No culture questions for this unit.</p>;
+  }
+  const total = questions.length;
+  const sectionNo = phase === "learn" ? openSection : quizIdx;
+  const bundleTitle = (i: number) =>
+    CULTURE_TEACHING[questions[i].exerciseId]?.steps[0]?.title ?? "Culture Corner";
+
+  // Theme intro — prefer a bundle `unitIntro` if the data ever carries one
+  // (PR3 stub field), falling back to the unit map.
+  const intro =
+    (CULTURE_TEACHING[questions[0].exerciseId] as { unitIntro?: string } | undefined)
+      ?.unitIntro ?? UNIT_CULTURE_INTROS[book.unit];
+
+  const startPractice = () => {
+    setPhase("practice");
+    setQuizIdx(0);
+    setCheckSelected(null);
+    setCheckGraded(false);
+    setCheckDone(false);
+    setQuizSubmitted(false);
+    setFinished(false);
+  };
+
+  const handleSectionNext = () => {
+    setReadUpTo((r) => Math.max(r, openSection + 1));
+    if (openSection < total - 1) setOpenSection(openSection + 1);
+    else startPractice();
+  };
+
+  const handleQuizNext = () => {
+    if (quizIdx < total - 1) {
+      setQuizIdx(quizIdx + 1);
+      setCheckSelected(null);
+      setCheckGraded(false);
+      setCheckDone(false);
+      setQuizSubmitted(false);
+    } else {
+      setFinished(true);
+    }
+  };
+
+  const header = (
     <div className="space-y-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">
-        🏛️ Culture Corner · Learn &amp; Practice
+        🏛️ Rēs Rōmānae · Culture Book
       </p>
-      {UNIT_CULTURE_INTROS[book.unit] && (
+      {intro && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <span className="font-bold">Rēs Rōmānae · Unit {book.unit}:</span>{" "}
-          {UNIT_CULTURE_INTROS[book.unit]}
+          <span className="font-bold">Unit {book.unit}:</span> {intro}
         </p>
       )}
-      {questions.map(({ hostLessonId, exerciseId, exercise, host }) =>
-        exercise?.type !== "culture-question" || !host ? null : (
-          <div
-            key={exerciseId}
-            className="rounded-xl border border-burgundy-100 bg-white p-3"
+      <p className="text-xs font-semibold text-burgundy-900">
+        Section {sectionNo + 1} of {total} · {bundleTitle(sectionNo)}
+      </p>
+    </div>
+  );
+
+  // ── LEARN: the unit's teaching bundles as accordion sections ──────────────
+  if (phase === "learn") {
+    return (
+      <div className="max-h-[600px] space-y-3 overflow-y-auto pr-1">
+        {header}
+        <button
+          type="button"
+          onClick={startPractice}
+          className="block text-xs font-semibold text-burgundy-600 transition hover:text-burgundy-800"
+        >
+          Skip to practice →
+        </button>
+        <div className="space-y-2">
+          {questions.map((q, i) => {
+            const bundle = CULTURE_TEACHING[q.exerciseId];
+            const isOpen = openSection === i;
+            const isRead = i < readUpTo && !isOpen;
+            return (
+              <div
+                key={q.exerciseId}
+                className={`overflow-hidden rounded-xl border bg-white transition ${
+                  isOpen ? "border-gold-300" : "border-burgundy-100"
+                }`}
+              >
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenSection(i)}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+                >
+                  <span
+                    className={`shrink-0 text-xs font-bold ${
+                      isOpen ? "text-gold-700" : "text-gray-400"
+                    }`}
+                  >
+                    {isOpen ? "▾" : "▸"}
+                  </span>
+                  <span className="min-w-0 flex-1 text-xs font-bold text-burgundy-900">
+                    {i + 1} · {bundleTitle(i)} — from Lesson {q.hostLessonId}
+                  </span>
+                  {isRead && (
+                    <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                      ✓ read
+                    </span>
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="space-y-3 border-t border-burgundy-100 p-3">
+                    {bundle && bundle.steps.length > 0 ? (
+                      <>
+                        {bundle.steps.map((step, si) => (
+                          <TeachingStepCard
+                            key={si}
+                            step={step}
+                            index={si + 1}
+                            total={bundle.steps.length}
+                          />
+                        ))}
+                        {bundle.sources.length > 0 && (
+                          <p className="text-xs text-gray-500">
+                            Fact check: {bundle.sources.join(" · ")}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        No teaching cards for this question yet — jump to
+                        practice.
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSectionNext}
+                      className="w-full rounded-xl bg-burgundy-700 py-2.5 text-sm font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
+                    >
+                      {i < total - 1 ? "Next section →" : "Start practice →"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── PRACTICE: advisory check → quiz (teaching skipped) → next ────────────
+  const q = questions[quizIdx];
+  const bundle = CULTURE_TEACHING[q.exerciseId];
+  const check = bundle?.check;
+  const checkCorrect = checkSelected === check?.correctIndex;
+
+  return (
+    <div className="max-h-[600px] space-y-3 overflow-y-auto pr-1">
+      {header}
+      <button
+        type="button"
+        onClick={() => setPhase("learn")}
+        className="block text-xs font-semibold text-gray-400 transition hover:text-burgundy-600"
+      >
+        ← Back to read
+      </button>
+      {finished ? (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
+          <span className="mb-1 block text-3xl">🏛️</span>
+          <p className="text-sm font-bold text-burgundy-900">
+            Unit {book.unit} culture complete — {total}/{total}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">nothing saved to progress</p>
+          <button
+            type="button"
+            onClick={() => setPhase("learn")}
+            className="mt-3 rounded-xl border-2 border-burgundy-200 bg-white px-4 py-1.5 text-xs font-semibold text-burgundy-700 transition hover:border-burgundy-400"
           >
+            ↻ Read again
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {check && !checkDone && (
+            <div className="rounded-3xl border border-burgundy-200 bg-white p-4 shadow-sm">
+              <p className="text-sm font-medium leading-relaxed text-burgundy-900">
+                {check.question}
+              </p>
+              <div className="mt-3 space-y-2">
+                {check.options.map((opt, idx) => {
+                  let btnClass =
+                    "w-full text-left rounded-xl border-2 px-3 py-2 text-sm font-medium transition-all duration-200 ";
+                  if (!checkGraded) {
+                    if (checkSelected === idx) {
+                      btnClass +=
+                        "border-burgundy-500 bg-burgundy-50 text-burgundy-900 shadow-sm";
+                    } else {
+                      btnClass +=
+                        "border-gray-200 bg-white text-gray-700 hover:border-burgundy-300 hover:bg-cream-50 cursor-pointer";
+                    }
+                  } else {
+                    if (idx === check.correctIndex) {
+                      btnClass += "border-green-500 bg-green-50 text-green-800";
+                    } else if (checkSelected === idx) {
+                      btnClass += "border-red-400 bg-red-50 text-red-700";
+                    } else {
+                      btnClass += "border-gray-200 bg-white text-gray-400";
+                    }
+                  }
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        if (checkGraded) return;
+                        setCheckSelected(idx);
+                        setCheckGraded(true);
+                      }}
+                      disabled={checkGraded}
+                      className={btnClass}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold">
+                          {String.fromCharCode(65 + idx)}
+                        </span>
+                        {opt}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {checkGraded && (
+                <p
+                  className={`mt-3 rounded-xl border p-3 text-xs font-medium leading-relaxed ${
+                    checkCorrect
+                      ? "border-green-300 bg-green-50 text-green-800"
+                      : "border-red-300 bg-red-50 text-red-700"
+                  }`}
+                >
+                  {checkCorrect ? "✅ Correct! " : "❌ Not quite. "}
+                  {check.explanation}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setCheckDone(true)}
+                className="mt-3 w-full rounded-xl bg-burgundy-700 py-2.5 text-sm font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
+              >
+                Continue to the question →
+              </button>
+            </div>
+          )}
+          {(!check || checkDone) && (
+            <div className="rounded-xl border border-burgundy-100 bg-white p-3">
+              <CultureQuestion
+                key={q.exerciseId}
+                exercise={q.exercise}
+                startAt="quiz"
+                onComplete={() => setQuizSubmitted(true)}
+                onResult={(detail) =>
+                  onCultureResult?.(q.exercise, q.hostLessonId, detail)
+                }
+              />
+            </div>
+          )}
+          {quizSubmitted && (
             <button
               type="button"
-              aria-expanded={openCultureId === exerciseId}
-              onClick={() =>
-                setOpenCultureId(openCultureId === exerciseId ? null : exerciseId)
-              }
-              className="flex w-full items-start gap-2 text-left"
+              onClick={handleQuizNext}
+              className="w-full rounded-xl bg-burgundy-700 py-2.5 text-sm font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
             >
-              <span className="mt-0.5 text-xs font-bold text-gray-400">
-                {openCultureId === exerciseId ? "▾" : "▸"}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-bold text-burgundy-900">
-                  Culture Corner · {exercise.domain}
-                </span>
-                <span className="mt-0.5 line-clamp-2 block text-xs text-gray-600">
-                  {exercise.prompt}
-                </span>
-              </span>
+              {quizIdx < total - 1 ? "Next section →" : "Finish"}
             </button>
-            {openCultureId === exerciseId && (
-              <div className="mt-3 border-t border-burgundy-100 pt-3">
-                <CultureQuestion
-                  key={exerciseId}
-                  exercise={exercise}
-                  onComplete={() => {
-                    /* nothing persisted — diagnostics only */
-                  }}
-                  onResult={(detail) =>
-                    onCultureResult?.(exercise, hostLessonId, detail)
-                  }
-                />
-              </div>
-            )}
-          </div>
-        ),
+          )}
+        </div>
       )}
     </div>
   );

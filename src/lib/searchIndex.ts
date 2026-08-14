@@ -81,11 +81,32 @@ interface IndexEntry {
   titleRank: number;
 }
 
+/**
+ * Module-level memo (PR-E / F11): the index is built from immutable imported
+ * data (latinLessons, latinSideLessons, grammarIndex) whose references never
+ * change, so build once and reuse. Keyed on reference identity — a caller
+ * passing genuinely different arrays (tests) rebuilds correctly.
+ */
+let buildCache: {
+  lessons: Lesson[];
+  sideLessons: SideLesson[];
+  grammar: GrammarTopic[];
+  entries: SearchEntry[];
+} | null = null;
+
 export function buildSearchIndex(
   lessons: Lesson[],
   sideLessons: SideLesson[],
   grammar: GrammarTopic[],
 ): SearchEntry[] {
+  if (
+    buildCache &&
+    buildCache.lessons === lessons &&
+    buildCache.sideLessons === sideLessons &&
+    buildCache.grammar === grammar
+  ) {
+    return buildCache.entries;
+  }
   const entries: IndexEntry[] = [];
 
   const add = (result: SearchResult, haystacks: string[], titleRank: number) => {
@@ -185,7 +206,9 @@ export function buildSearchIndex(
 
   // Keep the haystack on the returned entries so searchIndex() can match
   // against the full indexed text — not just title + match.
-  return entries.map((e) => ({ ...e.result, haystack: e.haystack }));
+  const resultEntries = entries.map((e) => ({ ...e.result, haystack: e.haystack }));
+  buildCache = { lessons, sideLessons, grammar, entries: resultEntries };
+  return resultEntries;
 }
 
 /**
