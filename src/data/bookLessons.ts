@@ -1,11 +1,15 @@
 // Verbum — Bookshelf v2: Henle book-lesson mapping (bookLessons.ts)
-// Data-only file. Maps the 134 flat sub-lessons of latinLessons.ts into 46
+// Data-only file. Maps the 134 flat sub-lessons of latinLessons.ts into 56
 // "books": 42 Henle book lessons (kind "lesson", henleNumber 1–42) + 4
 // mastery reviews (kind "mastery-review", henleNumber null; sub-lesson ids
-// 25/33/70/134). Canonical title = the first sub-lesson's title; the
-// subtitle carries the sub-lesson span. Book ids ascend by unit
-// (interleaved-by-unit: each unit's review book sits immediately after that
-// unit's Henle lessons), matching the §A mapping-table row order.
+// 25/33/70/134) + 10 unit reviews (kind "unit-review", henleNumber null; ids
+// 47–56, one per unit 3/4/6–13 — P3a of the review-system rework, derived
+// from BASE_BOOKS so unit membership never drifts). Canonical title = the
+// first sub-lesson's title; the subtitle carries the sub-lesson span. The 46
+// base books' ids ascend by unit (interleaved-by-unit: each unit's
+// mastery-review book sits immediately after that unit's Henle lessons),
+// matching the §A mapping-table row order; the 10 unit-review books append
+// after the base, ids in unit order 3,4,6,7,8,9,10,11,12,13.
 //
 // ⚠️ ARRAY-ORDER CONSTRAINT — read before touching this file or latinLessons.ts:
 // latinLessons.ts array order is NOT id order (sub-lessons 51/52 — Henle 14,
@@ -18,7 +22,7 @@
 // latinLessons.ts — reordering the data file would shift indices and break
 // persisted progress.
 
-export type BookLessonKind = "lesson" | "mastery-review";
+export type BookLessonKind = "lesson" | "mastery-review" | "unit-review";
 
 export interface BookLesson {
   id: number;
@@ -30,7 +34,7 @@ export interface BookLesson {
   kind: BookLessonKind;
 }
 
-export const bookLessons: BookLesson[] = [
+const BASE_BOOKS: BookLesson[] = [
   // ── UNIT 1 · Henle 1–6 + Review of Unit 1 ─────────────────────
   { id: 1, henleNumber: 1, unitNumber: 1, title: "The Declension of Terra", subtitle: "IDs 1–5 · Terra → Genitive Case", subLessonIds: [1, 2, 3, 4, 5], kind: "lesson" },
   { id: 2, henleNumber: 2, unitNumber: 1, title: "The Declension of Servus", subtitle: "IDs 6–11 · Servus → Use of Quod", subLessonIds: [6, 7, 8, 9, 10, 11], kind: "lesson" },
@@ -106,11 +110,38 @@ export const bookLessons: BookLesson[] = [
   { id: 46, henleNumber: null, unitNumber: 14, title: "Mastery Review No. 3", subtitle: "ID 134 · Unit 14 checkpoint", subLessonIds: [134], kind: "mastery-review" },
 ];
 
-// Derived at module load: sub-lesson id (1–134) → BookLesson id (1–46).
-// Pure lookup map; the shelf model may use it to attach a lesson to its book
-// without scanning bookLessons every time.
+// ── UNIT-REVIEW BOOKS (P3a · review-system rework) — ids 47–56 ──────────
+// One per unit {3, 4, 6, 7, 8, 9, 10, 11, 12, 13}, in unit order. Units
+// 1/2/5/14 already carry a mastery-review book (ids 7/10/24/46, sub-lessons
+// 25/33/70/134) anchoring their review, so they get no unit-review book.
+// subLessonIds are DERIVED from BASE_BOOKS (same unit, kind "lesson") — never
+// hand-written — so each book's membership stays in exact lockstep with the
+// verified unit boundaries (U3 34–52, U4 53–58, U6 71–81, U7 82–88, U8 89–96,
+// U9 97–103, U10 104–109, U11 110–118, U12 119–122, U13 123–130), preserving
+// the source books' array order so membership sets stay in unlock order.
+const UNIT_REVIEW_UNITS = [3, 4, 6, 7, 8, 9, 10, 11, 12, 13] as const;
+
+const UNIT_REVIEW_BOOKS: BookLesson[] = UNIT_REVIEW_UNITS.map((unit, i) => ({
+  id: 47 + i,
+  henleNumber: null,
+  unitNumber: unit,
+  title: `Unit ${unit} Review`,
+  subtitle: `Checkpoint · Unit ${unit} lessons recap`,
+  subLessonIds: BASE_BOOKS.filter((b) => b.unitNumber === unit && b.kind === "lesson").flatMap(
+    (b) => b.subLessonIds,
+  ),
+  kind: "unit-review",
+}));
+
+export const bookLessons: BookLesson[] = [...BASE_BOOKS, ...UNIT_REVIEW_BOOKS];
+
+// Derived at module load: sub-lesson id (1–134) → BASE book id (1–46).
+// Pure lookup map over the BASE books only (unit-review books re-cover the
+// same ids — they must not displace a lesson's Henle book in this map); the
+// shelf model may use it to attach a lesson to its book without scanning
+// bookLessons every time.
 export const subLessonToBook: Record<number, number> = {};
-for (const book of bookLessons) {
+for (const book of BASE_BOOKS) {
   for (const sub of book.subLessonIds) {
     subLessonToBook[sub] = book.id;
   }
