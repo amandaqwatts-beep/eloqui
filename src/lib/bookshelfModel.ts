@@ -17,6 +17,7 @@
 import type { Lesson } from "~/data/latinLessons";
 import type { BookLesson } from "~/data/bookLessons";
 import type { SideLesson } from "~/data/latinSideLessons";
+import { CULTURE_TEACHING } from "~/data/cultureTeaching";
 
 export interface ShelfBook {
   /** "henle-9" | "review-u1" | "culture-u1" | "explore-101" */
@@ -223,5 +224,55 @@ function validate(
     if (bucket.firstHostIdx < 0) {
       console.warn(`[bookshelfModel] culture book unit ${unit} has no resolvable host lesson`);
     }
+  }
+
+  // PR-E §3.1 — culture-teaching ↔ culture-book cross-checks (dev-mode warns
+  // only; the shelf must never render an orphan bundle/question silently).
+  const bundleIds = Object.keys(CULTURE_TEACHING);
+
+  // exerciseId → host, for every question the model actually bucketed.
+  const bucketed = new Map<string, { hostLessonId: number; unit: number }>();
+  for (const [unit, bucket] of cultureByUnit) {
+    for (const q of bucket.questions) {
+      bucketed.set(q.exerciseId, { hostLessonId: q.hostLessonId, unit });
+    }
+  }
+
+  // (c) direction 1: every bundle id resolves to a real culture-question
+  //     exercise (or, if the exercise exists but its host maps to no unit,
+  //     that is drift (b)).
+  for (const id of bundleIds) {
+    if (bucketed.has(id)) continue;
+    const host = lessons.find((l) =>
+      l.exercises.some((e) => e.type === "culture-question" && e.id === id),
+    );
+    if (host) {
+      console.warn(
+        `[bookshelfModel] culture bundle ${id} is hosted by lesson ${host.id}, which maps to no unit — ` +
+          `its unit's culture book has ZERO questions (teaches-us data drift)`,
+      );
+    } else {
+      console.warn(
+        `[bookshelfModel] culture bundle ${id} resolves to no culture-question exercise (orphan bundle)`,
+      );
+    }
+  }
+
+  // (c) direction 2: every culture question on the shelf has a teaching bundle.
+  for (const [unit, bucket] of cultureByUnit) {
+    for (const q of bucket.questions) {
+      if (!bundleIds.includes(q.exerciseId)) {
+        console.warn(
+          `[bookshelfModel] culture question ${q.exerciseId} (unit ${unit}) has no teaching bundle (orphan question)`,
+        );
+      }
+    }
+  }
+
+  // (a) defensive: at most one culture book per unit ⇒ ≤ 14 today.
+  if (cultureByUnit.size > 14) {
+    console.warn(
+      `[bookshelfModel] ${cultureByUnit.size} culture books — expected at most 14 (one per unit)`,
+    );
   }
 }

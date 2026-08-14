@@ -18,6 +18,13 @@ interface Props {
    * and the canonical answer so the route can record wrong/expected.
    */
   onResult?: (detail: ExerciseResultDetail) => void;
+  /**
+   * Additive (PR-E): which phase the machine opens on. Default "teach" keeps
+   * the in-lesson surface byte-identical. "quiz" skips teaching AND the
+   * advisory check — the bookshelf culture book renders those itself at panel
+   * level (learn phase) and starts each quiz cold.
+   */
+  startAt?: "teach" | "quiz";
 }
 
 /**
@@ -33,14 +40,19 @@ interface Props {
  * completion are byte-identical to the pre-rework quiz-only behavior.
  * A question without a bundle (future data, interim state) renders quiz-only.
  */
-export default function CultureQuestion({ exercise, onComplete, onResult }: Props) {
+export default function CultureQuestion({
+  exercise,
+  onComplete,
+  onResult,
+  startAt = "teach",
+}: Props) {
   const bundle = CULTURE_TEACHING[exercise.id];
   const steps = bundle?.steps ?? [];
   const check = bundle?.check;
   const hasTeaching = steps.length > 0;
 
   const [phase, setPhase] = useState<"teach" | "check" | "quiz">(
-    hasTeaching ? "teach" : "quiz",
+    hasTeaching && startAt === "teach" ? "teach" : "quiz",
   );
   const [stepIdx, setStepIdx] = useState(0);
 
