@@ -38,6 +38,10 @@ interface Props {
   /** F13 — route tells the shelf to skip the scroll-to-frontier on mode
    *  returns (frontier unchanged since last menu mount). Expansion kept. */
   suppressFrontierScroll?: boolean;
+  /** P2 (review-system rework) — unit-review spines: route passes the open
+   *  handler + the isUnitComplete-derived unlocked unit set (pass-through). */
+  onOpenUnitReview?: (unitNumber: number) => void;
+  unitReviewUnlocked?: Set<number>;
 }
 
 /** Base class for the desk bar's 44px icon tiles (📖 ⚙ 🎧 🌙 📊 🎯). */
@@ -51,6 +55,7 @@ export default function LessonMenu({
   emoji="🏛️",showAIPractice=true,backTo="/",lessonProgress,
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
   languageId="latin",suppressFrontierScroll=false,
+  onOpenUnitReview,unitReviewUnlocked,
 }: Props) {
   const hasShelf = (bookLessons?.length ?? 0) > 0;
 
@@ -237,6 +242,8 @@ export default function LessonMenu({
               focusRequest={focusRequest}
               languageId={languageId}
               suppressFrontierScroll={suppressFrontierScroll}
+              onOpenUnitReview={onOpenUnitReview}
+              unitReviewUnlocked={unitReviewUnlocked}
             />
           ) : (
             <LessonTOC

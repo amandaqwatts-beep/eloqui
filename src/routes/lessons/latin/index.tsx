@@ -22,6 +22,7 @@ import placementQuestions from "~/data/placementTest";
 import { bookLessons } from "~/data/bookLessons";
 import { latinSideLessons } from "~/data/latinSideLessons";
 import { GRAMMAR_INDEX } from "~/data/grammarIndex";
+import { UNIT_REVIEWS, type UnitReview } from "~/data/unitReviews";
 import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE, DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
 import { LANGUAGES } from "~/data/languages";
 import { getDailyWorstLesson } from "~/engine/dailyLesson";
@@ -29,6 +30,15 @@ import { getImprovementStreak, claimBonusDrill, buildBonusDrillDeck, recordStrea
 import { useLessonEngine } from "~/engine/lesson";
 import { usePlacementEngine } from "~/engine/placement";
 import { useSettings } from "~/engine/settings";
+import { buildLearnedUniverse } from "~/engine/learnedUniverse";
+import {
+  composeUnitReview,
+  createReviewSession,
+  isUnitComplete,
+  rateReviewItem as rateSessionItem,
+  type ReviewItem,
+  type ReviewSession,
+} from "~/engine/reviewSession";
 import {
   buildDrillCards,
   shuffle,
@@ -40,8 +50,8 @@ import {
   getConfusionPairs,
   recordLessonAttempt,
 } from "~/engine/diagnostics";
-import { loadDiagnostics, recordAttempt } from "~/engine/storage";
-import type { ConfusionPair, ExerciseResultDetail } from "~/engine/types";
+import { loadDiagnostics, recordAttempt, recordUnitReviewCompletion } from "~/engine/storage";
+import type { ConceptKind, ConfusionPair, ExerciseResultDetail } from "~/engine/types";
 import {
   buildWordDrillCards,
   buildPairDrillCards,
@@ -63,6 +73,7 @@ import SettingsScreen from "~/screens/SettingsScreen";
 import AudioPlayerScreen from "~/screens/AudioPlayerScreen";
 import SleepAudioScreen from "~/screens/SleepAudioScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
+import UnitReviewScreen, { type UnitReviewResult } from "~/screens/UnitReviewScreen";
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
 import { loadAccuracy, recordAccuracy } from "~/engine/storage";
 import ReviewScreen from "~/screens/ReviewScreen";
@@ -73,6 +84,17 @@ import WindowFrame from "~/components/WindowFrame";
 export const Route = createFileRoute("/lessons/latin/")({
   component: LatinLessons,
 });
+
+/**
+ * ReviewItemMeta carries no kind field (engine touchpoint §3 gotcha) — inline
+ * prefix switch fills ConceptKind for recordAttempt: "vocab:<lemma>" → vocab,
+ * "concept:<lessonId>" → concept, "lesson:<id>" → lesson (fallback).
+ */
+function reviewConceptKind(conceptId: string): ConceptKind {
+  if (conceptId.startsWith("vocab:")) return "vocab";
+  if (conceptId.startsWith("concept:")) return "concept";
+  return "lesson";
+}
 
 function LatinLessons() {
   // ── Engine hooks (state machines) ────────────────────────────
@@ -108,6 +130,14 @@ function LatinLessons() {
     badgeLine?: string;
   } | null>(null);
   const [pendingPair, setPendingPair] = useState<ConfusionPair | null>(null);
+  // P2 — unit-review session (review-system rework). Route-owned composition +
+  // session (engine machine); UnitReviewScreen renders. Overlay placement
+  // (design §3 P2 — lead decision): zero engine change, menu stays mounted.
+  const [unitReview, setUnitReview] = useState<{
+    unit: UnitReview;
+    items: ReviewItem[];
+    session: ReviewSession;
+  } | null>(null);
 
   // ── Diagnostics summary (assembled per render — the event log is small) ──
   const diagnosticsEvents = loadDiagnostics(language.id);
@@ -123,7 +153,14 @@ function LatinLessons() {
   // Both are pure reads (getDailyWorstLesson / getImprovementStreak write
   // nothing); derived per render alongside the summary. Same (events,
   // progress, language, UTC date) → byte-identical card.
-  const completedLessonIds = loadProgress(language.id).filter((p) => p.completed).map((p) => p.lessonId);
+  const progressAll = loadProgress(language.id);
+  const completedLessonIds = progressAll.filter((p) => p.completed).map((p) => p.lessonId);
+  // P2 — unit-review spines unlock ONLY via isUnitComplete(loadProgress)
+  // (design edges #4/#12): placement-seeded frontiers and dev-mode unlock must
+  // never open a review for an uncompleted unit.
+  const unitReviewUnlocked = new Set(
+    UNIT_REVIEWS.filter((u) => isUnitComplete(u, progressAll)).map((u) => u.unitNumber),
+  );
   const dailyLesson = getDailyWorstLesson({
     events: diagnosticsEvents,
     lessons: latinLessons,
@@ -284,6 +321,90 @@ function LatinLessons() {
     [lesson],
   );
 
+  // ── P2 unit reviews (review-system rework) ─────────────────────
+  // Composition pipeline (design §2.4): guard isUnitComplete → build the
+  // learned universe (completed lessons + the unit's max-array-index lesson as
+  // the in-flight lesson — its words are met even though saveProgress hasn't
+  // fired, same rule as sleep audio / learnedUniverse §1.1) → composeUnitReview
+  // → createReviewSession. The engine does all of it; the route just wires.
+  const openUnitReview = useCallback(
+    (unitNumber: number) => {
+      const unit = UNIT_REVIEWS[unitNumber - 1];
+      if (!unit) return;
+      const progress = loadProgress(language.id);
+      // Gate: loadProgress only — NEVER unlockedLessons (edges #4/#12).
+      if (!isUnitComplete(unit, progress)) return;
+      const completed = progress.filter((p) => p.completed).map((p) => p.lessonId);
+      const unitLesson = unit.lessonIds
+        .map((id) => ({ id, idx: latinLessons.findIndex((l) => l.id === id) }))
+        .filter((e) => e.idx >= 0)
+        .sort((a, b) => b.idx - a.idx)[0];
+      const universe = buildLearnedUniverse({
+        lessons: latinLessons,
+        completedLessonIds: completed,
+        currentLessonId: unitLesson?.id,
+      });
+      const items = composeUnitReview({
+        unit,
+        lessons: latinLessons,
+        universe,
+        progress,
+        pronMode,
+        language: language.id,
+      });
+      if (items.length === 0) return; // never fabricate — incomplete unit or empty
+      setUnitReview({ unit, items, session: createReviewSession(unit.unitNumber, items) });
+    },
+    [pronMode],
+  );
+
+  // Advance the engine session machine (rateReviewItem — pure; the screen
+  // never holds session state itself).
+  const rateUnitReviewItem = useCallback((correct: boolean) => {
+    setUnitReview((prev) => {
+      if (!prev || prev.session.done) return prev;
+      return {
+        ...prev,
+        session: rateSessionItem(
+          prev.session,
+          correct,
+          prev.items.length,
+          prev.items[prev.session.index],
+        ),
+      };
+    });
+  }, []);
+
+  // Completion handler (design §2.4): recordUnitReviewCompletion (idempotent
+  // upsert by unitNumber — StrictMode-safe) + per-item recordAttempt with
+  // source:"review" so reviews feed weak spots / confusion pairs / daily
+  // worst-area / improvement streak. Never touches verbum-progress (edge #10).
+  const completeUnitReview = useCallback(
+    (results: UnitReviewResult[]) => {
+      if (!unitReview) return;
+      const { unit, items } = unitReview;
+      const score = items.length > 0 ? results.filter((r) => r.ok).length / items.length : 0;
+      recordUnitReviewCompletion(unit.unitNumber, score, language.id);
+      for (const r of results) {
+        recordAttempt(
+          {
+            conceptId: r.item.conceptId,
+            tags: r.item.tags,
+            kind: reviewConceptKind(r.item.conceptId),
+            ok: r.ok,
+            source: "review",
+            context: r.item.id,
+            mistake: r.ok ? undefined : "unknown",
+            wrong: r.wrong,
+            expected: r.item.expected,
+          },
+          language.id,
+        );
+      }
+    },
+    [unitReview],
+  );
+
   // ── Proficiency cards (P2) handlers ───────────────────────────
   // Daily lesson card: SELECT_LESSON resets the run and opens at teaching.
   const openDailyLesson = useCallback(() => {
@@ -375,6 +496,8 @@ function LatinLessons() {
             grammarTopics={GRAMMAR_INDEX}
             languageId={language.id}
             suppressFrontierScroll={suppressFrontierScroll}
+            onOpenUnitReview={openUnitReview}
+            unitReviewUnlocked={unitReviewUnlocked}
             menuCards={
               <>
                 <DailyLessonCard
@@ -460,6 +583,23 @@ function LatinLessons() {
                 pronMode={pronMode}
                 language={language.id}
                 onBack={() => setShowSleepAudio(false)}
+              />
+            </WindowFrame>
+          )}
+          {unitReview && (
+            <WindowFrame
+              title={`Unit ${unitReview.unit.unitNumber} Review`}
+              onBack={() => setUnitReview(null)}
+              variant="overlay"
+            >
+              <UnitReviewScreen
+                unit={unitReview.unit}
+                items={unitReview.items}
+                session={unitReview.session}
+                pronMode={pronMode}
+                onRateItem={rateUnitReviewItem}
+                onComplete={completeUnitReview}
+                onExit={() => setUnitReview(null)}
               />
             </WindowFrame>
           )}
