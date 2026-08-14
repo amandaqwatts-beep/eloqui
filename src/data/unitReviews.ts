@@ -45,9 +45,16 @@ for (const b of bookLessons) {
 export const unitToLessonIds: Record<number, number[]> = {};
 /** Lesson id → unit number (drives "unit complete?" gating). */
 export const unitForLesson: Record<number, number> = {};
+// Dedupe per unit: P3a unit-review books (ids 47–56) re-cover their unit's
+// lesson ids, so a plain union would list every id twice for units 3/4/6–13.
+// The map stays the unit's unique lesson set (order preserved); review
+// composition and gating are unaffected by the dedupe.
 for (const b of bookLessons) {
-  (unitToLessonIds[b.unitNumber] ??= []).push(...b.subLessonIds);
-  for (const id of b.subLessonIds) unitForLesson[id] = b.unitNumber;
+  const arr = (unitToLessonIds[b.unitNumber] ??= []);
+  for (const id of b.subLessonIds) {
+    if (!arr.includes(id)) arr.push(id);
+    unitForLesson[id] = b.unitNumber;
+  }
 }
 
 // For each unit, the max array index among its NON-mastery lessons — the
