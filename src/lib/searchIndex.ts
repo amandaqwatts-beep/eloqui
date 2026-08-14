@@ -9,6 +9,7 @@
 import type { Lesson } from "~/data/latinLessons";
 import type { SideLesson } from "~/data/latinSideLessons";
 import type { GrammarTopic } from "~/data/grammarIndex";
+import { CULTURE_TEACHING } from "~/data/cultureTeaching";
 
 export type SearchResult =
   | {
@@ -136,7 +137,19 @@ export function buildSearchIndex(
             match: ex.prompt,
             exerciseId: ex.id,
           },
-          [ex.prompt, ex.domain, ex.explanation],
+          [
+            ex.prompt,
+            ex.domain,
+            ex.explanation,
+            ...(CULTURE_TEACHING[ex.id]?.steps.flatMap((st) => [
+              st.title,
+              st.explanation,
+              st.exampleLatin,
+              st.exampleEnglish,
+              st.tip ?? "",
+            ]) ?? []),
+            ...(CULTURE_TEACHING[ex.id]?.sources ?? []),
+          ],
           3,
         );
       }

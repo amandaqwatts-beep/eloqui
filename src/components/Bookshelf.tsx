@@ -777,6 +777,15 @@ function ExpansionPanel({
   );
 }
 
+/** Rēs Rōmānae unit themes (culture-teaching-design.md §2.2) — the culture
+ * books are teach-then-quiz books, so each panel opens with its unit's theme. */
+const UNIT_CULTURE_INTROS: Record<number, string> = {
+  1: "The world of the early Republic: land, province, and city.",
+  2: "Rome and Gaul: roads, bridges, kings, and the Republic.",
+  3: "Caesar's army: the legion, the camp, weapons, and the Rubicon.",
+  4: "The past and the family: Hannibal, schooling, the household, and Roman names.",
+  5: "Slavery and freedom: manumission, the familia, the freedman, and Spartacus.",
+};
 function CulturePanel({
   book,
   lessons,
@@ -800,8 +809,14 @@ function CulturePanel({
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">
-        🏛️ Culture Corner
+        🏛️ Culture Corner · Learn &amp; Practice
       </p>
+      {UNIT_CULTURE_INTROS[book.unit] && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="font-bold">Rēs Rōmānae · Unit {book.unit}:</span>{" "}
+          {UNIT_CULTURE_INTROS[book.unit]}
+        </p>
+      )}
       {questions.map(({ hostLessonId, exerciseId, exercise, host }) =>
         exercise?.type !== "culture-question" || !host ? null : (
           <div
