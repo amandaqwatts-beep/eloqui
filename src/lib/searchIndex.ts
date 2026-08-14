@@ -54,6 +54,15 @@ export type SearchResult =
       match: string;
     };
 
+/**
+ * A SearchResult that also carries the full normalized haystack it was indexed
+ * from (vocabulary glosses, table cells, grammar keywords, culture teaching
+ * steps/sources, explore context…). searchIndex() matches against it so
+ * haystack-only terms are findable; consumers can keep treating entries as
+ * plain SearchResults.
+ */
+export type SearchEntry = SearchResult & { haystack: string };
+
 /** lowercase + strip combining diacritics (macrons). */
 export function normalizeText(s: string): string {
   return s
@@ -76,7 +85,7 @@ export function buildSearchIndex(
   lessons: Lesson[],
   sideLessons: SideLesson[],
   grammar: GrammarTopic[],
-): SearchResult[] {
+): SearchEntry[] {
   const entries: IndexEntry[] = [];
 
   const add = (result: SearchResult, haystacks: string[], titleRank: number) => {
@@ -174,24 +183,52 @@ export function buildSearchIndex(
     );
   }
 
-  return entries.map((e) => e.result);
+  // Keep the haystack on the returned entries so searchIndex() can match
+  // against the full indexed text — not just title + match.
+  return entries.map((e) => ({ ...e.result, haystack: e.haystack }));
 }
 
-/** Rank: title-keyword matches first, then first-occurrence order. */
+/**
+ * Rank: title-keyword matches first (inTitle -1000 bonus, unchanged), then
+ * match-body hits, then haystack-only hits — all by first-occurrence position
+ * in the concatenated searchable text. Accepts either SearchEntry[] (from
+ * buildSearchIndex) or plain SearchResult[] (haystack optional) so existing
+ * callers keep compiling and behaving identically.
+ */
 export function searchIndex(
-  index: SearchResult[],
+  index: ReadonlyArray<SearchResult & { haystack?: string }>,
   query: string,
   limit = 12,
 ): SearchResult[] {
   const q = normalizeText(query.trim());
   if (q.length === 0) return [];
   const scored: { result: SearchResult; score: number }[] = [];
-  for (const result of index) {
-    const text = normalizeText(result.title + " " + result.match);
+  for (const entry of index) {
+    const title = normalizeText(entry.title);
+    const match = normalizeText(entry.match);
+    const haystack = normalizeText(entry.haystack ?? "");
+    // Title + match (+ haystack when present) — positions before the haystack
+    // are identical to the old title + " " + match concatenation, so existing
+    // title/match hits keep their exact scores and ordering.
+    const text = `${title} ${match}${haystack ? ` ${haystack}` : ""}`;
     const i = text.indexOf(q);
     if (i < 0) continue;
     // Title match scores far above match-body match; earlier occurrence wins.
-    const inTitle = normalizeText(result.title).includes(q) ? -1000 : 0;
+    const inTitle = title.includes(q) ? -1000 : 0;
+    let result: SearchResult = entry;
+    // Haystack-only hit → carry a short snippet of the matched text so the
+    // user sees why the result matched (display field only; kind/id intact).
+    const bodyLen = title.length + 1 + match.length + 1;
+    if (inTitle === 0 && !match.includes(q) && haystack && i >= bodyLen) {
+      const hayPos = i - bodyLen;
+      const start = Math.max(0, hayPos - 40);
+      const end = Math.min(haystack.length, hayPos + q.length + 60);
+      const snippet =
+        (start > 0 ? "…" : "") +
+        haystack.slice(start, end) +
+        (end < haystack.length ? "…" : "");
+      result = { ...entry, match: snippet };
+    }
     scored.push({ result, score: inTitle + i });
   }
   scored.sort((a, b) => a.score - b.score);
