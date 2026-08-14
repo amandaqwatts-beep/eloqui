@@ -91,6 +91,13 @@ interface BookshelfProps {
   /** F13 — skip the scroll-to-frontier on mode returns (frontier unchanged
    *  since the last menu mount); the frontier book still expands. */
   suppressFrontierScroll?: boolean;
+  /** P2 (review-system rework) — unit-review books: call to start the unit's
+   *  review session (the route composes the items and owns the session). */
+  onOpenUnitReview?: (unitNumber: number) => void;
+  /** P2 — units whose review is unlocked. Computed by the route via
+   *  isUnitComplete(UNIT_REVIEWS[n-1], loadProgress(language.id)) — NEVER the
+   *  unlockedLessons frontier (design edges #4/#12). */
+  unitReviewUnlocked?: Set<number>;
 }
 
 export default function Bookshelf(props: BookshelfProps) {
@@ -273,6 +280,8 @@ function BookshelfV2({
   focusRequest,
   languageId = "latin",
   suppressFrontierScroll = false,
+  onOpenUnitReview,
+  unitReviewUnlocked,
 }: BookshelfProps) {
   const model = useMemo(
     () => buildBookshelfModel(lessons, bookLessons, sideLessons),
@@ -376,7 +385,12 @@ function BookshelfV2({
     setExpandedBookKey(book.bookKey);
   }, [focusRequest?.bookKey, focusRequest?.nonce, model.books]);
 
-  const isLocked = (book: ShelfBook) => book.unlockIdx >= unlockedLessons;
+  const isLocked = (book: ShelfBook) =>
+    book.unlockIdx >= unlockedLessons ||
+    // P2 — unit-review spines additionally gate on unit completion (design
+    // §2.2): the frontier alone (placement jumps / dev-mode unlock) must not
+    // open a review for an uncompleted unit (edges #4/#12).
+    (book.kind === "unit-review" && !(unitReviewUnlocked?.has(book.unit) ?? false));
 
   return (
     <div ref={capacityRef} className="library-wall space-y-9">
@@ -428,6 +442,8 @@ function BookshelfV2({
                 currentIdx={currentIdx}
                 onSelectLesson={onSelectLesson}
                 onCultureResult={onCultureResult}
+                onOpenUnitReview={onOpenUnitReview}
+                unitReviewUnlocked={unitReviewUnlocked}
               />
             )}
             {/* Shelf board */}
@@ -518,6 +534,11 @@ const HENLE_TONES = [
   { a: "var(--color-cream-300)", b: "var(--color-cream-400)", label: "var(--color-burgundy-900)" },
 ] as const;
 
+/** Q3 resolution — units whose legacy mastery-review spines are demoted to
+ *  `.spine-review--legacy` (muted): the review surface is the per-unit review
+ *  going forward (design §2.6). Units 1/2/5/14 carry mastery books 7/10/24/46. */
+const LEGACY_REVIEW_UNITS = new Set([1, 2, 5, 14]);
+
 function Spine({
   book,
   locked,
@@ -537,16 +558,23 @@ function Spine({
   onToggle: () => void;
 }) {
   // Theme classes (§5.3): `.spine` base cloth + per-kind tone; locked spines
-  // get the dusted `.spine-locked` treatment regardless of kind.
+  // get the dusted `.spine-locked` treatment regardless of kind. P2: unit-
+  // review spines get the deep-teal `.spine-unit-review`; legacy mastery
+  // spines in units 1/2/5/14 get the muted `.spine-review--legacy` demotion
+  // (Q3 default — the review surface is the per-unit review going forward).
   const kindClass = locked
     ? "spine-locked"
-    : book.kind === "review"
-      ? "spine-review"
-      : book.kind === "culture"
-        ? "spine-culture"
-        : book.kind === "explore"
-          ? "spine-explore"
-          : "spine-henle";
+    : book.kind === "unit-review"
+      ? "spine-unit-review"
+      : book.kind === "review"
+        ? LEGACY_REVIEW_UNITS.has(book.unit)
+          ? "spine-review spine-review--legacy"
+          : "spine-review"
+        : book.kind === "culture"
+          ? "spine-culture"
+          : book.kind === "explore"
+            ? "spine-explore"
+            : "spine-henle";
   const tone = HENLE_TONES[Math.abs(book.firstIdx) % HENLE_TONES.length];
   // Inline gradient endpoints (custom props / background) — the henle
   // rotation, and the gold "current" book (raised + ringed, same as v2).
@@ -567,11 +595,13 @@ function Spine({
   const label =
     book.kind === "henle"
       ? book.henleNumber
-      : book.kind === "review"
-        ? `R${book.unit}`
-        : book.kind === "culture"
-          ? "🏛️"
-          : "✨";
+      : book.kind === "unit-review"
+        ? `U${book.unit}`
+        : book.kind === "review"
+          ? `R${book.unit}`
+          : book.kind === "culture"
+            ? "🏛️"
+            : "✨";
   // F5 — explore spines carry a tiny index number under the glyph so the 16
   // side-lesson books are distinguishable on touch (tooltips don't exist).
   const sideLessonId =
@@ -584,11 +614,13 @@ function Spine({
   const ariaLabel =
     book.kind === "henle"
       ? `Lesson ${book.henleNumber} · ${book.title} — ${chapters} chapter${chapters === 1 ? "" : "s"}`
-      : book.kind === "review"
+      : book.kind === "unit-review"
         ? `${book.title} — ${chapters} chapter${chapters === 1 ? "" : "s"}`
-        : book.kind === "culture"
-          ? `Culture Corner — Unit ${book.unit}`
-          : `Explore: ${book.title}`;
+        : book.kind === "review"
+          ? `${book.title} — ${chapters} chapter${chapters === 1 ? "" : "s"}`
+          : book.kind === "culture"
+            ? `Culture Corner — Unit ${book.unit}`
+            : `Explore: ${book.title}`;
   const title =
     book.kind === "henle"
       ? `Lesson ${book.henleNumber} · ${book.title} — ${chapters} chapters`
@@ -666,6 +698,8 @@ function ExpansionPanel({
   currentIdx,
   onSelectLesson,
   onCultureResult,
+  onOpenUnitReview,
+  unitReviewUnlocked,
 }: {
   book: ShelfBook;
   lessons: Lesson[];
@@ -676,15 +710,19 @@ function ExpansionPanel({
   currentIdx: number;
   onSelectLesson: (idx: number) => void;
   onCultureResult?: BookshelfProps["onCultureResult"];
+  onOpenUnitReview?: (unitNumber: number) => void;
+  unitReviewUnlocked?: Set<number>;
 }) {
   const header =
     book.kind === "henle"
       ? `Henle Lesson ${book.henleNumber} · ${book.title}`
-      : book.kind === "review"
-        ? book.title // F14 — canonical title ("Review of Unit 1"), not "Review · Unit N"
-        : book.kind === "culture"
-          ? `Culture Corner — Unit ${book.unit}`
-          : `Explore: ${book.title}`;
+      : book.kind === "unit-review"
+        ? book.title // "Unit N Review" — canonical from the data (P3a)
+        : book.kind === "review"
+          ? book.title // F14 — canonical title ("Review of Unit 1"), not "Review · Unit N"
+          : book.kind === "culture"
+            ? `Culture Corner — Unit ${book.unit}`
+            : `Explore: ${book.title}`;
   return (
     <div className="book-panel mt-3 w-full p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -705,6 +743,17 @@ function ExpansionPanel({
           book={book}
           lessons={lessons}
           onCultureResult={onCultureResult}
+        />
+      ) : book.kind === "unit-review" ? (
+        // P2 (design §2.2 screens flag): a unit-review book STARTS the review
+        // session — it never calls selectLesson. The unit's chapters render
+        // read-only below the start CTA (a milestone marker, not a gate).
+        <UnitReviewPanel
+          book={book}
+          lessons={lessons}
+          idToIdx={idToIdx}
+          unlocked={unitReviewUnlocked?.has(book.unit) ?? false}
+          onOpen={() => onOpenUnitReview?.(book.unit)}
         />
       ) : book.kind === "explore" ? (
         book.content && "sideLessonId" in book.content ? (
@@ -766,6 +815,78 @@ function ExpansionPanel({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * P2 — unit-review expansion panel (design §2.2 screens flag). The unit-review
+ * book is a milestone marker, not a gate: STARTING the review is its only
+ * action (onOpenUnitReview — the route composes items and owns the session).
+ * The unit's chapters are listed READ-ONLY — deliberately NO selectLesson
+ * here; unit-review books never open lessons (the next unit already unlocks
+ * via the frontier).
+ */
+function UnitReviewPanel({
+  book,
+  lessons,
+  idToIdx,
+  unlocked,
+  onOpen,
+}: {
+  book: ShelfBook;
+  lessons: Lesson[];
+  idToIdx: Map<number, number>;
+  unlocked: boolean;
+  onOpen: () => void;
+}) {
+  const rows = book.chapterIds
+    .map((id) => ({ id, lesson: lessons[idToIdx.get(id) ?? -1] }))
+    .filter((r): r is { id: number; lesson: Lesson } => r.lesson !== undefined);
+  return (
+    <div className="space-y-3">
+      <p
+        className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+          unlocked
+            ? "border-teal-200 bg-teal-50 text-teal-800"
+            : "border-gray-200 bg-gray-50 text-gray-500"
+        }`}
+      >
+        {unlocked
+          ? `Unit ${book.unit} complete — review it`
+          : `Complete Unit ${book.unit} to unlock this review`}
+      </p>
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={!unlocked}
+        className="w-full rounded-xl bg-teal-700 py-3 text-sm font-bold text-cream-50 shadow transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Start Unit {book.unit} Review →
+      </button>
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+          Unit {book.unit} lessons
+        </p>
+        {rows.map(({ id, lesson }) => (
+          <div
+            key={id}
+            className="flex items-center gap-3 rounded-xl border border-burgundy-100 bg-cream-50/60 p-2.5"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-burgundy-100 text-xs font-bold text-burgundy-700">
+              {id}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold text-burgundy-900">
+                Lesson {id}: {lesson.title}
+              </span>
+              {lesson.subtitle && (
+                <span className="block truncate text-xs text-gray-500">{lesson.subtitle}</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

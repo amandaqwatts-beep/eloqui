@@ -20,9 +20,9 @@ import type { SideLesson } from "~/data/latinSideLessons";
 import { CULTURE_TEACHING } from "~/data/cultureTeaching";
 
 export interface ShelfBook {
-  /** "henle-9" | "review-u1" | "culture-u1" | "explore-101" */
+  /** "henle-9" | "review-u1" | "unit-review-u3" | "culture-u1" | "explore-101" */
   bookKey: string;
-  kind: "henle" | "review" | "culture" | "explore";
+  kind: "henle" | "review" | "unit-review" | "culture" | "explore";
   /** 1..14 */
   unit: number;
   /** canonical BookLesson.title | "Review · Unit N" | "Culture Corner" | SideLesson.title */
@@ -59,9 +59,15 @@ export function buildBookshelfModel(
 
   const books: ShelfBook[] = [];
 
-  // (2) Henle + mastery-review books from the BookLesson mapping.
+  // (2) Henle + mastery-review + unit-review books from the BookLesson mapping.
+  //     Unit-review books (P3a, ids 47–56) re-cover their unit's lesson ids —
+  //     chapterIds are the unit's lessons in ARRAY order, so bookmark tabs /
+  //     progress strips reuse bookmarkFor/chapterProgress. Their frontier
+  //     unlockIdx is lastIdx (the unit's final chapter); the REAL gate is the
+  //     isUnitComplete set the route computes and passes down (design §2.2).
   for (const bl of bookLessons) {
-    const kind: ShelfBook["kind"] = bl.kind === "mastery-review" ? "review" : "henle";
+    const kind: ShelfBook["kind"] =
+      bl.kind === "mastery-review" ? "review" : bl.kind === "unit-review" ? "unit-review" : "henle";
     const chapterIds = bl.subLessonIds
       .filter((id) => idToIdx.has(id))
       .sort((a, b) => (idToIdx.get(a) ?? 0) - (idToIdx.get(b) ?? 0)); // ARRAY order
@@ -71,7 +77,12 @@ export function buildBookshelfModel(
       chapterIds.length > 0 ? (idToIdx.get(chapterIds[chapterIds.length - 1]) ?? -1) : -1;
     const unit = bl.unitNumber;
     books.push({
-      bookKey: kind === "henle" ? `henle-${bl.henleNumber}` : `review-u${unit}`,
+      bookKey:
+        kind === "henle"
+          ? `henle-${bl.henleNumber}`
+          : kind === "unit-review"
+            ? `unit-review-u${unit}`
+            : `review-u${unit}`,
       kind,
       unit,
       title: bl.title ?? (kind === "review" ? `Review · Unit ${unit}` : ""),
@@ -80,7 +91,7 @@ export function buildBookshelfModel(
       chapterIds,
       firstIdx,
       lastIdx,
-      unlockIdx: firstIdx,
+      unlockIdx: kind === "unit-review" ? lastIdx : firstIdx,
     });
   }
 
@@ -151,8 +162,16 @@ export function buildBookshelfModel(
     });
   }
 
-  // (5) Sort each unit's books: henle by firstIdx asc → review → culture → explore.
-  const ORDER: Record<ShelfBook["kind"], number> = { henle: 0, review: 1, culture: 2, explore: 3 };
+  // (5) Sort each unit's books: henle by firstIdx asc → unit-review → review →
+  //     culture → explore. unit-review sits before legacy review spines (the
+  //     review surface going forward; design §2.6 / Q3).
+  const ORDER: Record<ShelfBook["kind"], number> = {
+    henle: 0,
+    "unit-review": 1,
+    review: 2,
+    culture: 3,
+    explore: 4,
+  };
   const unitSet = new Set<number>(books.map((b) => b.unit));
   const sorted: ShelfBook[] = [];
   for (const unit of [...unitSet].sort((a, b) => a - b)) {
@@ -179,9 +198,12 @@ function validate(
   cultureByUnit: Map<number, { questions: { hostLessonId: number; exerciseId: string }[]; firstHostIdx: number }>,
   idToIdx: Map<number, number>,
 ): void {
-  // Every lesson id appears exactly once across subLessonIds sets.
+  // Every lesson id appears exactly once across subLessonIds sets. unit-review
+  // books INTENTIONALLY re-cover their unit's ids (P3a) — skipped here, same
+  // scoping as subLessonToBook, so they never mask a missing henle book.
   const seen = new Map<number, number>();
   for (const bl of bookLessons) {
+    if (bl.kind === "unit-review") continue;
     for (const id of bl.subLessonIds) {
       if (seen.has(id)) {
         console.warn(`[bookshelfModel] sub-lesson ${id} covered by books ${seen.get(id)} and ${bl.id}`);
