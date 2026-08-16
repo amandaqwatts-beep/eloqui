@@ -724,6 +724,7 @@ function LatinLessons() {
               : placement.state.startLevel
           }
           questions={placementQuestions}
+          unitBased
           onStart={placement.start}
           onAnswer={placement.answer}
           onQuit={placement.quit}
