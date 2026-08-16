@@ -1,4 +1,5 @@
 import type { MultipleChoiceExercise } from "~/data/latinLessons";
+import { unitToFirstLessonCount } from "~/data/unitReviews";
 import ProgressBar from "~/components/ProgressBar";
 import MultipleChoice from "~/components/MultipleChoice";
 import WindowFrame from "~/components/WindowFrame";
@@ -15,8 +16,27 @@ interface Props {
   onQuit: () => void;
   onRetake: () => void;
   onChooseStart: (level: number) => void;
+  /**
+   * Unit-granularity mode (Latin): copy speaks in "units", result rows are
+   * labeled Unit N, and the choose-start buttons pass UNIT numbers (the
+   * engine's mapStartLevel converts them to lesson counts before persisting).
+   * Default false preserves lesson-level semantics (English placement).
+   */
+  unitBased?: boolean;
   introBlurb?: string;
   resultBlurb?: string;
+}
+
+/**
+ * Reverse lookup: which unit's FIRST LESSON COUNT equals `lessonCount`?
+ * Falls back to Unit 1 when unknown (e.g. legacy pre-rework stored results
+ * whose stored startLevel is not one of the unit boundaries).
+ */
+function unitForLessonCount(lessonCount: number): number {
+  for (const [unit, first] of Object.entries(unitToFirstLessonCount)) {
+    if (first === lessonCount) return Number(unit);
+  }
+  return 1;
 }
 
 export default function PlacementTest({
@@ -31,12 +51,21 @@ export default function PlacementTest({
   onQuit,
   onRetake,
   onChooseStart,
-  introBlurb = "Answer questions about Latin grammar and vocabulary. We'll figure out where you should start.",
-  resultBlurb = "Here’s how your Latin 101 levels went:",
+  unitBased = false,
+  introBlurb = unitBased
+    ? `Answer ${questions.length} questions about Latin grammar and vocabulary. We'll place you in the right unit.`
+    : "Answer questions about Latin grammar and vocabulary. We'll figure out where you should start.",
+  resultBlurb = unitBased
+    ? "Here's how your Latin 101 units went:"
+    : "Here's how your Latin 101 levels went:",
 }: Props) {
   if (complete) {
     const allPassed = passed.length > 0 && passed.every(Boolean);
     const start = startLevel ?? 1;
+    // In unit mode `start` is the mapped LESSON count; find the unit that
+    // starts there so the "Start here" button passes a UNIT number (the
+    // engine persists mapStartLevel(unit) → this unit's first lesson count).
+    const unit = unitBased ? unitForLessonCount(start) : start;
     return (
       <WindowFrame title="Placement" onBack={onQuit}>
         <main className="flex-1 px-4 py-8 sm:py-12">
@@ -44,13 +73,19 @@ export default function PlacementTest({
             <div className="text-center">
               <div className="text-5xl">🎉</div>
               <h1 className="mt-3 text-2xl font-black text-burgundy-900 sm:text-3xl">
-                {allPassed ? `You've mastered all ${totalLevels}!` : `You're ready for Lesson ${start}!`}
+                {allPassed
+                  ? unitBased
+                    ? `You've mastered all ${totalLevels} units!`
+                    : `You've mastered all ${totalLevels}!`
+                  : unitBased
+                    ? `You're ready for Unit ${unit} — start at Lesson ${start}!`
+                    : `You're ready for Lesson ${start}!`}
               </h1>
               <p className="mt-2 text-gray-600">{resultBlurb}</p>
             </div>
             <div className="mt-7 space-y-2">
               {Array.from({ length: totalLevels }, (_, i) => i).map((i) => {
-                const ok = passed[i];
+                const ok = passed[i] === true;
                 return (
                   <div
                     key={i}
@@ -58,7 +93,9 @@ export default function PlacementTest({
                       ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"
                     }`}
                   >
-                    <span className="font-semibold">Lesson {i + 1}</span>
+                    <span className="font-semibold">
+                      {unitBased ? `Unit ${i + 1}` : `Lesson ${i + 1}`}
+                    </span>
                     <span className="font-bold">{ok ? "✓ Passed" : "✕ Try later"}</span>
                   </div>
                 );
@@ -66,16 +103,16 @@ export default function PlacementTest({
             </div>
             <div className="mt-7 space-y-3">
               <button
-                onClick={() => onChooseStart(start)}
+                onClick={() => onChooseStart(unitBased ? unit : start)}
                 className="w-full rounded-xl bg-burgundy-700 py-3.5 font-bold text-white shadow hover:bg-burgundy-800"
               >
-                Start from Lesson {start}
+                {unitBased ? `Start from Unit ${unit}` : `Start from Lesson ${start}`}
               </button>
               <button
                 onClick={() => onChooseStart(1)}
                 className="w-full rounded-xl border-2 border-burgundy-200 py-3.5 font-bold text-burgundy-700 hover:bg-burgundy-50"
               >
-                Start from Lesson 1
+                {unitBased ? "Start from the beginning" : "Start from Lesson 1"}
               </button>
               <button
                 onClick={onRetake}
@@ -118,7 +155,7 @@ export default function PlacementTest({
       <main className="flex-1 px-4 py-6 sm:py-10">
         <div className="mx-auto w-full max-w-2xl">
           <div className="mb-6 flex items-center justify-between text-sm font-semibold text-burgundy-700">
-            <span>Question {idx + 1} / {questions.length}</span>
+            <span>Question {idx + 1} of {questions.length}</span>
             <button onClick={onQuit} className="text-gray-400 hover:text-burgundy-600">
               Quit
             </button>
@@ -126,7 +163,7 @@ export default function PlacementTest({
           <ProgressBar current={idx} total={questions.length} />
           <div className="mt-8 rounded-3xl border border-burgundy-200 bg-white p-5 shadow-lg sm:p-8">
             <div className="mb-5 text-xs font-bold uppercase tracking-widest text-gold-700">
-              Level {idx / 2 + 1}
+              {unitBased ? `Unit ${Math.floor(idx / 2) + 1}` : `Level ${Math.floor(idx / 2) + 1}`}
             </div>
             <MultipleChoice key={q.id} exercise={q} onComplete={onAnswer} />
           </div>
