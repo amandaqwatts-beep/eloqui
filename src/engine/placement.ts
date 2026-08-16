@@ -4,8 +4,11 @@
  * Replaces the placement logic previously inlined in
  * src/routes/lessons/latin.tsx (finishPlacement / handlePlacementAnswer /
  * openPlacement). The old code hardcoded 6 levels; this module is
- * parameterized by `totalLevels` and works for any placement length
- * (33 levels today, Hebrew/Greek later).
+ * parameterized by `totalLevels` — the number of LEVELS (units) — and works
+ * for any placement length (14 units × 2 questions today, Hebrew/Greek
+ * later). A caller may pass `mapStartLevel` to convert the raw level number
+ * before it is PERSISTED (Latin maps a unit number to a lesson count; see
+ * usePlacementEngine below).
  *
  * Scoring rules (2 questions per level):
  * - A level passes if EITHER of its two questions is answered correctly.
@@ -27,7 +30,7 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "~/engine/storage";
 export interface PlacementStart {
   /** One boolean per level: true = level passed (either question correct). */
   passed: boolean[];
-  /** 1-based first lesson the student may open (level index of first failure + 1). */
+  /** 1-based first LEVEL (unit) the student may open (level index of first failure + 1). */
   startLevel: number;
 }
 
@@ -164,15 +167,23 @@ export interface PlacementEngine {
 
 /**
  * Hook factory for the placement flow. Accepts any MultipleChoiceExercise[]
- * (placementQuestions are structurally compatible) and a total level count.
- * Scoring runs through computePlacementStart and is persisted under
+ * (placementQuestions are structurally compatible) and a total level (unit)
+ * count. Scoring runs through computePlacementStart and is persisted under
  * STORAGE_KEYS.PLACEMENT_RESULT as { passed, startLevel, completedAt }.
  * Prior results are hydrated on mount.
+ *
+ * `mapStartLevel` (optional, default identity) converts the raw LEVEL number
+ * before it is PERSISTED — reducer state (`state.startLevel`) always keeps
+ * the raw level number. Latin supplies a unit → lesson-count map so the
+ * stored value reads as a lesson count in 1..134 for createInitialState
+ * (engine/lesson.ts) to clamp; English passes no mapper and stores the raw
+ * 1..10 level number.
  */
 export function usePlacementEngine(
   questions: MultipleChoiceExercise[],
   totalLevels: number,
   language: Language = "latin",
+  mapStartLevel?: (level: number) => number,
 ): PlacementEngine {
   const [state, dispatch] = useReducer(
     placementReducer,
@@ -189,10 +200,10 @@ export function usePlacementEngine(
     dispatch({ type: "CHOOSE_START", level });
     saveJSON(STORAGE_KEYS.PLACEMENT_RESULT, {
       passed: [],
-      startLevel: level,
+      startLevel: mapStartLevel ? mapStartLevel(level) : level,
       completedAt: new Date().toISOString(),
     }, language);
-  }, [language]);
+  }, [language, mapStartLevel]);
 
   const answer = useCallback(
     (correct: boolean) => {
@@ -209,12 +220,12 @@ export function usePlacementEngine(
         const scored = computePlacementStart(nextResults, totalLevels);
         saveJSON(STORAGE_KEYS.PLACEMENT_RESULT, {
           passed: scored.passed,
-          startLevel: scored.startLevel,
+          startLevel: mapStartLevel ? mapStartLevel(scored.startLevel) : scored.startLevel,
           completedAt: new Date().toISOString(),
         }, language);
       }
     },
-    [state.results, totalQuestions, totalLevels, language],
+    [state.results, totalQuestions, totalLevels, language, mapStartLevel],
   );
 
   return { state, start, answer, retake, chooseStart, quit };

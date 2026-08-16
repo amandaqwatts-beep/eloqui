@@ -57,6 +57,22 @@ for (const b of bookLessons) {
   }
 }
 
+// For each unit, the LESSON COUNT to persist for a student placed into that
+// unit: (minimum latinLessons array index among the unit's lesson ids) + 1.
+// engine/lesson.ts's createInitialState reads the stored placement startLevel
+// as a lesson count in 1..134, so the placement engine's raw unit number
+// (1–14) must be mapped to this count before saving — the Latin route passes
+// this map as usePlacementEngine's mapStartLevel. Matches the unit-boundary
+// comment above: U1 → 1, U2 → 26, … U14 → 131.
+export const unitToFirstLessonCount: Record<number, number> = {};
+for (const [unit, ids] of Object.entries(unitToLessonIds)) {
+  const u = Number(unit);
+  const indexes = ids
+    .map((id) => ORDER.get(id))
+    .filter((i): i is number => i !== undefined);
+  unitToFirstLessonCount[u] = indexes.length > 0 ? Math.min(...indexes) + 1 : 1;
+}
+
 // For each unit, the max array index among its NON-mastery lessons — the
 // teaching frontier a mastery-review id resolves to (a review must not
 // withhold a topic past its unit's regular teaching).
