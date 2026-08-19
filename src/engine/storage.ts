@@ -33,6 +33,11 @@ export const STORAGE_KEYS = {
   // listed here so clearAllData wipes them too, incl. legacy unscoped Latin.
   PROGRESS: "verbum-progress",
   PROGRESS_TOTALS: "verbum-progress-totals",
+  // Cross-language lesson progress (LESSONS 1007/1008). Never language-
+  // namespaced — one global key shared by latin + english. Listed here so
+  // clearAllData's scoped sweep covers it; the unscoped key itself is removed
+  // by the dedicated unconditional line in clearAllData (see below).
+  CROSS_PROGRESS: "verbum-cross-progress",
 } as const;
 
 export const DIAGNOSTICS_SCHEMA_VERSION = 1;
@@ -158,7 +163,7 @@ export function recordAttempt(record: AttemptRecord, language: Language = "latin
 // plus the legacy unscoped Latin forms, so no app data survives "Clear All".
 export function clearAllData(language: Language = "latin"): void {
   if (!isClient()) return;
-  try { Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(languageKey(key, language))); if (language === "latin") Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key)); window.location.reload(); } catch { /* unavailable */ }
+  try { Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(languageKey(key, language))); if (language === "latin") Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key)); window.localStorage.removeItem(STORAGE_KEYS.CROSS_PROGRESS); window.location.reload(); } catch { /* unavailable */ }
 }
 export function enableDevMode(language: Language = "latin"): void {
   saveSettings({ ...loadSettings(language), devMode: true }, language);
