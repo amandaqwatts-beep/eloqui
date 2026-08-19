@@ -20,10 +20,11 @@
  */
 
 import { useCallback, useReducer } from "react";
-import type { MultipleChoiceExercise } from "~/data/latinLessons";
+import type { Lesson, MultipleChoiceExercise } from "~/data/latinLessons";
 import { PLACEMENT_QUESTIONS_PER_LEVEL } from "~/data/settings";
 import type { PlacementResult } from "~/engine/types";
 import type { Language } from "~/data/languages";
+import type { LessonProgress } from "~/engine/progress";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "~/engine/storage";
 
 /** Result of scoring a finished placement run. */
@@ -55,6 +56,74 @@ export function computePlacementStart(
     passed,
     startLevel: firstFailed === -1 ? totalLevels : firstFailed + 1,
   };
+}
+
+/**
+ * Seed `verbum-progress-<lang>` from a placement result (urgent fix 2026-08-19
+ * — owner: "placement test does not update the vocab list"). The lesson-flow
+ * unlock model keys off PLACEMENT_RESULT.startLevel (a LESSON COUNT via
+ * mapStartLevel), but every "learned universe" pool (learnedUniverse.ts,
+ * composeUnitReview / isUnitComplete, "met words" drill/AI pools) derives from
+ * loadProgress(language) = completed lessons — which placement never wrote.
+ * This helper marks everything the student placed OUT OF as learned.
+ *
+ * Rule: a placement landing at lesson-count `placedLessonCount` credits every
+ * lesson whose ARRAY INDEX is strictly less than the array index of the lesson
+ * the student lands ON (`placedLessonCount - 1` under contiguous 1-based
+ * counts). Array index = unlock order in latinLessons.ts — NEVER lesson id
+ * (the file is not id-ordered). The landing lesson itself is NOT pre-completed
+ * (the student starts there fresh); units strictly before it become
+ * reviewable.
+ *
+ * Idempotent MERGE: existing entries are preserved verbatim (a lesson already
+ * completed keeps its stats — never cleared, never downgraded); placed-out
+ * lessons not yet in the list are added as completed. Pure — storage happens
+ * in the callers (usePlacementEngine persistence seam).
+ */
+export function seedProgressFromPlacement(
+  lessons: Lesson[],
+  placedLessonCount: number,
+  existing: LessonProgress[] = [],
+): LessonProgress[] {
+  const count = Math.max(0, Math.min(lessons.length, Math.floor(placedLessonCount)));
+  // Array index of the lesson the student lands on (landing index = count - 1);
+  // everything strictly BEFORE it is placed-out material.
+  const maxSeedIndex = Math.max(0, count - 1);
+  const merged = new Map<number, LessonProgress>();
+  for (const p of existing) merged.set(p.lessonId, p);
+  for (let i = 0; i < maxSeedIndex; i++) {
+    const lesson = lessons[i];
+    if (!lesson) continue;
+    const prev = merged.get(lesson.id);
+    if (prev) {
+      // Preserve the student's real stats; flip a stale incomplete entry the
+      // student has now placed out of.
+      if (!prev.completed) merged.set(lesson.id, { ...prev, completed: true });
+      continue;
+    }
+    merged.set(lesson.id, {
+      lessonId: lesson.id,
+      completed: true,
+      bestScore: 0,
+      lastAttemptedAt: null,
+      timesCompleted: 0,
+    });
+  }
+  return [...merged.values()];
+}
+
+/** Persist the seeded progress (storage side of seedProgressFromPlacement). */
+export function persistPlacementProgressSeeding(
+  lessons: Lesson[],
+  placedLessonCount: number,
+  language: Language,
+): void {
+  const merged = seedProgressFromPlacement(
+    lessons,
+    placedLessonCount,
+    loadJSON<LessonProgress[]>(STORAGE_KEYS.PROGRESS, [], language),
+  );
+  saveJSON(STORAGE_KEYS.PROGRESS, merged, language);
 }
 
 /** Internal state of the placement flow (see placementReducer). */
@@ -178,12 +247,20 @@ export interface PlacementEngine {
  * stored value reads as a lesson count in 1..134 for createInitialState
  * (engine/lesson.ts) to clamp; English passes no mapper and stores the raw
  * 1..10 level number.
+ *
+ * `placedLessons` (optional): the course array in UNLOCK ORDER (Latin passes
+ * latinLessons). When provided, the persistence seam ALSO seeds
+ * verbum-progress-<lang> via seedProgressFromPlacement so the placed-out
+ * material counts as learned (unit reviews / learned universe / "met words"
+ * pools). English (and any caller without the mapper) passes nothing —
+ * placement/progress behavior is byte-identical to before.
  */
 export function usePlacementEngine(
   questions: MultipleChoiceExercise[],
   totalLevels: number,
   language: Language = "latin",
   mapStartLevel?: (level: number) => number,
+  placedLessons?: Lesson[],
 ): PlacementEngine {
   const [state, dispatch] = useReducer(
     placementReducer,
@@ -197,13 +274,16 @@ export function usePlacementEngine(
   const quit = useCallback(() => dispatch({ type: "QUIT" }), []);
 
   const chooseStart = useCallback((level: number) => {
+    const mapped = mapStartLevel ? mapStartLevel(level) : level;
     dispatch({ type: "CHOOSE_START", level });
     saveJSON(STORAGE_KEYS.PLACEMENT_RESULT, {
       passed: [],
-      startLevel: mapStartLevel ? mapStartLevel(level) : level,
+      startLevel: mapped,
       completedAt: new Date().toISOString(),
     }, language);
-  }, [language, mapStartLevel]);
+    // Urgent fix: seed placed-out lessons so reviews/learned pools open.
+    if (placedLessons) persistPlacementProgressSeeding(placedLessons, mapped, language);
+  }, [language, mapStartLevel, placedLessons]);
 
   const answer = useCallback(
     (correct: boolean) => {
@@ -218,14 +298,19 @@ export function usePlacementEngine(
       // keeping placementReducer pure).
       if (nextResults.length >= totalQuestions) {
         const scored = computePlacementStart(nextResults, totalLevels);
+        const mapped = mapStartLevel ? mapStartLevel(scored.startLevel) : scored.startLevel;
         saveJSON(STORAGE_KEYS.PLACEMENT_RESULT, {
           passed: scored.passed,
-          startLevel: mapStartLevel ? mapStartLevel(scored.startLevel) : scored.startLevel,
+          startLevel: mapped,
           completedAt: new Date().toISOString(),
         }, language);
+        // Urgent fix: the mapped value is a LESSON COUNT (Latin); seed the
+        // placed-out lessons as learned so verbum-progress-<lang> reflects the
+        // placement (unit reviews / "met words" pools derive from it).
+        if (placedLessons) persistPlacementProgressSeeding(placedLessons, mapped, language);
       }
     },
-    [state.results, totalQuestions, totalLevels, language, mapStartLevel],
+    [state.results, totalQuestions, totalLevels, language, mapStartLevel, placedLessons],
   );
 
   return { state, start, answer, retake, chooseStart, quit };

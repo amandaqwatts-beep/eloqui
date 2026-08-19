@@ -111,6 +111,12 @@ function LatinLessons() {
     totalUnits,
     language.id,
     (unit) => unitToFirstLessonCount[unit] ?? unit,
+    // Urgent fix (2026-08-19): seeding the placed-out lessons into
+    // verbum-progress-latin at the persistence seam — the learned universe /
+    // unit-review / "met words" pools derive from loadProgress, which
+    // placement otherwise never touches (owner: "placement test does not
+    // update the vocab list").
+    latinLessons,
   );
   const settingsEngine = useSettings(language.id);
   const pronMode = settingsEngine.settings.pronMode;
