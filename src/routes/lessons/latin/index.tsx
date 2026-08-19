@@ -71,6 +71,7 @@ import PlacementTest from "~/screens/PlacementTest";
 import AIPracticeScreen from "~/screens/AIPracticeScreen";
 import SettingsScreen from "~/screens/SettingsScreen";
 import AudioPlayerScreen from "~/screens/AudioPlayerScreen";
+import RecitationScreen from "~/screens/RecitationScreen";
 import SleepAudioScreen from "~/screens/SleepAudioScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
 import UnitReviewScreen, { type UnitReviewResult } from "~/screens/UnitReviewScreen";
@@ -129,6 +130,7 @@ function LatinLessons() {
   const [aiLessonId, setAiLessonId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAudio, setShowAudio] = useState(false);
+  const [showRecite, setShowRecite] = useState(false);
   const [showSleepAudio, setShowSleepAudio] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [showReview, setShowReview] = useState(false);
@@ -503,6 +505,7 @@ function LatinLessons() {
             onOpenAIPractice={openAIPractice}
             onOpenSettings={() => setShowSettings(true)}
             onOpenAudio={() => setShowAudio(true)}
+            onOpenRecite={() => setShowRecite(true)}
             onOpenSleep={() => setShowSleepAudio(true)}
             onOpenProgress={() => setShowProgress(true)}
             onOpenReview={() => setShowReview(true)}
@@ -585,6 +588,15 @@ function LatinLessons() {
               lessons={latinLessons}
               unlockedLessons={lesson.unlockedLessons}
               onBack={() => setShowAudio(false)}
+            />
+          )}
+          {showRecite && (
+            <RecitationScreen
+              lessons={latinLessons}
+              unlockedLessons={lesson.unlockedLessons}
+              defaultLessonId={lesson.currentLesson.id}
+              pronMode={pronMode}
+              onBack={() => setShowRecite(false)}
             />
           )}
           {showSleepAudio && (
