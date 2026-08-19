@@ -15,7 +15,7 @@ interface Props {
 }
 
 /** Split Latin prose into sentence-per-line without relying on lookbehind regex. */
-function splitSentences(text: string): string[] {
+export function splitSentences(text: string): string[] {
   const out: string[] = [];
   let start = 0;
   for (let i = 0; i < text.length; i++) {

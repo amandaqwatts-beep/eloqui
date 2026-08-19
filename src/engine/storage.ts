@@ -2,6 +2,7 @@ import { DEFAULT_PRONUNCIATION_MODE, PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE } from "
 import {
   DIAGNOSTICS_WINDOW_DAYS,
   MAX_DIAGNOSTICS_EVENTS,
+  RECITATION_SESSION_HISTORY_CAP,
   SLEEP_AUDIO_DEFAULT_DURATION_MIN,
   SLEEP_AUDIO_DEFAULT_INCLUDE_ENGLISH,
   SLEEP_AUDIO_DEFAULT_PAUSE_MS,
@@ -18,6 +19,7 @@ import type {
 import type { StreakDay } from "~/engine/improvementStreak";
 import { SETTINGS_DEFAULTS } from "~/data/settings";
 import type { Language } from "~/data/languages";
+import type { RecitationSource } from "~/engine/recitation";
 
 export const STORAGE_KEYS = {
   PLACEMENT_RESULT: "verbum-placement-result",
@@ -29,6 +31,7 @@ export const STORAGE_KEYS = {
   IMPROVEMENT_STREAK: "verbum-streak",
   SLEEP_AUDIO: "verbum-sleep-audio",
   UNIT_REVIEW: "verbum-unit-review",
+  RECITATION: "verbum-recitation",
   // Owned by progress.ts, which writes them directly (bypassing this module);
   // listed here so clearAllData wipes them too, incl. legacy unscoped Latin.
   PROGRESS: "verbum-progress",
@@ -356,4 +359,89 @@ export function recordUnitReviewCompletion(unitNumber: number, score: number, la
     timesCompleted: (prev?.timesCompleted ?? 0) + 1,
   };
   saveUnitReviews(payload, language);
+}
+
+// ── Recitation storage (owner direction 2026-08-11) ───────────────
+// Speech recitation (listen-and-repeat) is a FREE core-curriculum feature.
+// Self-ratings NEVER write DiagnosticEvents (spec §3.2): a "solid" rating as
+// ok:true would fabricate mastery and a "again" as ok:false would manufacture
+// weak spots in the shared comprehension log, which has no source filter on
+// its accuracy/worst-area/series queries. Instead, one dedicated namespaced
+// key holds per-session summaries — "is the student reciting, and does
+// 'try again' trend down over sessions?" — without corrupting any mastery
+// evidence. Adding RECITATION to STORAGE_KEYS means clearAllData wipes it.
+
+export const RECITATION_SCHEMA_VERSION = 1;
+
+/** One finished (or abandoned mid-way) recitation session. Written once on
+ *  the Done view or on back-navigation — partial summaries are fine, the
+ *  honest signal is repetitions attempted (spec §6.2). */
+export interface RecitationSessionSummary {
+  /** UTC ISO timestamp of the session end. */
+  date: string;
+  lessonId: number;
+  source: RecitationSource;
+  lineCount: number;
+  solid: number;
+  close: number;
+  again: number;
+}
+
+/** Persisted payload: version inside, key stable across versions. */
+export interface RecitationPayload {
+  v: number;
+  stats: { totalSessions: number; totalLines: number; lastSessionAt: string | null };
+  /** Newest first, capped at RECITATION_SESSION_HISTORY_CAP. */
+  sessions: RecitationSessionSummary[];
+}
+
+const RECITATION_STATS_DEFAULTS = { totalSessions: 0, totalLines: 0, lastSessionAt: null };
+
+/** Corrupt/absent payload → defaults, never throws (loadSleepAudio pattern). */
+export function loadRecitation(language: Language = "latin"): RecitationPayload {
+  const raw = loadJSON<unknown>(STORAGE_KEYS.RECITATION, null, language);
+  if (!raw || typeof raw !== "object") {
+    return { v: RECITATION_SCHEMA_VERSION, stats: { ...RECITATION_STATS_DEFAULTS }, sessions: [] };
+  }
+  const p = raw as Partial<RecitationPayload>;
+  const stats = (p.stats ?? {}) as Partial<RecitationPayload["stats"]>;
+  const sessions = Array.isArray(p.sessions)
+    ? (p.sessions as RecitationSessionSummary[]).filter(
+        (s) =>
+          s &&
+          typeof s.date === "string" &&
+          typeof s.lessonId === "number" &&
+          (s.source === "vocab" || s.source === "sentence" || s.source === "passage") &&
+          typeof s.lineCount === "number" &&
+          typeof s.solid === "number" &&
+          typeof s.close === "number" &&
+          typeof s.again === "number",
+      )
+    : [];
+  return {
+    v: RECITATION_SCHEMA_VERSION,
+    stats: {
+      totalSessions: typeof stats.totalSessions === "number" ? stats.totalSessions : sessions.length,
+      totalLines: typeof stats.totalLines === "number" ? stats.totalLines : 0,
+      lastSessionAt: typeof stats.lastSessionAt === "string" ? stats.lastSessionAt : null,
+    },
+    sessions: sessions.slice(0, RECITATION_SESSION_HISTORY_CAP),
+  };
+}
+
+export function saveRecitation(payload: RecitationPayload, language: Language = "latin"): void {
+  saveJSON(STORAGE_KEYS.RECITATION, payload, language);
+}
+
+/** Load → prepend summary (newest first) → cap → save. One call per ended
+ *  session (Done view or back-navigation). Idempotence is the caller's
+ *  concern (Phase 2 screen fires it from an event handler once). */
+export function recordRecitationSession(summary: RecitationSessionSummary, language: Language = "latin"): void {
+  if (!isClient()) return;
+  const payload = loadRecitation(language);
+  payload.sessions = [summary, ...payload.sessions].slice(0, RECITATION_SESSION_HISTORY_CAP);
+  payload.stats.totalSessions += 1;
+  payload.stats.totalLines += summary.lineCount;
+  payload.stats.lastSessionAt = summary.date;
+  saveRecitation(payload, language);
 }

@@ -19,6 +19,15 @@ export const DEFAULT_PRONUNCIATION_MODE = "ecclesiastical";
 // override per-utterance via explicit rate args.
 export const SPEECH_DEFAULT_RATE = 0.85;
 export const SPEECH_CLASSICAL_RATE = 0.8;
+// ── Speech recitation (owner direction 2026-08-11; research/speech-recitation-design.md §6.1) ──
+// Free core-curriculum listen-and-repeat. Fixed TTS rate for the model line,
+// Safari onend fallback guard, history cap, and the future English ASR
+// confidence thresholds (spec §5 — seam only in v1, no asr.ts yet).
+export const RECITATION_DEFAULT_RATE = 0.85; // matches what the student hears elsewhere (Q6)
+export const RECITATION_ONEND_FALLBACK_MS = 15_000; // Safari onend reliability guard
+export const RECITATION_SESSION_HISTORY_CAP = 50; // sessions retained in the payload
+export const ASR_SOLID_CONFIDENCE = 0.85; // English ASR future (spec §5)
+export const ASR_CLOSE_CONFIDENCE = 0.6;
 export const AI_MODEL = "gpt-4o-mini";
 export const AI_MAX_TOKENS = 2048;
 export const AI_TEMPERATURE = 0.8;
