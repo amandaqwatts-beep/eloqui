@@ -17,6 +17,8 @@ interface Props {
   onOpenDrill: () => void; onOpenPlacement: () => void; onOpenAIPractice: (lessonId: number) => void;
   // Optional until the route integration phase wires them in (keeps build green).
   onOpenSettings?: () => void; onOpenAudio?: () => void; onOpenSleep?: () => void; onOpenProgress?: () => void; onOpenReview?: () => void;
+  /** 🗣️ Speak (speech recitation) — optional until the route wires it in (keeps English build green). */
+  onOpenRecite?: () => void;
   devMode?: boolean;
   // Language-parameterized copy (English route passes its own; defaults keep Latin byte-identical).
   title?: string; description?: string; emoji?: string; showAIPractice?: boolean; backTo?: string;
@@ -50,7 +52,7 @@ const ICON_TILE =
 
 export default function LessonMenu({
   lessons,unlockedLessons,onSelectLesson,onOpenDrill,onOpenPlacement,onOpenAIPractice,
-  onOpenSettings,onOpenAudio,onOpenSleep,onOpenProgress,onOpenReview,devMode=false,
+  onOpenSettings,onOpenAudio,onOpenSleep,onOpenProgress,onOpenReview,onOpenRecite,devMode=false,
   title="Latin 101",description="Master Latin grammar through bite-sized, interactive lessons — from first declension through passive voice, following Henle's <em>First Year Latin</em>.",
   emoji="🏛️",showAIPractice=true,backTo="/",lessonProgress,
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
@@ -134,7 +136,7 @@ export default function LessonMenu({
             control is 44px (h-11 / w-11, glyphs text-lg). Mobile: row A =
             search + 📖 + ⚙️, row B = the remaining actions in a 3-col grid.
             sm+: both rows merge into one wrapping row — search · 📖 · 🗡️ ·
-            📋 · 🤖 · 🎧 · 🌙 · 📊 · 🎯 · ⚙️ (⚙️ re-orders to the end).
+            📋 · 🤖 · 🎧 · 🗣️ · 🌙 · 📊 · 🎯 · ⚙️ (⚙️ re-orders to the end).
             Conditional rendering unchanged: each route's prop subset renders
             only its own tiles.
           */}
@@ -204,6 +206,11 @@ export default function LessonMenu({
               {onOpenAudio && (
                 <button type="button" onClick={onOpenAudio} title="Listen" aria-label="Listen" className={ICON_TILE}>
                   🎧
+                </button>
+              )}
+              {onOpenRecite && (
+                <button type="button" onClick={onOpenRecite} title="Speak" aria-label="Speak" className={ICON_TILE}>
+                  🗣️
                 </button>
               )}
               {onOpenSleep && (
