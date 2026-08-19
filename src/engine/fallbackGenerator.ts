@@ -16,6 +16,11 @@ import latinLessons, {
   type Lesson,
   type VocabularyItem,
 } from "~/data/latinLessons";
+import englishFallbackBank, {
+  type BankFillItem,
+  type BankMcItem,
+  ROOT_MEANING_ACCEPTABLE_ANSWERS,
+} from "~/data/englishFallbackBank";
 import { shuffle } from "~/engine/drill";
 
 /** Exercise kinds the fallback generator can produce. */
@@ -114,20 +119,33 @@ function buildVocabMultipleChoice(
   if (distractors.length < 3) return null;
 
   const options = shuffle([correct, ...distractors]);
+  // English E→L copy switches on the book: 2001–2002 are register lessons
+  // ("formal word"), 2003+ are root/AWL/SAT/confused-pair words (plain
+  // "Which word means"). See research spec §3.1 (A2/A3, O1).
+  const englishEToL =
+    lesson.id < 2003
+      ? {
+          prompt: `Which formal word means "${target.english}"?`,
+          explanation: `"${target.latin}" is the formal word for "${target.english}".`,
+        }
+      : {
+          prompt: `Which word means "${target.english}"?`,
+          explanation: `"${target.latin}" means "${target.english}".`,
+        };
   return {
     type: "multiple-choice",
     prompt: latinToEnglish
       ? `What does "${target.latin}" mean?`
       : language === "latin"
         ? `Which Latin word means "${target.english}"?`
-        : `Which formal word means "${target.english}"?`,
+        : englishEToL.prompt,
     options,
     correctIndex: options.indexOf(correct),
     explanation: latinToEnglish
       ? `"${target.latin}" means "${target.english}".`
       : language === "latin"
         ? `"${target.latin}" is the Latin word for "${target.english}".`
-        : `"${target.latin}" is the formal word for "${target.english}".`,
+        : englishEToL.explanation,
   };
 }
 
@@ -234,6 +252,148 @@ function buildConjugation(lesson: Lesson): GeneratedExercise | null {
   return { type: "fill-in-blank", prompt: `${answer} is the ___ person ___`, answer: `${row.person} ${number}`, acceptableAnswers: [`${row.person} ${number}`], explanation: `${answer} is the ${row.person} person ${number}.` };
 }
 
+// ── English builders (Phase C — copy bank + data-driven register/root fills) ──
+
+/**
+ * Deduplicate a bank pool by prompt so one run can never serve the same stem
+ * twice even when the bank carries several items sharing a prompt (R8).
+ */
+function dedupeByPrompt<T extends { prompt: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    if (seen.has(item.prompt)) continue;
+    seen.add(item.prompt);
+    out.push(item);
+  }
+  return out;
+}
+
+function buildBankEnglishMc(item: BankMcItem): GeneratedExercise {
+  return {
+    type: "multiple-choice",
+    prompt: item.prompt,
+    options: item.options,
+    correctIndex: item.correctIndex,
+    explanation: item.explanation,
+  };
+}
+
+function buildBankEnglishFill(item: BankFillItem): GeneratedExercise {
+  return {
+    type: "fill-in-blank",
+    prompt: item.prompt,
+    answer: item.answer,
+    acceptableAnswers: item.acceptableAnswers,
+    explanation: item.explanation,
+  };
+}
+
+/** Informal→formal pairs from the lesson's tables (columns named in headers). */
+function englishRegisterPairs(lesson: Lesson): { informal: string; formal: string }[] {
+  const pairs: { informal: string; formal: string }[] = [];
+  for (const table of [lesson.referenceTable, lesson.vocabularyTable]) {
+    if (!table) continue;
+    const informalIdx = table.headers.findIndex((h) => /^informal$/i.test(h.trim()));
+    const formalIdx = table.headers.findIndex((h) => /^formal$/i.test(h.trim()));
+    if (informalIdx < 0 || formalIdx < 0) continue;
+    for (const row of table.rows) {
+      const informal = row[informalIdx]?.trim() ?? "";
+      const formal = row[formalIdx]?.trim() ?? "";
+      if (informal && formal && informal !== formal) pairs.push({ informal, formal });
+    }
+  }
+  return pairs;
+}
+
+/** "Roots of…" table rows (root, meaning, example words) for the root fills. */
+function englishRootRows(lesson: Lesson): { root: string; meaning: string; examples: string }[] {
+  const table = lesson.referenceTable;
+  if (!table || !/^Roots of/i.test(table.title)) return [];
+  const rootIdx = table.headers.findIndex((h) => /^root$/i.test(h.trim()));
+  const meaningIdx = table.headers.findIndex((h) => /^meaning$/i.test(h.trim()));
+  if (rootIdx < 0 || meaningIdx < 0) return [];
+  const exampleIdx = table.headers.findIndex((h) => /^example/i.test(h));
+  const out: { root: string; meaning: string; examples: string }[] = [];
+  for (const row of table.rows) {
+    const root = row[rootIdx]?.trim() ?? "";
+    const meaning = row[meaningIdx]?.trim() ?? "";
+    if (!root || !meaning) continue;
+    out.push({ root, meaning, examples: exampleIdx >= 0 ? (row[exampleIdx] ?? "").trim() : "" });
+  }
+  return out;
+}
+
+/**
+ * Data-driven register fill for lessons 2001–2002 (W2): "The formal twin of
+ * X is: ___" / "The informal partner of Y is: ___" from the lesson's own
+ * Informal/Formal rows. Drawn without replacement from a per-call pool.
+ */
+function buildAppRegisterFill(
+  pool: { informal: string; formal: string }[],
+): GeneratedExercise | null {
+  if (!pool.length) return null;
+  const pair = pool[pool.length - 1];
+  pool.pop();
+  // Reverse direction needs a lowercase single-word answer (R5) — "look at"
+  // and the like stay in the formal-twin direction.
+  if (Math.random() < 0.5 && /^[a-z]+$/.test(pair.informal)) {
+    return {
+      type: "fill-in-blank",
+      prompt: `The informal partner of "${pair.formal}" is: ___`,
+      answer: pair.informal,
+      acceptableAnswers: [pair.informal],
+      explanation: `"${pair.informal}" is the informal partner of "${pair.formal}".`,
+    };
+  }
+  return {
+    type: "fill-in-blank",
+    prompt: `The formal twin of "${pair.informal}" is: ___`,
+    answer: pair.formal,
+    acceptableAnswers: [pair.formal],
+    explanation: `"${pair.formal}" is the formal twin of "${pair.informal}".`,
+  };
+}
+
+/**
+ * Data-driven root-meaning fill for lessons 2003–2005 (W3): `"bene-" means:
+ * ___` answered by the first word of the Meaning column, with the accepted
+ * synonyms from ROOT_MEANING_ACCEPTABLE_ANSWERS. Without replacement per call.
+ */
+function buildRootFill(
+  pool: { root: string; meaning: string; examples: string }[],
+): GeneratedExercise | null {
+  if (!pool.length) return null;
+  const row = pool[pool.length - 1];
+  pool.pop();
+  const answer = row.meaning.split(",")[0].trim().split(/\s+/)[0];
+  const accepted = ROOT_MEANING_ACCEPTABLE_ANSWERS[row.root] ?? [];
+  return {
+    type: "fill-in-blank",
+    prompt: `"${row.root}" means: ___`,
+    answer,
+    acceptableAnswers: Array.from(new Set([answer, ...accepted])),
+    explanation: row.examples
+      ? `"${row.root}" = ${row.meaning} — ${row.examples}.`
+      : `"${row.root}" = ${row.meaning}.`,
+  };
+}
+
+/** Dispatcher for the rotation's register-or-root slot (2001–2002 / 2003–2005). */
+function buildRegisterOrRootFill(
+  lesson: Lesson,
+  registerPool: { informal: string; formal: string }[],
+  rootPool: { root: string; meaning: string; examples: string }[],
+): GeneratedExercise | null {
+  if (lesson.id >= 2001 && lesson.id <= 2002) {
+    return buildAppRegisterFill(registerPool);
+  }
+  if (lesson.id >= 2003 && lesson.id <= 2005) {
+    return buildRootFill(rootPool);
+  }
+  return null;
+}
+
 // ── Concept fallback (no vocab / no reference table) ───────────
 
 /** Common English words that can appear in concept prose — never used as answers. */
@@ -284,27 +444,31 @@ function buildConceptFallback(
   distractorLessons?: Lesson[],
 ): GeneratedExercise {
   // 1) Word-order MC from the first italicized Latin phrase in the concept.
-  const phrase = lesson.concept.match(/<em>\s*([a-zāēīōūĀĒĪŌŪ][a-zāēīōūĀĒĪŌŪ\s.,]*?)<\/em>/i)?.[1];
-  const words = phrase?.trim().split(/\s+/).filter(Boolean);
-  if (words && words.length >= 3) {
-    const correctOrder = words.join(" ");
-    const permutations = new Set<string>([correctOrder]);
-    let guard = 0;
-    while (permutations.size < 4 && guard < 60) {
-      guard++;
-      permutations.add(shuffle(words).join(" "));
+  // English skips this branch (O4): English word order is rigid, so shuffled
+  // sentences read as visibly wrong — recognition below is the real check.
+  if (language === "latin") {
+    const phrase = lesson.concept.match(/<em>\s*([a-zāēīōūĀĒĪŌŪ][a-zāēīōūĀĒĪŌŪ\s.,]*?)<\/em>/i)?.[1];
+    const words = phrase?.trim().split(/\s+/).filter(Boolean);
+    if (words && words.length >= 3) {
+      const correctOrder = words.join(" ");
+      const permutations = new Set<string>([correctOrder]);
+      let guard = 0;
+      while (permutations.size < 4 && guard < 60) {
+        guard++;
+        permutations.add(shuffle(words).join(" "));
+      }
+      const options = shuffle([...permutations]);
+      return {
+        type: "multiple-choice",
+        prompt:
+          language === "latin"
+            ? "Which shows the correct Latin word order?"
+            : "Which shows the correct word order?",
+        options,
+        correctIndex: options.indexOf(correctOrder),
+        explanation: `The correct word order is "${correctOrder}".`,
+      };
     }
-    const options = shuffle([...permutations]);
-    return {
-      type: "multiple-choice",
-      prompt:
-        language === "latin"
-          ? "Which shows the correct Latin word order?"
-          : "Which shows the correct word order?",
-      options,
-      correctIndex: options.indexOf(correctOrder),
-      explanation: `The correct word order is "${correctOrder}".`,
-    };
   }
 
   // 2) Recognition MC: pick a Latin word from this lesson's concept.
@@ -396,7 +560,34 @@ export function generateFallbackExercises(
       () => buildConjugation(lesson),
     ],
   };
-  const rotate = builders[mode];
+  let rotate = builders[mode];
+
+  // English mixed rotation (Phase C): [vocab MC, bank MC, bank fill, matching,
+  // register/root fill, concept]. The bank and data-driven fill pools are
+  // shuffled once per call and drawn without replacement (H1), so a 10-run
+  // never repeats a bank stem (R8). Each builder returns null when the lesson
+  // lacks the data and the slot falls through to concept, as today.
+  if (language === "english" && mode === "mixed") {
+    const bank = englishFallbackBank[lesson.id];
+    const mcPool = bank ? shuffle(dedupeByPrompt(bank.mc)) : [];
+    const fillPool = bank ? shuffle(dedupeByPrompt(bank.fill)) : [];
+    const registerPool = shuffle(englishRegisterPairs(lesson));
+    const rootPool = shuffle(englishRootRows(lesson));
+    rotate = [
+      () => buildVocabMultipleChoice(lesson, language),
+      () => {
+        const item = mcPool.pop();
+        return item ? buildBankEnglishMc(item) : null;
+      },
+      () => {
+        const item = fillPool.pop();
+        return item ? buildBankEnglishFill(item) : null;
+      },
+      () => buildMatching(lesson, language),
+      () => buildRegisterOrRootFill(lesson, registerPool, rootPool),
+      () => buildConceptFallback(lesson, language, distractorLessons),
+    ];
+  }
 
   // Rotate through the mode's builders; any builder that lacks data for the
   // lesson falls back to a concept-based question, so every slot is filled.
