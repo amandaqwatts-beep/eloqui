@@ -75,6 +75,7 @@ import SleepAudioScreen from "~/screens/SleepAudioScreen";
 import ProgressScreen from "~/screens/ProgressScreen";
 import UnitReviewScreen, { type UnitReviewResult } from "~/screens/UnitReviewScreen";
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
+import { speakLatin } from "~/engine/speech";
 import { loadAccuracy, recordAccuracy } from "~/engine/storage";
 import ReviewScreen from "~/screens/ReviewScreen";
 import PairDrillScreen from "~/screens/PairDrillScreen";
@@ -634,6 +635,10 @@ function LatinLessons() {
           onStart={lesson.startLesson}
           onBack={lesson.backToMenu}
           onOpenAIPractice={openAIPractice}
+          // Urgent fix (2026-08-19): vocab 🔊 was toggle-blind (always
+          // ecclesiastical default). Pass the active mode so the spoken form
+          // follows the pronunciation toggle (audit G9 minimal).
+          onSpeakLeft={(t) => speakLatin(t, pronMode)}
         />
       );
 

@@ -151,7 +151,10 @@ export default function AudioPlayerScreen({ lessons, unlockedLessons, onBack }: 
               <div className="text-3xl font-black">{current?.text ?? "Ready"}</div>
               {state.language && (
                 <p className="mt-2 font-bold">
-                  {state.language === "latin" ? "🇮🇹 Italian voice" : "🇬🇧 English voice"}
+                  {/* No longer a hardcoded Italian voice (speech.ts speaks
+                      mode-matched Latin via the voice ladder — voice-tts
+                      improvement audit 1.5). */}
+                  {state.language === "latin" ? "🗣️ Latin voice" : "🇬🇧 English voice"}
                 </p>
               )}
               <p className="mt-2 text-sm text-gray-500">

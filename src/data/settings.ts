@@ -13,6 +13,12 @@ export const PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE: Record<Language, number> = { la
 export const PRONUNCIATION_MODES = ["ecclesiastical", "classical"] as const;
 export type PronMode = (typeof PRONUNCIATION_MODES)[number];
 export const DEFAULT_PRONUNCIATION_MODE = "ecclesiastical";
+// ── Speech / TTS (engine/speech.ts; voice-tts-improvement-plan.md P3) ─────
+// One default rate plus a slightly slower classical default (an English voice
+// reading the v→w/c→k transcription). speech.ts consumes both; surfaces may
+// override per-utterance via explicit rate args.
+export const SPEECH_DEFAULT_RATE = 0.85;
+export const SPEECH_CLASSICAL_RATE = 0.8;
 export const AI_MODEL = "gpt-4o-mini";
 export const AI_MAX_TOKENS = 2048;
 export const AI_TEMPERATURE = 0.8;
