@@ -119,7 +119,7 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130, 142 · Deponent + semi-deponent verbs", subLessonIds: [127, 128, 129, 130, 142], kind: "lesson" },
 
   // ── UNIT 14 · Henle 42 + Mastery Review No. 3 ─────────────────
-  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–141 · eō + irregular verbs volō/nōlō/mālō, ferō, fīō", subLessonIds: [131, 132, 133, 139, 140, 141], kind: "lesson" },
+  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–149 · eō + irregular verbs + subjunctive uses", subLessonIds: [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149], kind: "lesson" },
   { id: 46, henleNumber: null, unitNumber: 14, title: "Mastery Review No. 3", subtitle: "ID 134 · Unit 14 checkpoint", subLessonIds: [134], kind: "mastery-review" },
 ];
 
