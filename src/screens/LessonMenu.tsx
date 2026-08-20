@@ -264,7 +264,7 @@ export default function LessonMenu({
 
           <div className="mt-10 text-center">
             <Link to={backTo} className="text-sm text-gray-400 hover:text-burgundy-600 transition">
-              ← Back to {backTo === "/" ? "Verbum" : "Languages"}
+              ← Back to {backTo === "/" ? "Eloqui" : "Languages"}
             </Link>
           </div>
         </div>

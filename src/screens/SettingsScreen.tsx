@@ -68,7 +68,7 @@ export default function SettingsScreen({
             Settings
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Tune how Verbum works for you.
+            Tune how Eloqui works for you.
           </p>
 
           <div className="mt-8 space-y-6">
