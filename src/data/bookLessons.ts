@@ -1,5 +1,5 @@
 // Verbum — Bookshelf v2: Henle book-lesson mapping (bookLessons.ts)
-// Data-only file. Maps the 134 flat sub-lessons of latinLessons.ts into 56
+// Data-only file. Maps the 138 flat sub-lessons of latinLessons.ts into 56
 // "books": 42 Henle book lessons (kind "lesson", henleNumber 1–42) + 4
 // mastery reviews (kind "mastery-review", henleNumber null; sub-lesson ids
 // 25/33/70/134) + 10 unit reviews (kind "unit-review", henleNumber null; ids
@@ -10,6 +10,15 @@
 // mastery-review book sits immediately after that unit's Henle lessons),
 // matching the §A mapping-table row order; the 10 unit-review books append
 // after the base, ids in unit order 3,4,6,7,8,9,10,11,12,13.
+// NLE supplement (2026-08-20): sub-lessons 135–138 (present active
+// participle, ablative of manner, impersonal verbs, locative) are appended
+// at the END of latinLessons.ts (array order is unlock order; appending is
+// the only index-safe placement) and assigned here to the most relevant
+// EXISTING Henle book so each unlocks at that book's normal position and
+// renders as its final chapter: 136→book 20 (H18, U5, w/ ablative of means),
+// 135→book 33 (H30, U9, w/ perfect passive participle), 137→book 38 (H35,
+// U10, w/ oportet), 138→book 40 (H37, U11, w/ time & place). See
+// research/nle-phase2-placement.md.
 //
 // ⚠️ ARRAY-ORDER CONSTRAINT — read before touching this file or latinLessons.ts:
 // latinLessons.ts array order is NOT id order (sub-lessons 51/52 — Henle 14,
@@ -63,7 +72,7 @@ const BASE_BOOKS: BookLesson[] = [
 
   // ── UNIT 5 · Henle 17–21 + Mastery Review Vocab #2 ────────────
   { id: 19, henleNumber: 17, unitNumber: 5, title: "Active and Passive Voice", subtitle: "IDs 59–62 · Voice; passive endings; 1st-conj passive; agent", subLessonIds: [59, 60, 61, 62], kind: "lesson" },
-  { id: 20, henleNumber: 18, unitNumber: 5, title: "Present System Passive of the Second Conjugation", subtitle: "IDs 63–64 · 2nd-conj passive; ablative of means", subLessonIds: [63, 64], kind: "lesson" },
+  { id: 20, henleNumber: 18, unitNumber: 5, title: "Present System Passive of the Second Conjugation", subtitle: "IDs 63–64, 136 · 2nd-conj passive; ablative of means; ablative of manner", subLessonIds: [63, 64, 136], kind: "lesson" },
   { id: 21, henleNumber: 19, unitNumber: 5, title: "Present System Passive of the Third Conjugation", subtitle: "IDs 65–66 · 3rd-conj passive; agency vs means", subLessonIds: [65, 66], kind: "lesson" },
   { id: 22, henleNumber: 20, unitNumber: 5, title: "Present System Passive of the Fourth Conjugation", subtitle: "IDs 67–68 · 4th-conj passive; accompaniment", subLessonIds: [67, 68], kind: "lesson" },
   { id: 23, henleNumber: 21, unitNumber: 5, title: "The Perfect System of the Indicative Passive", subtitle: "ID 69", subLessonIds: [69], kind: "lesson" },
@@ -84,18 +93,18 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 32, henleNumber: 29, unitNumber: 8, title: "The Present and Imperfect Subjunctive Passive", subtitle: "IDs 94–96 · Subj. passive; perfect passive subj.; ablative of cause", subLessonIds: [94, 95, 96], kind: "lesson" },
 
   // ── UNIT 9 · Henle 30–34 ──────────────────────────────────────
-  { id: 33, henleNumber: 30, unitNumber: 9, title: "The Perfect Participle Passive", subtitle: "ID 97", subLessonIds: [97], kind: "lesson" },
+  { id: 33, henleNumber: 30, unitNumber: 9, title: "The Perfect Participle Passive", subtitle: "IDs 97, 135 · Perfect & present active participles", subLessonIds: [97, 135], kind: "lesson" },
   { id: 34, henleNumber: 31, unitNumber: 9, title: "Hic, Haec, Hoc — The Declension", subtitle: "IDs 98–99 · Declension; uses (+ summus idiom)", subLessonIds: [98, 99], kind: "lesson" },
   { id: 35, henleNumber: 32, unitNumber: 9, title: "Prepositions Ex, Ab, Dē", subtitle: "ID 100", subLessonIds: [100], kind: "lesson" },
   { id: 36, henleNumber: 33, unitNumber: 9, title: "Ille and Is", subtitle: "ID 101", subLessonIds: [101], kind: "lesson" },
   { id: 37, henleNumber: 34, unitNumber: 9, title: "The Ablative of Separation", subtitle: "IDs 102–103 · Separation; review of ablative constructions", subLessonIds: [102, 103], kind: "lesson" },
 
   // ── UNIT 10 · Henle 35–36 ─────────────────────────────────────
-  { id: 38, henleNumber: 35, unitNumber: 10, title: "Possum — Present, Imperfect, Future", subtitle: "IDs 104–107 · possum tenses; perfect/subjunctive; infinitive as subject; as object", subLessonIds: [104, 105, 106, 107], kind: "lesson" },
+  { id: 38, henleNumber: 35, unitNumber: 10, title: "Possum — Present, Imperfect, Future", subtitle: "IDs 104–107, 137 · possum tenses; infinitive as subject/object; impersonal verbs", subLessonIds: [104, 105, 106, 107, 137], kind: "lesson" },
   { id: 39, henleNumber: 36, unitNumber: 10, title: "Numerals", subtitle: "IDs 108–109 · Cardinals; nine -īus adjectives", subLessonIds: [108, 109], kind: "lesson" },
 
   // ── UNIT 11 · Henle 37–38 ─────────────────────────────────────
-  { id: 40, henleNumber: 37, unitNumber: 11, title: "Indicative Active of -iō Verbs", subtitle: "IDs 110–116 · -iō indicative; time when; -iō subj.; extent; -iō passive; time within which; -iō subj. passive", subLessonIds: [110, 111, 112, 113, 114, 115, 116], kind: "lesson" },
+  { id: 40, henleNumber: 37, unitNumber: 11, title: "Indicative Active of -iō Verbs", subtitle: "IDs 110–116, 138 · -iō; time & place constructions; the locative case", subLessonIds: [110, 111, 112, 113, 114, 115, 116, 138], kind: "lesson" },
   { id: 41, henleNumber: 38, unitNumber: 11, title: "Dative Verbs", subtitle: "IDs 117–118 · noceō/praesum; passive of verbs of calling", subLessonIds: [117, 118], kind: "lesson" },
 
   // ── UNIT 12 · Henle 39 ────────────────────────────────────────
