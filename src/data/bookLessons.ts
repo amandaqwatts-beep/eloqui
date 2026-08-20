@@ -23,6 +23,18 @@
 // (volō/nōlō/mālō, ferō, fīō, semi-deponent verbs) also appended at the END
 // of latinLessons.ts and assigned: 139–141→book 45 (H42, U14, w/ eō — the
 // irregular-verb book) and 142→book 44 (H41, U13, w/ deponents).
+// Phase 3b (subjunctive-uses block, 2026-08-20): sub-lessons 143–149
+// (indirect command, result, cum, fearing, conditions, optative/deliberative,
+// relative of characteristic/purpose) appended at the END and assigned to
+// book 45 (H42, U14, the advanced/subjunctive book).
+// Phase 3c (verbal block, 2026-08-20): sub-lessons 150–154 (gerund, gerundive,
+// supine, periphrastic, fore + defective verbs) appended at the END and
+// assigned by verbal-noun/verbal-adjective affinity: 150/152→book 42 (H39,
+// U12, w/ infinitives — the verbal-noun book), 151→book 33 (H30, U9, w/
+// participles — the verbal-adjective book), 153→book 44 (H41, U13, w/
+// deponents — the advanced verbal book), 154→book 45 (H42, U14, w/ irregular
+// verbs — fore is a form of esse, defectives are irregular verbs). See
+// research/nle-phase3c-placement.md.
 //
 // ⚠️ ARRAY-ORDER CONSTRAINT — read before touching this file or latinLessons.ts:
 // latinLessons.ts array order is NOT id order (sub-lessons 51/52 — Henle 14,
@@ -97,7 +109,7 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 32, henleNumber: 29, unitNumber: 8, title: "The Present and Imperfect Subjunctive Passive", subtitle: "IDs 94–96 · Subj. passive; perfect passive subj.; ablative of cause", subLessonIds: [94, 95, 96], kind: "lesson" },
 
   // ── UNIT 9 · Henle 30–34 ──────────────────────────────────────
-  { id: 33, henleNumber: 30, unitNumber: 9, title: "The Perfect Participle Passive", subtitle: "IDs 97, 135 · Perfect & present active participles", subLessonIds: [97, 135], kind: "lesson" },
+  { id: 33, henleNumber: 30, unitNumber: 9, title: "The Perfect Participle Passive", subtitle: "IDs 97, 135, 151 · Perfect, present active participles & the gerundive", subLessonIds: [97, 135, 151], kind: "lesson" },
   { id: 34, henleNumber: 31, unitNumber: 9, title: "Hic, Haec, Hoc — The Declension", subtitle: "IDs 98–99 · Declension; uses (+ summus idiom)", subLessonIds: [98, 99], kind: "lesson" },
   { id: 35, henleNumber: 32, unitNumber: 9, title: "Prepositions Ex, Ab, Dē", subtitle: "ID 100", subLessonIds: [100], kind: "lesson" },
   { id: 36, henleNumber: 33, unitNumber: 9, title: "Ille and Is", subtitle: "ID 101", subLessonIds: [101], kind: "lesson" },
@@ -112,14 +124,14 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 41, henleNumber: 38, unitNumber: 11, title: "Dative Verbs", subtitle: "IDs 117–118 · noceō/praesum; passive of verbs of calling", subLessonIds: [117, 118], kind: "lesson" },
 
   // ── UNIT 12 · Henle 39 ────────────────────────────────────────
-  { id: 42, henleNumber: 39, unitNumber: 12, title: "The Perfect and Future Infinitives Active", subtitle: "IDs 119–122 · Perfect/future inf.; ACI intro; ACI time; passive infinitives", subLessonIds: [119, 120, 121, 122], kind: "lesson" },
+  { id: 42, henleNumber: 39, unitNumber: 12, title: "The Perfect and Future Infinitives Active", subtitle: "IDs 119–122, 150, 152 · Perfect/future inf.; ACI intro; ACI time; passive infinitives; gerund; supine", subLessonIds: [119, 120, 121, 122, 150, 152], kind: "lesson" },
 
   // ── UNIT 13 · Henle 40–41 ─────────────────────────────────────
   { id: 43, henleNumber: 40, unitNumber: 13, title: "Regular Comparison of Adjectives", subtitle: "IDs 123–126 · Regular; declension of comparative; abl. of comparison; irregular", subLessonIds: [123, 124, 125, 126], kind: "lesson" },
-  { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130, 142 · Deponent + semi-deponent verbs", subLessonIds: [127, 128, 129, 130, 142], kind: "lesson" },
+  { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130, 142, 153 · Deponent + semi-deponent verbs; periphrastics", subLessonIds: [127, 128, 129, 130, 142, 153], kind: "lesson" },
 
   // ── UNIT 14 · Henle 42 + Mastery Review No. 3 ─────────────────
-  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–149 · eō + irregular verbs + subjunctive uses", subLessonIds: [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149], kind: "lesson" },
+  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–149, 154 · eō + irregular verbs + subjunctive uses; fore & defective verbs", subLessonIds: [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154], kind: "lesson" },
   { id: 46, henleNumber: null, unitNumber: 14, title: "Mastery Review No. 3", subtitle: "ID 134 · Unit 14 checkpoint", subLessonIds: [134], kind: "mastery-review" },
 ];
 

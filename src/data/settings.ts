@@ -1,8 +1,8 @@
 import type { Language } from "~/data/languages";
 export const APP_NAME = "Eloqui";
 export const SETTINGS_DEFAULTS = { aiEnabled: true, devMode: false } as const;
-export const LESSONS_PER_UNIT = 149;
-export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 149, greek: 0, hebrew: 0, english: 10 };
+export const LESSONS_PER_UNIT = 154;
+export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 154, greek: 0, hebrew: 0, english: 10 };
 export const EXERCISES_PER_LESSON = 7;
 export const DRILL_KINDS = ["vocab-latin", "vocab-english", "conjugation", "declension", "mixed"] as const;
 export const DRILL_COUNTS = [10, 20, "all"] as const;
@@ -35,7 +35,7 @@ export const AI_MIN_EXERCISES = 3;
 export const AI_MAX_EXERCISES = 10;
 export const AI_DEFAULT_EXERCISES = 5;
 export const AI_DEFAULT_LESSON_ID = 1;
-export const LATIN_LESSONS = 149;
+export const LATIN_LESSONS = 154;
 // ── Diagnostics (owner direction 2026-08-11) ────────────────────
 // Rolling 2-week per-concept tracking: window, event-log cap, and the
 // mistake/confusion thresholds consumed by src/engine/diagnostics.ts.
