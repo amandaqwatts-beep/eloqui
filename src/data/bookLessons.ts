@@ -1,5 +1,5 @@
 // Verbum — Bookshelf v2: Henle book-lesson mapping (bookLessons.ts)
-// Data-only file. Maps the 138 flat sub-lessons of latinLessons.ts into 56
+// Data-only file. Maps the 142 flat sub-lessons of latinLessons.ts into 56
 // "books": 42 Henle book lessons (kind "lesson", henleNumber 1–42) + 4
 // mastery reviews (kind "mastery-review", henleNumber null; sub-lesson ids
 // 25/33/70/134) + 10 unit reviews (kind "unit-review", henleNumber null; ids
@@ -19,6 +19,10 @@
 // 135→book 33 (H30, U9, w/ perfect passive participle), 137→book 38 (H35,
 // U10, w/ oportet), 138→book 40 (H37, U11, w/ time & place). See
 // research/nle-phase2-placement.md.
+// Phase 3a (irregular-verbs block, 2026-08-20): sub-lessons 139–142
+// (volō/nōlō/mālō, ferō, fīō, semi-deponent verbs) also appended at the END
+// of latinLessons.ts and assigned: 139–141→book 45 (H42, U14, w/ eō — the
+// irregular-verb book) and 142→book 44 (H41, U13, w/ deponents).
 //
 // ⚠️ ARRAY-ORDER CONSTRAINT — read before touching this file or latinLessons.ts:
 // latinLessons.ts array order is NOT id order (sub-lessons 51/52 — Henle 14,
@@ -112,10 +116,10 @@ const BASE_BOOKS: BookLesson[] = [
 
   // ── UNIT 13 · Henle 40–41 ─────────────────────────────────────
   { id: 43, henleNumber: 40, unitNumber: 13, title: "Regular Comparison of Adjectives", subtitle: "IDs 123–126 · Regular; declension of comparative; abl. of comparison; irregular", subLessonIds: [123, 124, 125, 126], kind: "lesson" },
-  { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130 · Deponent indicative; subjunctive; perfect participle; infinitives", subLessonIds: [127, 128, 129, 130], kind: "lesson" },
+  { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130, 142 · Deponent + semi-deponent verbs", subLessonIds: [127, 128, 129, 130, 142], kind: "lesson" },
 
   // ── UNIT 14 · Henle 42 + Mastery Review No. 3 ─────────────────
-  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133 · eō indicative; eō subjunctive; eō infinitives", subLessonIds: [131, 132, 133], kind: "lesson" },
+  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–141 · eō + irregular verbs volō/nōlō/mālō, ferō, fīō", subLessonIds: [131, 132, 133, 139, 140, 141], kind: "lesson" },
   { id: 46, henleNumber: null, unitNumber: 14, title: "Mastery Review No. 3", subtitle: "ID 134 · Unit 14 checkpoint", subLessonIds: [134], kind: "mastery-review" },
 ];
 
