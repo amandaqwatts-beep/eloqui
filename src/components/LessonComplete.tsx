@@ -176,7 +176,7 @@ export default function LessonComplete({
               Thanks for your feedback!
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              Your input helps us make Verbum better.
+              Your input helps us make Eloqui better.
             </p>
           </div>
         ) : (
