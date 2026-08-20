@@ -117,7 +117,7 @@ const BASE_BOOKS: BookLesson[] = [
 
   // ── UNIT 10 · Henle 35–36 ─────────────────────────────────────
   { id: 38, henleNumber: 35, unitNumber: 10, title: "Possum — Present, Imperfect, Future", subtitle: "IDs 104–107, 137 · possum tenses; infinitive as subject/object; impersonal verbs", subLessonIds: [104, 105, 106, 107, 137], kind: "lesson" },
-  { id: 39, henleNumber: 36, unitNumber: 10, title: "Numerals", subtitle: "IDs 108–109 · Cardinals; nine -īus adjectives", subLessonIds: [108, 109], kind: "lesson" },
+  { id: 39, henleNumber: 36, unitNumber: 10, title: "Numerals", subtitle: "IDs 108–109, 155 · Cardinals; nine -īus adjectives; ordinals", subLessonIds: [108, 109, 155], kind: "lesson" },
 
   // ── UNIT 11 · Henle 37–38 ─────────────────────────────────────
   { id: 40, henleNumber: 37, unitNumber: 11, title: "Indicative Active of -iō Verbs", subtitle: "IDs 110–116, 138 · -iō; time & place constructions; the locative case", subLessonIds: [110, 111, 112, 113, 114, 115, 116, 138], kind: "lesson" },
@@ -127,7 +127,7 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 42, henleNumber: 39, unitNumber: 12, title: "The Perfect and Future Infinitives Active", subtitle: "IDs 119–122, 150, 152 · Perfect/future inf.; ACI intro; ACI time; passive infinitives; gerund; supine", subLessonIds: [119, 120, 121, 122, 150, 152], kind: "lesson" },
 
   // ── UNIT 13 · Henle 40–41 ─────────────────────────────────────
-  { id: 43, henleNumber: 40, unitNumber: 13, title: "Regular Comparison of Adjectives", subtitle: "IDs 123–126 · Regular; declension of comparative; abl. of comparison; irregular", subLessonIds: [123, 124, 125, 126], kind: "lesson" },
+  { id: 43, henleNumber: 40, unitNumber: 13, title: "Regular Comparison of Adjectives", subtitle: "IDs 123–126, 156–157 · Regular; declension of comparative; abl. of comparison; irregular; -limus/-rimus & adverbs", subLessonIds: [123, 124, 125, 126, 156, 157], kind: "lesson" },
   { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130, 142, 153 · Deponent + semi-deponent verbs; periphrastics", subLessonIds: [127, 128, 129, 130, 142, 153], kind: "lesson" },
 
   // ── UNIT 14 · Henle 42 + Mastery Review No. 3 ─────────────────
