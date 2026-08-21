@@ -50,7 +50,7 @@ export default function MultipleChoice({ exercise, onComplete, onResult }: Props
               btnClass += "border-burgundy-500 bg-burgundy-50 text-burgundy-900 shadow-sm";
             } else {
               btnClass +=
-                "border-gray-200 bg-white text-gray-700 hover:border-burgundy-300 hover:bg-cream-50 cursor-pointer";
+                "bg-cream-50 border-wood-200 text-wood-900 hover:bg-cream-100 hover:border-wood-300 cursor-pointer";
             }
           } else {
             if (idx === exercise.correctIndex) {

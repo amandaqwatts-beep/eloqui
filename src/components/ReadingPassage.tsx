@@ -62,7 +62,7 @@ export default function ReadingPassage({ exercise, pronMode, onComplete }: Props
   return (
     <div className="space-y-5">
       {/* ── Passage panel ─────────────────────────────────────── */}
-      <div className="rounded-2xl border border-burgundy-200 bg-cream-50 p-5 shadow-sm">
+      <div className="paper-page pt-6 pr-6 pb-6 pl-8 sm:pt-8 sm:pr-8 sm:pb-8 sm:pl-10">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <h3 className="text-lg font-bold text-burgundy-900">
@@ -90,7 +90,7 @@ export default function ReadingPassage({ exercise, pronMode, onComplete }: Props
             (line, i) => (
               <p
                 key={i}
-                className="text-lg leading-relaxed text-burgundy-900 font-medium"
+                className="paper-reading text-lg font-medium text-burgundy-900"
               >
                 {line}
               </p>
