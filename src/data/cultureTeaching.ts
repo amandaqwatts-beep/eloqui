@@ -25,6 +25,7 @@ const KNOWN_CULTURE_IDS = [
   "cu27-q1", "cu32-q1", "cu33-q1", "cu34-q1", "cu35-q1",
   "cu37-q1", "cu41-q1", "cu53-q1", "cu56-q1", "cu57-q1",
   "cu58-q1", "cu59-q1", "cu60-q1", "cu65-q1", "cu70-q1",
+  "cu90-q1", "cu98-q1", "cu108-q1", "cu120-q1",
 ] as const;
 
 export const CULTURE_TEACHING: Record<string, CultureTeachingBundle> = {
@@ -453,7 +454,96 @@ export const CULTURE_TEACHING: Record<string, CultureTeachingBundle> = {
              explanation: "Spartacus was a Thracian slave trained as a gladiator — the revolt he led (73–71 BC) began among gladiators." },
     sources: ["OCD s.v. Spartacus: leader of the Third Servile War (73–71 BC), defeated by Crassus.",
               "Appian, Civil Wars 1.116–120 (the revolt and its end)."]
+  },
+  // ── UNIT 8 · Vestīmenta Rōmāna — Roman clothing ─────────────────────
+  "cu90-q1": {
+    exerciseId: "cu90-q1",
+    steps: [
+      { title: "Roman Clothing — the Toga",
+        explanation: "The toga (toga, f.) was the badge of the Roman male citizen — a large draped woollen garment worn over the tunica (tunica, f.), the simple tunic everyone wore underneath. The toga was heavy and hard to put on, so Romans wore it only for formal occasions, in the Forum, and in court. The stola (stola, f.) was the dress of a respectable married woman, and the palla (palla, f.) her shawl. Calceus (calceus, m., pl. calceī) is the Roman shoe.",
+        exampleLatin: "toga, tunica, stola, palla, calceus",
+        exampleEnglish: "toga, tunic, a married woman's dress, a shawl, a shoe",
+        tip: "No toga, no full citizenship: the toga was the citizen's mark, so the stola and palla belonged to women and the calceus was what you put on your feet." },
+      { title: "Induite Togam! — Putting It On",
+        explanation: "Lesson 90 teaches the imperative, the mood of commands — and getting dressed was something Romans commanded too. Induō, induere means 'put on, put on clothing'. Its plural imperative is induite, so induite togam! = 'put on the toga! (you all)'. The singular is indue: indue togam! = 'put on the toga!'. The imperative of lesson 90 is exactly the form you use to order someone to dress.",
+        exampleLatin: "Indue togam! / Induite togam!",
+        exampleEnglish: "Put on the toga! (one) / Put on the toga! (you all)",
+        tip: "induō, induere — 'put on' — pairs with the garments: induere togam, induere calceōs, 'to put on shoes'." }
+    ],
+    check: { question: "The Roman male citizen's formal woollen garment, worn over the tunica, was the…",
+             options: ["toga", "stola", "palla", "calceus"],
+             correctIndex: 0,
+             explanation: "The toga (toga, f.) was the distinctive garment of the male citizen; the stola and palla were women's dress, and the calceus was a shoe." },
+    sources: ["OCD s.v. toga: the distinctive woollen garment of the Roman male citizen.",
+              "Lewis & Short s.v. induō (to put on, of clothing)."]
+  },
+  // ── UNIT 9 · Domus Rōmāna — the Roman house ─────────────────────────
+  "cu98-q1": {
+    exerciseId: "cu98-q1",
+    steps: [
+      { title: "The Roman House — Domus and Villa",
+        explanation: "A Roman's home was the domus (domus, f., 'house, home') in the city, or a villa (villa, f.) in the country. The grand city house opened onto the ātrium (ātrium, n.), the central reception hall lit by an opening in the roof, where guests were received. Off it lay the cubiculum (cubiculum, n., 'bedroom'), the trīclīnium (trīclīnium, n., 'dining room'), and the culīna (culīna, f., 'kitchen'). The poor of Rome lived in tall apartment blocks, the īnsulae (īnsula, f., pl. īnsulae — literally 'islands').",
+        exampleLatin: "domus, villa, ātrium, cubiculum, trīclīnium, culīna, īnsula",
+        exampleEnglish: "house, country-house, hall, bedroom, dining room, kitchen, apartment block",
+        tip: "Remember the neuters by their -um: ātrium, cubiculum, trīclīnium; the feminine nouns are domus, villa, culīna, and īnsula." },
+      { title: "Haec Domus, Hoc Cubiculum",
+        explanation: "Lesson 98's demonstrative hic, haec, hoc — 'this' — is how you point at the rooms. Haec domus = 'this house' (domus is feminine, so haec); hoc cubiculum = 'this bedroom' (cubiculum is neuter, so hoc); hoc trīclīnium = 'this dining room'. The -c- that ends hic, haec, hoc is the pointing 'this' — the Romans literally said 'this-here', pointing at what is near.",
+        exampleLatin: "haec domus / hoc cubiculum / hoc trīclīnium",
+        exampleEnglish: "this house / this bedroom / this dining room",
+        tip: "hic agrees with its noun like an adjective: haec (f.) domus, hoc (n.) cubiculum." }
+    ],
+    check: { question: "The central reception hall of a Roman house, entered from the street, was the…",
+             options: ["ātrium (n.)", "cubiculum (n.)", "culīna (f.)", "īnsula (f.)"],
+             correctIndex: 0,
+             explanation: "The ātrium was the central hall of the Roman domus; the cubiculum was a bedroom, the culīna the kitchen, and the īnsula an apartment block." },
+    sources: ["OCD s.v. domus: the plan of the standard Roman house (atrium, cubiculum, triclinium).",
+              "Vitruvius, De Architectura 6.4–5 (the parts of the house and their arrangement)."]
+  },
+  // ── UNIT 10 · Cēna Rōmāna — food and meals ─────────────────────────
+  "cu108-q1": {
+    exerciseId: "cu108-q1",
+    steps: [
+      { title: "Roman Meals and the Cēna",
+        explanation: "Romans ate a light breakfast and a midday prandium (prandium, n., 'lunch'), but the main meal of the day was the cēna (cēna, f., 'dinner'). Its fare was cibus (cibus, m., 'food'), pānis (pānis, m., 'bread'), vīnum (vīnum, n., 'wine'), and fruit, laid out on the mēnsa (mēnsa, f., 'table'). A plebeian who had no kitchen ate at a taberna (taberna, f., 'shop, tavern').",
+        exampleLatin: "cēna, cibus, pānis, vīnum, prandium, taberna, mēnsa",
+        exampleEnglish: "dinner, food, bread, wine, lunch, tavern, table",
+        tip: "The cēna was the evening dinner; the prandium was the lighter midday meal — the Romans did not make breakfast their big meal." },
+      { title: "Tria Fercula — Counting the Courses",
+        explanation: "Lesson 108 teaches the cardinal numerals, and the dinner-table is where the Romans actually counted. A formal cēna was served in three courses: tria fercula = 'three courses'. Tria is the neuter plural of trēs, tria (lesson 108). One course is ūnum ferculum, two are duo fercula, three tria fercula. Even the word trīclīnium ('dining room') is built on the same root as trēs — its three couches (clīnae) around the table.",
+        exampleLatin: "ūnum ferculum / duo fercula / tria fercula",
+        exampleEnglish: "one course / two courses / three courses",
+        tip: "tria fercula is lesson 108's trēs, tria in living use — the numerals you just studied are how you order the dinner." }
+    ],
+    check: { question: "The main meal of the Roman day, served in the evening, was called the…",
+             options: ["cēna (f.)", "prandium (n.)", "pānis (m.)", "vīnum (n.)"],
+             correctIndex: 0,
+             explanation: "The cēna was the main evening dinner; the prandium was the lighter midday meal, pānis is 'bread', and vīnum is 'wine'." },
+    sources: ["OCD s.v. cena: the three courses of the Roman dinner.",
+              "Cato, De Agricultura 156 (the table, bread, and wine at the cena)."]
+  },
+  // ── UNIT 12 · Deī Rōmānī — the gods of the Romans ───────────────────
+  "cu120-q1": {
+    exerciseId: "cu120-q1",
+    steps: [
+      { title: "The Capitoline Triad",
+        explanation: "The three chief gods of Rome were worshipped together in the great temple on the Capitoline Hill: Iuppiter (Iuppiter, m., 'Jupiter'), Iūnō (Iūnō, f., 'Juno'), and Minerva (Minerva, f., 'Minerva') — the Capitoline triad. The Romans used their Roman, not Greek, names: Iuppiter was their Zeus, Iūnō their Hera, Minerva their Athena. Other gods of this world: Mārs (Mārs, m., 'Mars', war), Venus (Venus, f., 'love'), Neptūnus (Neptūnus, m., 'Neptune', the sea).",
+        exampleLatin: "Iuppiter, Iūnō, Minerva — the Capitoline triad",
+        exampleEnglish: "Jupiter, Juno, Minerva: the three gods of the Capitoline temple",
+        tip: "A deus (deus, m., 'god') is a male god; a dea (dea, f., 'goddess') a female one — Iuppiter and Neptūnus are deī, Iūnō and Minerva are deae." },
+      { title: "Caesar Dīcit Deōs …",
+        explanation: "Lesson 120 introduces the accusative with the infinitive — exactly how Latin reports what people think and say about the gods. Caesar dīcit deōs esse potentes = 'Caesar says that the gods are powerful': deōs (accusative plural of deus) is the subject of the infinitive esse. The Romans spoke of their gods in this very construction, in prayers, vows, and histories.",
+        exampleLatin: "Caesar dīcit deōs esse potentes.",
+        exampleEnglish: "Caesar says that the gods are powerful.",
+        tip: "In the ACI, deōs (accusative) is who is said to be powerful, carried by the infinitive esse — the reported idea of lesson 120." }
+    ],
+    check: { question: "The three gods worshipped together in the great temple on the Capitoline Hill were…",
+             options: ["Iuppiter, Iūnō, and Minerva", "Mārs, Venus, and Neptūnus", "Apollo, Diana, and Mercurius", "Iuppiter, Mārs, and Neptūnus"],
+             correctIndex: 0,
+             explanation: "The Capitoline triad was Iuppiter, Iūnō, and Minerva — the three gods honoured in the temple on the Capitoline Hill." },
+    sources: ["OCD s.v. Capitolium: the temple of Jupiter Optimus Maximus and the Capitoline triad (Jupiter, Juno, Minerva).",
+              "Livy 1.55 (the building of the Capitoline temple)."]
   }
+
 };
 
 // Dev-mode validation — console.warn only, never throw (absent bundles render quiz-only at runtime).
