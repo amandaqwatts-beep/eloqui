@@ -117,14 +117,14 @@ export default function LessonComplete({
   };
 
   return (
-    <div className="flex flex-col items-center text-center space-y-5 py-6 px-4">
+    <div className="paper-page paper-page--plain flex flex-col items-center text-center space-y-5 py-6 px-6 sm:px-8">
       {/* Icon */}
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gold-100 text-5xl shadow-inner">
         {emoji}
       </div>
 
       {/* Title */}
-      <h2 className="text-2xl font-extrabold text-burgundy-900">
+      <h2 className="paper-title text-2xl font-extrabold">
         Lesson {lessonNumber} Complete!
       </h2>
 

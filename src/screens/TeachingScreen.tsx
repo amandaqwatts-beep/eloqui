@@ -76,7 +76,7 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
   const skipLink = (
     <button
       onClick={onSkip}
-      className="mt-3 block w-full py-2 text-center text-sm font-semibold text-gray-400 transition hover:text-burgundy-600"
+      className="mt-3 block w-full py-2 text-center text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
     >
       Skip teaching
     </button>
@@ -87,11 +87,12 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
     return (
       <div className="min-h-dvh flex flex-col">
         <NavBar />
-        <main className="flex-1 px-4 py-6 sm:py-10">
+        <main className="paper-desk flex-1 px-4 py-6 sm:py-10">
           <div className="mx-auto w-full max-w-2xl">
             <span className="mb-3 inline-block rounded-full bg-burgundy-100 px-3 py-1 text-xs font-medium text-burgundy-700">
               Lesson {lesson.id} · Teaching
             </span>
+            <div className="paper-rule mb-3" />
             <TeachingStepCard
               step={steps[stepIdx]}
               index={stepIdx + 1}
@@ -121,7 +122,7 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
     return (
       <div className="min-h-dvh flex flex-col">
         <NavBar />
-        <main className="flex-1 px-4 py-6 sm:py-10">
+        <main className="paper-desk flex-1 px-4 py-6 sm:py-10">
           <div className="mx-auto w-full max-w-2xl">
             <div className="mb-6 flex items-center justify-between">
               <span className="inline-block rounded-full bg-burgundy-100 px-3 py-1 text-xs font-medium text-burgundy-700">
@@ -131,7 +132,7 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
                 Question {qIdx + 1} of {questions.length}
               </span>
             </div>
-            <div className="rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg sm:p-8">
+            <div className="paper-page pt-6 pr-6 pb-6 pl-8 sm:pt-8 sm:pr-8 sm:pb-8 sm:pl-10">
               <p className="text-lg font-medium leading-relaxed text-burgundy-900">
                 {q.question}
               </p>
@@ -210,7 +211,7 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
     return (
       <div className="min-h-dvh flex flex-col">
         <NavBar />
-        <main className="flex-1 px-4 py-6 sm:py-10">
+        <main className="paper-desk flex-1 px-4 py-6 sm:py-10">
           <div className="mx-auto w-full max-w-2xl">
             <div className="mb-4 text-center">
               <h1 className="text-2xl font-black text-burgundy-900">
@@ -245,10 +246,10 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
   return (
     <div className="min-h-dvh flex flex-col">
       <NavBar />
-      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
-        <div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-7 text-center shadow-lg sm:p-10">
+      <main className="paper-desk flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
+        <div className="paper-page mx-auto w-full max-w-xl p-7 text-center sm:p-10">
           <div className="text-5xl">🎉</div>
-          <h1 className="mt-3 text-2xl font-black text-burgundy-900 sm:text-3xl">
+          <h1 className="paper-title mt-3 text-2xl sm:text-3xl">
             You're ready!
           </h1>
           <p className="mt-2 text-gray-600">

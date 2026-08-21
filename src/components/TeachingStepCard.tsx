@@ -11,18 +11,18 @@ export default function TeachingStepCard({
   total: number;
 }) {
   return (
-    <div className="rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg sm:p-8">
+    <div className="paper-page pt-6 pr-6 pb-6 pl-8 sm:pt-8 sm:pr-8 sm:pb-8 sm:pl-10">
       <span className="inline-block rounded-full bg-burgundy-100 px-3 py-1 text-xs font-semibold text-burgundy-700">
         Step {index} of {total}
       </span>
-      <h2 className="mt-3 text-xl font-extrabold text-burgundy-900 sm:text-2xl">
+      <h2 className="paper-title mt-3 text-xl font-extrabold sm:text-2xl">
         {step.title}
       </h2>
       <p className="mt-3 text-sm leading-relaxed text-gray-700 sm:text-base">
         {step.explanation}
       </p>
       <blockquote className="mt-5 rounded-r-xl border-l-4 border-gold-500 bg-cream-100 px-4 py-3">
-        <p className="text-lg italic text-burgundy-900 sm:text-xl">
+        <p className="paper-reading text-lg italic text-burgundy-900 sm:text-xl">
           {step.exampleLatin}
         </p>
       </blockquote>
