@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { VerbumSettings } from "~/engine/types";
+import { ensureUserIdentity } from "~/engine/storage";
 import WindowFrame from "~/components/WindowFrame";
 
 interface Props {
@@ -59,6 +60,21 @@ export default function SettingsScreen({
   showPronunciation = true,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+  // Account identity (Phase 1): anonymous-only. The id lets a user attach a
+  // second device (cross-device sync) before Phase 2 auth lands.
+  const identity = typeof window !== "undefined" ? ensureUserIdentity() : null;
+
+  const copyId = async () => {
+    if (!identity) return;
+    try {
+      await navigator.clipboard.writeText(identity.id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
 
   return (
     <WindowFrame title="Settings" onBack={onBack} variant="overlay">
@@ -72,6 +88,39 @@ export default function SettingsScreen({
           </p>
 
           <div className="mt-8 space-y-6">
+            {/* ── Account (Phase 1: anonymous id + cross-device sync) ── */}
+            <SectionCard title="Account">
+              {identity ? (
+                <>
+                  <p className="text-sm text-gray-600">
+                    Your progress is saved on this device only. Sync lets you
+                    pick up where you left off on another browser.
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={copyId}
+                      className="rounded-xl border-2 border-burgundy-300 bg-burgundy-50 px-4 py-2 text-sm font-bold text-burgundy-700 transition hover:bg-burgundy-100"
+                    >
+                      {copiedId ? "Copied ✓" : "Copy account id"}
+                    </button>
+                    <span className="text-xs text-gray-400">
+                      Paste this id on another device to sync (then sign in to
+                      link it to your account).
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs text-gray-400">
+                    Sign in is coming soon — it will sync this account across
+                    devices automatically.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  Syncing is available in the browser.
+                </p>
+              )}
+            </SectionCard>
+
             {/* ── Pronunciation ─────────────────────────────────────── */}
             {showPronunciation && (
             <SectionCard title="Pronunciation">
