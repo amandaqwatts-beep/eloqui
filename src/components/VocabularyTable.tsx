@@ -14,14 +14,14 @@ interface Props {
 
 export default function VocabularyTable({ title, items, pronMode = "ecclesiastical", leftHeader = "Latin", rightHeader = "English", onSpeakLeft = speakLatin }: Props) {
   return (
-    <div className="rounded-xl border border-burgundy-200 bg-cream-50 overflow-hidden">
+    <div className="rounded-xl border border-wood-200 bg-cream-50 overflow-hidden">
       <div className="bg-burgundy-100 px-4 py-2 text-sm font-semibold text-burgundy-800">
         {title}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-burgundy-200 bg-burgundy-50/50">
+            <tr className="border-b border-wood-200 bg-burgundy-50/50">
               <th className="px-3 py-2 text-left font-semibold text-burgundy-700 whitespace-nowrap">
                 {leftHeader}
               </th>
@@ -59,7 +59,7 @@ export default function VocabularyTable({ title, items, pronMode = "ecclesiastic
               return (
                 <tr
                   key={ri}
-                  className="border-b border-burgundy-100 last:border-0 text-gray-700 hover:bg-burgundy-50/30 transition-colors"
+                  className="border-b border-wood-100 last:border-0 text-gray-700 hover:bg-burgundy-50/30 transition-colors"
                 >
                   <td className="px-3 py-2 font-medium text-burgundy-900 whitespace-nowrap">
                     {item.latin} <button type="button" onClick={speakLeft} aria-label={`Hear ${item.latin}`} className="ml-1">🔊</button>

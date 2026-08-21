@@ -107,7 +107,7 @@ export default function CultureQuestion({
   };
 
   const banner = (chip: string) => (
-    <div className="flex items-center justify-between rounded-xl border border-gold-200 bg-gold-50 p-3">
+    <div className="flex items-center justify-between rounded-xl border border-gold-200 border-t-2 border-t-gold-500 bg-gold-50 p-3">
       <span className="font-semibold text-burgundy-900">🏛️ Culture Corner</span>
       <span className="rounded-full bg-gold-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold-800">
         {chip}
@@ -177,7 +177,7 @@ export default function CultureQuestion({
                     "border-burgundy-500 bg-burgundy-50 text-burgundy-900 shadow-sm";
                 } else {
                   btnClass +=
-                    "border-gray-200 bg-white text-gray-700 hover:border-burgundy-300 hover:bg-cream-50 cursor-pointer";
+                    "bg-cream-50 border-wood-200 text-wood-900 hover:bg-cream-100 hover:border-wood-300 cursor-pointer";
                 }
               } else {
                 if (idx === q.correctIndex) {
@@ -257,7 +257,7 @@ export default function CultureQuestion({
               btnClass += "border-burgundy-500 bg-burgundy-50 text-burgundy-900 shadow-sm";
             } else {
               btnClass +=
-                "border-gray-200 bg-white text-gray-700 hover:border-burgundy-300 hover:bg-cream-50 cursor-pointer";
+                "bg-cream-50 border-wood-200 text-wood-900 hover:bg-cream-100 hover:border-wood-300 cursor-pointer";
             }
           } else {
             if (idx === exercise.correctIndex) {

@@ -147,7 +147,7 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
               cls += "border-burgundy-500 bg-burgundy-50 text-burgundy-900 shadow-sm";
             } else {
               cls +=
-                "border-gray-200 bg-white text-gray-700 hover:border-burgundy-300 hover:bg-cream-50 cursor-pointer";
+                "bg-cream-50 border-wood-200 text-wood-900 hover:bg-cream-100 hover:border-wood-300 cursor-pointer";
             }
 
             return (
@@ -188,7 +188,7 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
               cls += "border-burgundy-500 bg-burgundy-50 text-burgundy-900 shadow-sm";
             } else {
               cls +=
-                "border-gray-200 bg-white text-gray-700 hover:border-burgundy-300 hover:bg-cream-50 cursor-pointer";
+                "bg-cream-50 border-wood-200 text-wood-900 hover:bg-cream-100 hover:border-wood-300 cursor-pointer";
             }
 
             return (
@@ -208,7 +208,7 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
       {matches.length > 0 && matches.length < pairs.length && !submitted && (
         <button
           onClick={handleGiveUp}
-          className="w-full rounded-xl border-2 border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-500 transition hover:border-red-300 hover:text-red-600"
+          className="w-full rounded-xl border-2 border-wood-300 bg-cream-50 py-2.5 text-sm font-medium text-wood-800 transition hover:border-red-300 hover:text-red-600"
         >
           Skip (show answers)
         </button>

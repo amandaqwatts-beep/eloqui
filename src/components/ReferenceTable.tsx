@@ -25,14 +25,14 @@ export default function ReferenceTable({
   );
 
   return (
-    <div className="rounded-xl border border-burgundy-200 bg-cream-50 overflow-hidden">
+    <div className="rounded-xl border border-wood-200 bg-cream-50 overflow-hidden">
       <div className="bg-burgundy-100 px-4 py-2 text-sm font-semibold text-burgundy-800">
         {title}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-burgundy-200 bg-burgundy-50/50">
+            <tr className="border-b border-wood-200 bg-burgundy-50/50">
               {headers.map((h, i) => (
                 <th
                   key={i}
@@ -57,7 +57,7 @@ export default function ReferenceTable({
               return (
                 <tr
                   key={ri}
-                  className={`border-b border-burgundy-100 last:border-0 ${
+                  className={`border-b border-wood-100 last:border-0 ${
                     highlightSet.has(ri)
                       ? "bg-gold-50 font-semibold text-burgundy-900"
                       : "text-gray-700"
