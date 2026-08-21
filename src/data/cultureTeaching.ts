@@ -25,7 +25,7 @@ const KNOWN_CULTURE_IDS = [
   "cu27-q1", "cu32-q1", "cu33-q1", "cu34-q1", "cu35-q1",
   "cu37-q1", "cu41-q1", "cu53-q1", "cu56-q1", "cu57-q1",
   "cu58-q1", "cu59-q1", "cu60-q1", "cu65-q1", "cu70-q1",
-  "cu90-q1", "cu98-q1", "cu108-q1", "cu120-q1",
+  "cu90-q1", "cu98-q1", "cu108-q1", "cu120-q1", "cu111-q1", "cu127-q1",
 ] as const;
 
 export const CULTURE_TEACHING: Record<string, CultureTeachingBundle> = {
@@ -542,6 +542,50 @@ export const CULTURE_TEACHING: Record<string, CultureTeachingBundle> = {
              explanation: "The Capitoline triad was Iuppiter, Iūnō, and Minerva — the three gods honoured in the temple on the Capitoline Hill." },
     sources: ["OCD s.v. Capitolium: the temple of Jupiter Optimus Maximus and the Capitoline triad (Jupiter, Juno, Minerva).",
               "Livy 1.55 (the building of the Capitoline temple)."]
+  },
+  // ── UNIT 11 · Lūdī Rōmānī — games and entertainment ──────────────
+  "cu111-q1": {
+    exerciseId: "cu111-q1",
+    steps: [
+      { title: "The Roman Afternoon at the Baths",
+        explanation: "Lesson 111 teaches time when, the ablative of the point of time (eō diē 'on that day', eā hōrā 'at that hour'), and the Roman day was built on such hours. Morning belonged to business and the law-courts; from the afternoon on, the city turned to leisure. A Roman bathed at the great public baths, thermae (thermae, f. pl., 'baths'), or a smaller private balneum (balneum, n., 'bath'): washing, exercise, and conversation in the same visit.",
+        exampleLatin: "eā hōrā Rōmānī ad thermās veniunt.",
+        exampleEnglish: "at that hour the Romans come to the baths",
+        tip: "eā hōrā is lesson 111's ablative of time when — 'at that hour' — the very construction that tells us when the afternoon at the baths began." },
+      { title: "Lūdī: the Circus and the Amphitheatre",
+        explanation: "A lūdus (lūdus, m., 'game, play') gave its name to the public games, the lūdī. The circus (circus, m., 'race-course, circus') was a long oval track for chariot racing in four-horse chariots, quadrigae (quadriga, f., 'four-horse chariot'); the Circus Maximus, below the Palatine, was Rome's great venue. Gladiatorial combat was staged in the amphitheātrum (amphitheātrum, n., 'amphitheatre'), a great oval arena of which the Colosseum is the most famous.",
+        exampleLatin: "lūdus, circus, amphitheātrum, gladiātor, quadriga",
+        exampleEnglish: "game, circus, amphitheatre, gladiator, four-horse chariot",
+        tip: "English 'circus', 'amphitheatre' and 'gladiator' all come straight from these Latin words — and a quadriga was the four-horse racing chariot." }
+    ],
+    check: { question: "The four-horse racing chariot used in a Roman circus was called a…",
+             options: ["quadriga (f.)", "gladiātor (m.)", "balneum (n.)", "templum (n.)"],
+             correctIndex: 0,
+             explanation: "A quadriga was a four-horse chariot, the racing vehicle of the circus. A gladiātor fought in the amphitheatre, a balneum was a bath, and a templum a temple." },
+    sources: ["OCD s.v. baths (thermae): the public baths as a daily Roman institution; the afternoon was the customary hour for bathing.",
+              "OCD s.v. circus / s.v. amphitheatrum / s.v. quadriga: chariot racing in the circus, gladiatorial combat in the amphitheatre."]
+  },
+  // ── UNIT 13 · Rēs Sacrae — religion and ceremonies ─────────────────
+  "cu127-q1": {
+    exerciseId: "cu127-q1",
+    steps: [
+      { title: "From the Household Genius to the Capitol",
+        explanation: "Roman religion began at home: every family tended its own household gods, the Larēs and the protecting Genius (the theme of the side lesson 'A Roman Household and its Genius'). The state did on a grander scale what the family did in its house — it kept a public cult in temples and set priests to tend it. The temples were templa (templum, n., 'temple'); the servants of the gods were sacerdōtēs (sacerdōs, m./f., 'priest, priestess'). The chief priest, head of the college of priests, was the pontifex maximus (pontifex, m., 'high priest'); the augurs (augur, m., 'augur') read the gods' will from the flight of birds before public business.",
+        exampleLatin: "templum, sacerdōs, pontifex maximus, augur",
+        exampleEnglish: "temple, priest, chief priest, augur",
+        tip: "The bridge is the same at both scales: just as a household served its Larēs and Genius, the res publica served the state's gods — with priests rather than a paterfamilias." },
+      { title: "Vows, Weddings, Funerals — and Pietās",
+        explanation: "Lesson 127's deponent verb vereor means 'fear, respect, revere' — the right attitude toward the gods. Romans bound themselves to the gods by vōta (vōtum, n., 'vow'), and religious rites marked the whole of life: a wedding (nūptiae, f. pl., 'marriage, wedding') was a solemn ceremony, and a funeral (fūnus, fūneris, n., 'funeral') sent the dead on their way. The virtue that held it all together was pietās (pietās, f., 'devotion, duty') — dutiful love of gods, country, and family — and the person who showed it was pīus (pīus, adj., 'dutiful, devoted').",
+        exampleLatin: "vōtum, nūptiae, fūnus; pīus, pietās",
+        exampleEnglish: "vow, wedding, funeral; devoted, devotion",
+        tip: "vereor, the deponent verb of lesson 127, is how the Romans described their reverence: they verēbantur (revered) the gods through vōta, weddings, and funeral rites." }
+    ],
+    check: { question: "Which of these was a state priest taught to read the will of the gods from the flight of birds?",
+             options: ["augur (m.)", "cēna (f.)", "thermae (f. pl.)", "quadriga (f.)"],
+             correctIndex: 0,
+             explanation: "An augur read the auspices — the gods' will — from the flight of birds. A cēna was a dinner, thermae were baths, and a quadriga a four-horse chariot." },
+    sources: ["OCD s.v. pontifex (the college of pontifices and the pontifex maximus); s.v. augures (auspices read from the flight of birds).",
+              "OCD s.v. pietas (devotion to gods, country, and family); s.v. marriage / funus (wedding and funeral rites)."]
   }
 
 };
