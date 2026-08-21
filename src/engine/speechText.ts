@@ -79,3 +79,32 @@ export function latinToSpeechText(text: string, mode: LatinMode): string {
   const stripped = stripMacrons(text);
   return mode === "classical" ? toClassicalSpeechText(stripped) : stripped;
 }
+
+/**
+ * The spoken string for ONE vocabulary word, UNIFIED with the display
+ * respelling (voice-tts-improvement-plan.md P0 best-of-both — closes audit
+ * gap G3: the student reads "poo-EL-lah" in the Pronunciation column and the
+ * 🔊 speaks EXACTLY that, not a differently-shaped macron-stripped string).
+ *
+ * When a respelling (`respelling` — the authored `item.pronunciation`, or a
+ * `getPronunciation`-derived one, i.e. whatever the display column shows) is
+ * provided it is returned VERBATIM; otherwise it falls back to the mode's
+ * macron-stripped / grapheme-transcribed `latinToSpeechText` form.
+ *
+ * IMPORTANT — respellings are handed to `speakOnce` WITHOUT running
+ * `latinToSpeechText` on them. Real respellings already encode the target
+ * phonology (e.g. classical `caelum` → "KEYE-luhm", ecclesiastical `via` →
+ * "VEE-ah") and contain bare `y`/`v` letters that `latinToSpeechText` would
+ * re-rewrite (y→i, v→w, c→k), so re-transcribing them would mangle the very
+ * string the student sees. The caller speaks `latinWordSpeechText` output
+ * verbatim via `speakOnce`; QA can assert the exact utterance text via this
+ * pure function.
+ */
+export function latinWordSpeechText(
+  latin: string,
+  respelling: string | undefined,
+  mode: LatinMode,
+): string {
+  if (respelling && respelling.trim().length > 0) return respelling.trim();
+  return latinToSpeechText(latin, mode);
+}

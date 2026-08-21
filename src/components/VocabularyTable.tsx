@@ -1,6 +1,7 @@
 import type { VocabularyItem } from "~/data/latinLessons";
 import { getPronunciation, type PronMode } from "~/lib/pronunciation";
-import { speakLatin, speakEnglish } from "~/engine/speech";
+import { speakLatin, speakEnglish, speakOnce } from "~/engine/speech";
+import { latinWordSpeechText } from "~/engine/speechText";
 
 interface Props {
   title: string;
@@ -41,13 +42,27 @@ export default function VocabularyTable({ title, items, pronMode = "ecclesiastic
             {items.map((item, ri) => {
               const displayPron =
                 item.pronunciation ?? getPronunciation(item.latin, pronMode);
+              // UNIFIED RESPELING (voice-tts P0, G3): for a Latin 🔊 the
+              // student reads `displayPron` in the Pronunciation column, so we
+              // speak EXACTLY that — verbatim via `speakOnce` (NOT through
+              // `speakLatin`, whose latinToSpeechText would re-rewrite bare
+              // y/v/c inside real respellings). English surfaces keep speaking
+              // the raw term through the caller's `onSpeakLeft` as before.
+              const isEnglishLeft = onSpeakLeft === speakEnglish;
+              const spokenLeft = isEnglishLeft
+                ? item.latin
+                : latinWordSpeechText(item.latin, displayPron, pronMode);
+              const speakLeft = () => {
+                if (isEnglishLeft) onSpeakLeft(spokenLeft);
+                else speakOnce(spokenLeft, { language: "latin", mode: pronMode });
+              };
               return (
                 <tr
                   key={ri}
                   className="border-b border-burgundy-100 last:border-0 text-gray-700 hover:bg-burgundy-50/30 transition-colors"
                 >
                   <td className="px-3 py-2 font-medium text-burgundy-900 whitespace-nowrap">
-                    {item.latin} <button type="button" onClick={() => onSpeakLeft(item.latin)} aria-label={`Hear ${item.latin}`} className="ml-1">🔊</button>
+                    {item.latin} <button type="button" onClick={speakLeft} aria-label={`Hear ${item.latin}`} className="ml-1">🔊</button>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     {item.english} <button type="button" onClick={() => speakEnglish(item.english)} aria-label={`Hear ${item.english}`} className="ml-1">🔊</button>

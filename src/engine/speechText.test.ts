@@ -11,7 +11,7 @@
  * 7-error baseline. Run with:
  *   bun src/engine/speechText.test.ts
  */
-import { latinToSpeechText, stripMacrons, toClassicalSpeechText } from "~/engine/speechText";
+import { latinToSpeechText, latinWordSpeechText, stripMacrons, toClassicalSpeechText } from "~/engine/speechText";
 
 let pass = 0;
 let fail = 0;
@@ -67,6 +67,83 @@ eq(classical("Terra, māter!"), "Terra, mater!", "class: punctuation kept");
 // ── toClassicalSpeechText: exact-transcription sanity (importable) ─
 eq(toClassicalSpeechText("CAELUM"), "KAILUM", "classical: CAELUM → KAILUM (all caps)");
 eq(toClassicalSpeechText("Aeolus"), "Aiolus", "classical: Aeolus → Aiolus (mixed case)");
+
+// ── latinWordSpeechText: the P0 UNIFIED respelling (display == audio, G3) ─
+// Prefer the display respelling verbatim when provided, else fall back to the
+// mode's macron-stripped / transcribed text.
+eq(
+  latinWordSpeechText("puella", "poo-EL-lah", "ecclesiastical"),
+  "poo-EL-lah",
+  "word: authored respelling spoken verbatim (eccl)",
+);
+eq(
+  latinWordSpeechText("puella", "puh-EL-luh", "classical"),
+  "puh-EL-luh",
+  "word: authored respelling spoken verbatim (classical)",
+);
+eq(
+  latinWordSpeechText("puella", undefined, "ecclesiastical"),
+  "puella",
+  "word: no respelling → macron-stripped fallback",
+);
+eq(
+  latinWordSpeechText("caelum", undefined, "classical"),
+  "kailum",
+  "word: no respelling → classical transcription fallback",
+);
+eq(
+  latinWordSpeechText("amāvērunt", "  ah-MAH-weh-roont  ", "classical"),
+  "ah-MAH-weh-roont",
+  "word: respelling whitespace trimmed; Latin fallback ignored when respelling present",
+);
+eq(
+  latinWordSpeechText("amāvērunt", "", "ecclesiastical"),
+  "amaverunt",
+  "word: empty respelling string → Latin fallback",
+);
+
+// Verbatim contract (display == audio, byte-for-byte): whenever a respelling
+// is present, latinWordSpeechText returns it UNCHANGED — even when it contains
+// the bare y/v/c letters that latinToSpeechText would re-rewrite (y→i, v→w,
+// c→k) in classical mode. That is WHY the caller speaks the output via
+// `speakOnce` (verbatim) rather than through `speakLatin` (which re-transcribes).
+// Fixtures are real getPronunciation outputs verified live (classical caelum →
+// "KEYE-luhm", ecclesiastical via → "VEE-ah", amāvērunt classical →
+// "uh-mah-WAY-ruhnt") so a future regression that routes respellings back
+// through latinToSpeechText is caught here.
+{
+  const fixtures: Array<[string, string, "ecclesiastical" | "classical"]> = [
+    ["puella", "poo-EHL-lah", "ecclesiastical"],
+    ["via", "VEE-ah", "ecclesiastical"], // bare V — ecclesiastical keeps it
+    ["amāvērunt", "uh-mah-WAY-ruhnt", "classical"], // bare Y — classical keeps it
+    ["caelum", "KEYE-luhm", "classical"], // bare Y — classical keeps it
+    ["terrae", "TEHR-reye", "classical"], // bare Y — classical keeps it
+    ["hoc", "OHTCH", "ecclesiastical"], // no c/v/y — plain
+    ["topographia", "taw-paw-GRUH-phih-uh", "classical"], // bare Y at end
+  ];
+  let bad = 0;
+  for (const [latin, resp, mode] of fixtures) {
+    const unified = latinWordSpeechText(latin, resp, mode);
+    if (unified !== resp) {
+      bad++;
+      console.log(`(FAIL) verbatim expected "${resp}" got "${unified}" in ${mode}`);
+    }
+  }
+  if (bad === 0) {
+    pass++;
+    console.log(`  unified respellings returned verbatim (display==audio) for ${fixtures.length} fixtures incl. bare y/v in both modes`);
+  } else {
+    fail++;
+  }
+  // Sanity: the reason we speak verbatim — latinToSpeechText WOULD mangle these.
+  if (latinToSpeechText("VEE-ah", "classical") !== "VEE-ah") {
+    pass++;
+    console.log("  confirmed: latinToSpeechText is NOT identity on respellings → verbatim speakOnce is required");
+  } else {
+    fail++;
+    console.log("(FAIL) expected latinToSpeechText to rewrite a respelling (proving why verbatim is needed)");
+  }
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
