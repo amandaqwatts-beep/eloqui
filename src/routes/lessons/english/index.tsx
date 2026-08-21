@@ -29,6 +29,7 @@ import {
 } from "~/lib/drillUtils";
 import { recordLessonAttempt } from "~/engine/diagnostics";
 import { loadDiagnostics, recordAccuracy } from "~/engine/storage";
+import { useAccountSync } from "~/engine/sync";
 import type { ExerciseResultDetail } from "~/engine/types";
 import { speakEnglish } from "~/engine/speech";
 import type { PronMode } from "~/lib/pronunciation";
@@ -67,6 +68,9 @@ const ENGLISH_DRILL_INSTRUCTIONS: Partial<Record<DrillKind, string>> = {
 function EnglishLessons() {
   // ── Engine hooks (state machines) ────────────────────────────
   const language = LANGUAGES.english;
+  // Account sync (Phase 1): boots the background sync engine once (client
+  // only, offline-first, never a gate — SSR stays anonymous).
+  useAccountSync();
   const totalLevels = PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE.english;
   const lesson = useLessonEngine(englishLessons, language.id);
   const placement = usePlacementEngine(englishPlacementQuestions, totalLevels, language.id);

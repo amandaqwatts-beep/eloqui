@@ -41,6 +41,10 @@ export const STORAGE_KEYS = {
   // clearAllData's scoped sweep covers it; the unscoped key itself is removed
   // by the dedicated unconditional line in clearAllData (see below).
   CROSS_PROGRESS: "verbum-cross-progress",
+  // Account identity (Phase 1: anonymous id + cross-device sync). One global
+  // key per browser, never per-language, so it survives per-language
+  // Clear All Data. clearAllData explicitly SKIPS it (see below).
+  USER: "verbum-user",
 } as const;
 
 export const DIAGNOSTICS_SCHEMA_VERSION = 1;
@@ -166,7 +170,12 @@ export function recordAttempt(record: AttemptRecord, language: Language = "latin
 // plus the legacy unscoped Latin forms, so no app data survives "Clear All".
 export function clearAllData(language: Language = "latin"): void {
   if (!isClient()) return;
-  try { Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(languageKey(key, language))); if (language === "latin") Object.values(STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key)); window.localStorage.removeItem(STORAGE_KEYS.CROSS_PROGRESS); window.location.reload(); } catch { /* unavailable */ }
+  // Wipe every app-owned key for the language EXCEPT the account identity
+  // (STORAGE_KEYS.USER): the user id / device id are global per-browser, not
+  // per-language, and should survive clearing (account-infrastructure §7 d6 —
+  // "Sign out / remove account data" is a distinct Phase 2 action).
+  const wipe = Object.values(STORAGE_KEYS).filter((k) => k !== STORAGE_KEYS.USER);
+  try { wipe.forEach((key) => window.localStorage.removeItem(languageKey(key, language))); if (language === "latin") wipe.forEach((key) => window.localStorage.removeItem(key)); window.localStorage.removeItem(STORAGE_KEYS.CROSS_PROGRESS); window.location.reload(); } catch { /* unavailable */ }
 }
 export function enableDevMode(language: Language = "latin"): void {
   saveSettings({ ...loadSettings(language), devMode: true }, language);
@@ -444,4 +453,94 @@ export function recordRecitationSession(summary: RecitationSessionSummary, langu
   payload.stats.totalLines += summary.lineCount;
   payload.stats.lastSessionAt = summary.date;
   saveRecitation(payload, language);
+}
+
+// ── Account identity (account-infrastructure Phase 1) ─────────
+// Anonymous id + per-browser device id under the global (unscoped, per-browser)
+// key STORAGE_KEYS.USER = "verbum-user". Payload per spec §4.2. The client
+// generates it silently on first use; nothing uploads until the sync engine
+// runs its first claim (§4.5). Survives per-language Clear All Data.
+
+export interface UserIdentity {
+  v: 1;
+  id: string; // "user_" + 16 hex
+  deviceId: string; // "dev_" + 16 hex
+  anonymous: boolean;
+  createdAt: string; // ISO
+  claimedAt: string | null; // set by the first successful sync claim
+  auth: null; // Phase 2 populates { provider, sub }
+}
+
+/** Deterministic-ish id generator using crypto when available. */
+function randomHex(bytes: number): string {
+  const arr = new Uint8Array(bytes);
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    crypto.getRandomValues(arr);
+  } else {
+    for (let i = 0; i < bytes; i++) arr[i] = Math.floor(Math.random() * 256);
+  }
+  let s = "";
+  for (let i = 0; i < bytes; i++) s += arr[i].toString(16).padStart(2, "0");
+  return s;
+}
+
+export function loadUserIdentity(): UserIdentity | null {
+  if (!isClient()) return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.USER);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as Partial<UserIdentity>;
+    if (typeof p.id !== "string" || !p.id.startsWith("user_")) return null;
+    if (typeof p.deviceId !== "string" || !p.deviceId.startsWith("dev_")) return null;
+    return {
+      v: 1,
+      id: p.id,
+      deviceId: p.deviceId,
+      anonymous: p.anonymous !== false,
+      createdAt: typeof p.createdAt === "string" ? p.createdAt : new Date().toISOString(),
+      claimedAt: typeof p.claimedAt === "string" ? p.claimedAt : null,
+      auth: null,
+    };
+  } catch { return null; }
+}
+
+/** Create the identity if absent; return it. Safe to call repeatedly. */
+export function ensureUserIdentity(): UserIdentity {
+  const existing = loadUserIdentity();
+  if (existing) return existing;
+  const identity: UserIdentity = {
+    v: 1,
+    id: "user_" + randomHex(8),
+    deviceId: "dev_" + randomHex(8),
+    anonymous: true,
+    createdAt: new Date().toISOString(),
+    claimedAt: null,
+    auth: null,
+  };
+  if (isClient()) {
+    try { window.localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(identity)); } catch { /* unavailable */ }
+  }
+  return identity;
+}
+
+export function getUserId(): string | null {
+  return loadUserIdentity()?.id ?? null;
+}
+
+export function getDeviceId(): string | null {
+  return loadUserIdentity()?.deviceId ?? null;
+}
+
+/** Mark the first-sync claim (§4.5): after the first successful push that
+ *  uploaded pre-existing data. No-op if already claimed. */
+export function markIdentityClaimed(): void {
+  if (!isClient()) return;
+  const id = loadUserIdentity();
+  if (!id || id.claimedAt) return;
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEYS.USER,
+      JSON.stringify({ ...id, claimedAt: new Date().toISOString() }),
+    );
+  } catch { /* unavailable */ }
 }

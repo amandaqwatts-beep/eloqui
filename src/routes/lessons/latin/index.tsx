@@ -78,6 +78,7 @@ import UnitReviewScreen, { type UnitReviewResult } from "~/screens/UnitReviewScr
 import { loadProgress, getDashboardStats, saveProgress } from "~/engine/progress";
 import { speakLatin } from "~/engine/speech";
 import { loadAccuracy, recordAccuracy } from "~/engine/storage";
+import { useAccountSync } from "~/engine/sync";
 import ReviewScreen from "~/screens/ReviewScreen";
 import PairDrillScreen from "~/screens/PairDrillScreen";
 import { DailyLessonCard, BonusLessonCard } from "~/components/ProficiencyCards";
@@ -101,6 +102,9 @@ function reviewConceptKind(conceptId: string): ConceptKind {
 function LatinLessons() {
   // ── Engine hooks (state machines) ────────────────────────────
   const language = LANGUAGES.latin;
+  // Account sync (Phase 1): boots the background sync engine once (client
+  // only, offline-first, never a gate — SSR stays anonymous).
+  useAccountSync();
   // Placement runs at UNIT granularity (14 units × 2 questions each; the
   // result grid shows one row per unit). The engine's raw startLevel is a
   // UNIT number 1–14; the mapper converts it to a LESSON COUNT (this unit's
