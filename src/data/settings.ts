@@ -19,6 +19,8 @@ export const DEFAULT_PRONUNCIATION_MODE = "ecclesiastical";
 // override per-utterance via explicit rate args.
 export const SPEECH_DEFAULT_RATE = 0.85;
 export const SPEECH_CLASSICAL_RATE = 0.8;
+export const SPEECH_SLEEP_RATE = 0.75; // passive sleep-audio loop (§P3): a touch slower than default
+export const SPEECH_RECITATION_RATE = 0.85; // recitation model line (aligns with RECITATION_DEFAULT_RATE)
 // ── Speech recitation (owner direction 2026-08-11; research/speech-recitation-design.md §6.1) ──
 // Free core-curriculum listen-and-repeat. Fixed TTS rate for the model line,
 // Safari onend fallback guard, history cap, and the future English ASR

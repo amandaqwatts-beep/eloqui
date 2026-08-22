@@ -10,9 +10,11 @@ interface Props {
   leftHeader?: string;
   rightHeader?: string;
   onSpeakLeft?: (text: string) => void;
+  /** Optional TTS rate override (voice-tts P3); absent → the mode default. */
+  rate?: number;
 }
 
-export default function VocabularyTable({ title, items, pronMode = "ecclesiastical", leftHeader = "Latin", rightHeader = "English", onSpeakLeft = speakLatin }: Props) {
+export default function VocabularyTable({ title, items, pronMode = "ecclesiastical", leftHeader = "Latin", rightHeader = "English", onSpeakLeft = speakLatin, rate }: Props) {
   return (
     <div className="rounded-xl border border-wood-200 bg-cream-50 overflow-hidden">
       <div className="bg-burgundy-100 px-4 py-2 text-sm font-semibold text-burgundy-800">
@@ -54,7 +56,7 @@ export default function VocabularyTable({ title, items, pronMode = "ecclesiastic
                 : latinWordSpeechText(item.latin, displayPron, pronMode);
               const speakLeft = () => {
                 if (isEnglishLeft) onSpeakLeft(spokenLeft);
-                else speakOnce(spokenLeft, { language: "latin", mode: pronMode });
+                else speakOnce(spokenLeft, { language: "latin", mode: pronMode, rate });
               };
               return (
                 <tr

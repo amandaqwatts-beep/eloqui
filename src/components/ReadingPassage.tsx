@@ -4,35 +4,25 @@ import type {
   ReadingPassageQuestion,
 } from "~/data/latinLessons";
 import type { PronMode } from "~/lib/pronunciation";
+import { SPEECH_DEFAULT_RATE, SPEECH_CLASSICAL_RATE } from "~/data/settings";
 import MultipleChoice from "~/components/MultipleChoice";
 import FillInBlank from "~/components/FillInBlank";
-import { speakLatin } from "~/engine/speech";
+import { speakSequentially } from "~/engine/speech";
+import { splitSentences, chunkTextForSpeech } from "~/engine/speechChunks";
+
+// Re-exported for recitation.ts (imports splitSentences from components/ReadingPassage);
+// the definition now lives in the shared engine module.
+export { splitSentences };
 
 interface Props {
   exercise: ReadingPassageExercise;
   pronMode: PronMode;
   onComplete: (correct: boolean) => void;
+  /** Optional TTS rate override; defaults to the pronunciation-mode rate. */
+  rate?: number;
 }
 
-/** Split Latin prose into sentence-per-line without relying on lookbehind regex. */
-export function splitSentences(text: string): string[] {
-  const out: string[] = [];
-  let start = 0;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === "." || ch === "!" || ch === "?") {
-      let end = i + 1;
-      while (end < text.length && text[end] === " ") end++;
-      out.push(text.slice(start, end).trim());
-      start = end;
-      i = end - 1;
-    }
-  }
-  if (start < text.length) out.push(text.slice(start).trim());
-  return out.filter(Boolean);
-}
-
-export default function ReadingPassage({ exercise, pronMode, onComplete }: Props) {
+export default function ReadingPassage({ exercise, pronMode, onComplete, rate }: Props) {
   const [qIdx, setQIdx] = useState(0);
   const [results, setResults] = useState<(boolean | null)[]>(() =>
     exercise.questions.map(() => null),
@@ -76,7 +66,17 @@ export default function ReadingPassage({ exercise, pronMode, onComplete }: Props
           </div>
           <button
             type="button"
-            onClick={() => speakLatin(exercise.passage, pronMode)}
+            onClick={() =>
+              // Chunked read-aloud (voice-tts P3/G6): break the passage into
+              // sentence/line-bounded chunks and queue them end-to-end so it
+              // flows as one reading instead of one (possibly truncated) long
+              // utterance — still through the mode's voice ladder.
+              speakSequentially(chunkTextForSpeech(exercise.passage), {
+                language: "latin",
+                mode: pronMode,
+                rate: rate ?? (pronMode === "classical" ? SPEECH_CLASSICAL_RATE : SPEECH_DEFAULT_RATE),
+              })
+            }
             aria-label="Hear the passage read aloud"
             title="Read passage aloud"
             className="shrink-0 rounded-lg border border-burgundy-300 bg-white px-3 py-1.5 text-sm text-burgundy-700 hover:bg-burgundy-50 transition"
