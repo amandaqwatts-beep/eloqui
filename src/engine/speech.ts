@@ -90,7 +90,34 @@ export function speakLatin(text: string, mode: LatinMode = "ecclesiastical", rat
   speakOnce(latinToSpeechText(text, mode), { language: "latin", mode, rate });
 }
 
+/**
+ * Speak several chunks back-to-back as ONE read-aloud (voice-tts P3/G6): each
+ * chunk goes through `speakOnce` (so the voice ladder + mode text-transform +
+ * rate all compose unchanged), chained on onEnd so they flow sequentially.
+ * The caller's `onEnd` fires once after the LAST chunk.
+ *
+ * Cancellation is generation-guarded: `speakSequentially` and `stopSpeech`
+ * both bump `SPEECH_GEN`, so a superseded chain (a second 🔊 click, or a
+ * `stopSpeech()` mid-read) aborts at its next chunk boundary instead of
+ * fast-forwarding through the remainder. (Browser cancel() fires the current
+ * utterance's onerror, which would otherwise advance a plain onEnd chain.)
+ */
+let SPEECH_GEN = 0;
+export function speakSequentially(texts: string[], opts: SpeakOnceOptions = {}): void {
+  if (texts.length === 0) { opts.onEnd?.(); return; }
+  const gen = ++SPEECH_GEN;
+  const speakAll = (i: number) => {
+    if (i >= texts.length) { opts.onEnd?.(); return; }
+    if (gen !== SPEECH_GEN) return; // superseded (newer read-aloud or stopSpeech) — abort chain
+    speakOnce(texts[i], { ...opts, onEnd: () => speakAll(i + 1) });
+  };
+  speakAll(0);
+}
+
 /** English: raw text via the English ladder. Signature unchanged. */
 export function speakEnglish(text: string, rate?: number): void { speakOnce(text, { language: "english", rate }); }
 
-export function stopSpeech(): void { if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel(); }
+export function stopSpeech(): void {
+  SPEECH_GEN++; // abort any in-flight sequential read-aloud chain
+  if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
+}

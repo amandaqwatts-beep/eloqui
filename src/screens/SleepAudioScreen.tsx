@@ -30,6 +30,7 @@ import {
   SLEEP_AUDIO_PRESETS_MIN,
   SLEEP_AUDIO_MIN_MIN,
   SLEEP_AUDIO_MAX_MIN,
+  SPEECH_SLEEP_RATE,
 } from "~/data/settings";
 
 interface Props {
@@ -236,6 +237,7 @@ export default function SleepAudioScreen({
         repeatEach: prefs.repeatEach,
         pauseBetweenMs: prefs.pauseMs,
         autoStopAfterMs: resumeRemainingMs ?? planMs,
+        rate: SPEECH_SLEEP_RATE, // voice-tts P3: passive listening runs a touch slower
         pronMode,
         onComplete: handleTimerComplete,
       }),
