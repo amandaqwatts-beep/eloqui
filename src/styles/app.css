@@ -76,26 +76,41 @@
 
   /* Menu-page library wall: warm parchment gradient, faint vertical panel
      seams, and a soft "reading lamp" radial glow at the top. All static CSS
-     — no animation, reduced-motion safe by construction. */
+     — no animation, reduced-motion safe by construction. §C: a fine laid
+     paper grain (same very-low-alpha motif as .paper-page, --paper-ink) plus
+     a whisper of edge vignette sit on top; total added opacity ≤ ~0.05. */
   .library-wall {
     background:
+      radial-gradient(ellipse 120% 90% at 50% 50%, transparent 55%, rgb(44 29 16 / 0.02)),
+      repeating-linear-gradient(0deg, rgb(65 9 25 / 0.03) 0 1px, transparent 1px 3px),
       radial-gradient(ellipse 70% 30% at 50% 0%, rgb(255 240 200 / 0.45), transparent),
       repeating-linear-gradient(90deg, transparent 0 159px, rgb(69 46 26 / 0.04) 160px),
       linear-gradient(180deg, #f7efe0, #efe2c6);
   }
 
   /* The horizontal board under each shelf row — replaces the flat
-     border-b-4 border-amber-900/40 strip with a real wooden board. */
+     border-b-4 border-amber-900/40 strip with a real wooden board.
+     §C: 2-3 faint vertical wood-grain streaks on top of the gradient
+     (added opacity ≤ ~0.05). */
   .shelf-board {
     border-top: 1px solid var(--color-wood-200);
     border-bottom: 4px solid var(--color-wood-800);
     border-radius: 4px;
-    background: linear-gradient(
-      180deg,
-      var(--color-wood-300),
-      var(--color-wood-500) 55%,
-      var(--color-wood-600)
-    );
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 90px,
+        rgb(69 46 26 / 0.03) 90px 93px,
+        transparent 93px 170px,
+        rgb(255 255 255 / 0.02) 170px 172px,
+        transparent 172px 260px
+      ),
+      linear-gradient(
+        180deg,
+        var(--color-wood-300),
+        var(--color-wood-500) 55%,
+        var(--color-wood-600)
+      );
     box-shadow: var(--shadow-shelf);
   }
 

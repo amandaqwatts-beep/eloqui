@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef, useState, type RefObject } from "react";
 
-export const BOOK_SLOT_WIDTH = 48;
+export const BOOK_SLOT_WIDTH = 52;
 
 export function useBookshelfCapacity<T extends HTMLElement>(): {
   ref: RefObject<T | null>;
@@ -21,7 +21,7 @@ export function useBookshelfCapacity<T extends HTMLElement>(): {
     const el = ref.current;
     if (!el) return;
     const measure = () =>
-      setCapacity(Math.max(4, Math.floor(el.clientWidth / BOOK_SLOT_WIDTH)));
+      setCapacity(Math.max(4, Math.floor((el.clientWidth - 48) / BOOK_SLOT_WIDTH)));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
