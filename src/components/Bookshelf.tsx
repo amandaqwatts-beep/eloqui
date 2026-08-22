@@ -539,6 +539,28 @@ const HENLE_TONES = [
  *  going forward (design §2.6). Units 1/2/5/14 carry mastery books 7/10/24/46. */
 const LEGACY_REVIEW_UNITS = new Set([1, 2, 5, 14]);
 
+/**
+ * §B spine geometry — variable, book-driven. Width (thickness) grows with a
+ * book's chapter count (clamped) plus a small deterministic hash-of-bookKey
+ * jitter, and height varies lightly too, so a shelf reads as a row of organic
+ * books rather than identical slabs. Culture/explore (0 chapters) and locked
+ * spines keep their own slightly distinct sizes — intentional, not random.
+ * Widest stays ≤ 44px (w-11) so shelf packing stays valid against
+ * BOOK_SLOT_WIDTH/useBookshelfCapacity (52px slot).
+ */
+function spineGeometry(book: ShelfBook): { width: number; height: number } {
+  const chapters = book.chapterIds.length;
+  const hash = [...book.bookKey].reduce(
+    (acc, c) => (acc * 31 + c.charCodeAt(0)) % 997,
+    7,
+  );
+  // thickness: 36px base climbing ~1px per chapter (clamped at 6), ±2 jitter
+  const width = Math.max(32, Math.min(44, 36 + Math.min(chapters, 6) + ((hash % 5) - 2)));
+  // height: 64px base (sm:h-16) lightly varied ±2
+  const height = Math.max(54, Math.min(72, 64 + (((hash >> 3) % 5) - 2)));
+  return { width, height };
+}
+
 function Spine({
   book,
   locked,
@@ -578,9 +600,12 @@ function Spine({
   const tone = HENLE_TONES[Math.abs(book.firstIdx) % HENLE_TONES.length];
   // Inline gradient endpoints (custom props / background) — the henle
   // rotation, and the gold "current" book (raised + ringed, same as v2).
-  const spineStyle =
+  // §B: variable width/height live in the SAME inline style object as the
+  // gradient so the book reads as one organic object (gradient + geometry
+  // move together; the Tailwind w-/h- classes governing size are removed).
+  const kindStyle =
     locked
-      ? undefined
+      ? {}
       : isCurrent
         ? {
             background: "linear-gradient(180deg, var(--color-gold-400), var(--color-gold-500))",
@@ -591,7 +616,8 @@ function Spine({
               background: `linear-gradient(180deg, ${tone.a}, ${tone.b})`,
               "--spine-label": tone.label,
             }
-          : undefined;
+          : {};
+  const spineStyle = { ...spineGeometry(book), ...kindStyle };
   const label =
     book.kind === "henle"
       ? book.henleNumber
@@ -636,7 +662,7 @@ function Spine({
       aria-label={ariaLabel}
       title={title}
       style={spineStyle as CSSProperties}
-      className={`spine ${kindClass} relative flex h-14 w-9 flex-col items-center pt-1 pb-1 sm:h-16 sm:w-11 ${
+      className={`spine ${kindClass} relative flex flex-col items-center pt-1 pb-1 ${
         isCurrent
           ? "-translate-y-2 shadow-xl ring-2 ring-gold-500 z-10 sm:-translate-y-3"
           : ""
