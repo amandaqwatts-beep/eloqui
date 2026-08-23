@@ -17,12 +17,27 @@ import type { Lesson } from "~/data/latinLessons";
 import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE } from "~/data/settings";
 import type { Language } from "~/data/languages";
 import type {
+  FourPhaseRun,
   LessonEngineAction,
   LessonEngineState,
+  PhaseName,
   PlacementResult,
   Screen,
 } from "~/engine/types";
-import { loadJSON, saveJSON, STORAGE_KEYS } from "~/engine/storage";
+import {
+  loadJSON,
+  saveJSON,
+  STORAGE_KEYS,
+  loadPhaseStateFor,
+  savePhaseState,
+} from "~/engine/storage";
+import {
+  applyPhaseAttempt,
+  completeTaughtPhase,
+  emptyPhaseState,
+  phaseScreen,
+} from "~/engine/fourPhase";
+import { saveProgress } from "~/engine/progress";
 
 /**
  * Pure lesson flow reducer. Internal rules:
@@ -83,6 +98,65 @@ export function lessonReducer(
       return { ...state, screen: "placement" };
     case "GO_TO_AI_PRACTICE":
       return { ...state, screen: "ai-practice", aiLessonId: action.lessonId };
+    // ── Four-phase lesson loop (design §3) ──────────────────────────────
+    // Pure reducer cases; all persistence (phase state, saveProgress, unlock)
+    // lives in the hook's action wrappers (below) so this stays a pure function
+    // of (state, action) — testable without storage or React.
+    case "PHASE_START": {
+      // Begin a four-phase run: screen → teaching, phase = taught. The hook
+      // passes the persisted PhaseState it loaded (or undefined for fresh).
+      return {
+        ...state,
+        screen: "teaching",
+        currentLessonIdx: action.idx,
+        exerciseIdx: 0,
+        results: [],
+        fourPhase: {
+          lessonId: action.lessonId,
+          phase: "taught",
+          reviewMode: false,
+          reTeachStepIndex: null,
+          phaseState: action.persisted ?? emptyPhaseState(),
+          seed:
+            action.seed ??
+            `phase|${action.lessonId}|${new Date().toISOString().slice(0, 10)}`,
+        },
+      };
+    }
+    case "PHASE_TEACH_COMPLETE": {
+      // Advance taught → memorized. Covers the initial teach AND the re-teach
+      // after a memorized→taught bounce (which re-enters the drill loop).
+      if (!state.fourPhase || state.fourPhase.phase !== "taught") return state;
+      const run = completeTaughtPhase(state.fourPhase);
+      return { ...state, screen: "memorized", fourPhase: run };
+    }
+    case "PHASE_ATTEMPT": {
+      if (!state.fourPhase || state.fourPhase.phase === "taught") return state;
+      const { run, outcome } = applyPhaseAttempt(state.fourPhase, action.correct, {
+        passingConcepts: action.passingConcepts,
+        reTeachStepIndex: action.reTeachStepIndex,
+      });
+      switch (outcome) {
+        case "continue":
+          return { ...state, fourPhase: run, screen: phaseScreen(run.phase) };
+        case "advance":
+          return { ...state, fourPhase: run, screen: phaseScreen(run.phase) };
+        case "bounce":
+          // Re-teach-first ordering: bouncing TO "taught" lands on the teaching
+          // screen (reviewMode=true) BEFORE re-entering the drill loop.
+          return {
+            ...state,
+            fourPhase: run,
+            screen: run.phase === "taught" ? "teaching" : phaseScreen(run.phase),
+          };
+        case "complete":
+          // incorporated passed → whole lesson completes (hook then
+          // saveProgress's + unlocks the next lesson).
+          return { ...state, fourPhase: run, screen: "complete" };
+      }
+    }
+    case "PHASE_RESET":
+      return { ...state, screen: "menu", fourPhase: null };
     default:
       return state;
   }
@@ -110,6 +184,7 @@ export function createInitialState(language: Language = "latin"): LessonEngineSt
     exerciseIdx: 0,
     results: [],
     aiLessonId: null,
+    fourPhase: null,
   };
 }
 
@@ -143,6 +218,66 @@ export interface LessonEngine {
   goToDrill: () => void;
   goToPlacement: () => void;
   goToAIPractice: (lessonId: number) => void;
+
+  // ── Four-phase lesson loop (design §3; additive to the legacy flow) ──
+  // Active four-phase run, or null when the legacy single-pass flow is active.
+  fourPhase: FourPhaseRun | null;
+  // Start a four-phase run for a lesson (loads its persisted PhaseState).
+  startPhaseLesson: (idx: number, lessonId: number) => void;
+  // taught → memorized (initial teach OR re-teach after a bounce).
+  completePhaseTeaching: () => void;
+  // Record one drill-phase answer; applies the mastery + AND return-to-phase
+  // rule. On a correct incorporated attempt, passingConcepts (grammarIndex
+  // topic ids the passage required) are marked incorporated. Persists the
+  // resulting phase state; on overall completion also saveProgress's + unlocks.
+  recordPhaseAttempt: (correct: boolean, passingConcepts?: string[]) => void;
+  // Abandon the four-phase run and return to the menu.
+  resetPhase: () => void;
+}
+
+/** Persist an overall four-phase lesson completion: write verbum-progress via
+ *  saveProgress (timesCompleted/bestScore semantics unchanged) using the
+ *  lifetime tallies across the three drill phases. The caller then unlocks the
+ *  next lesson exactly as nextLesson does. */
+function recordPhaseProgress(run: FourPhaseRun, language: Language): void {
+  let correct = 0;
+  let attempts = 0;
+  const drill: readonly PhaseName[] = ["memorized", "quizzed", "incorporated"];
+  for (const p of drill) {
+    const rec = run.phaseState.phases[p];
+    if (rec) {
+      correct += rec.correct;
+      attempts += rec.attempts;
+    }
+  }
+  if (attempts > 0) saveProgress(run.lessonId, correct, attempts, language);
+}
+
+/** Unlock the lesson after the current one via the placement payload (same as
+ *  nextLesson). No-op on the last lesson. */
+function unlockNextLesson(
+  currentIdx: number,
+  unlockedLessons: number,
+  totalLessons: number,
+  language: Language,
+): void {
+  const nextIdx = currentIdx + 1;
+  if (nextIdx >= totalLessons) return;
+  const nextUnlocked = Math.max(unlockedLessons, nextIdx + 1);
+  const existing = loadJSON<PlacementResult | null>(
+    STORAGE_KEYS.PLACEMENT_RESULT,
+    null,
+    language,
+  );
+  saveJSON(
+    STORAGE_KEYS.PLACEMENT_RESULT,
+    {
+      passed: existing?.passed ?? [],
+      startLevel: nextUnlocked,
+      completedAt: new Date().toISOString(),
+    },
+    language,
+  );
 }
 
 /**
@@ -231,6 +366,50 @@ export function useLessonEngine(lessons: Lesson[], language: Language = "latin")
     [],
   );
 
+  // ── Four-phase lesson loop actions ────────────────────────────────────
+  const startPhaseLesson = useCallback(
+    (idx: number, lessonId: number) => {
+      // Resume any prior per-lesson phase state (a returning student continues
+      // from the phase they reached, not a fresh single pass).
+      const persisted = loadPhaseStateFor(lessonId, language);
+      dispatch({ type: "PHASE_START", idx, lessonId, persisted });
+    },
+    [language],
+  );
+  const completePhaseTeaching = useCallback(
+    () => dispatch({ type: "PHASE_TEACH_COMPLETE" }),
+    [],
+  );
+  const recordPhaseAttempt = useCallback(
+    (correct: boolean, passingConcepts?: string[]) => {
+      const action: LessonEngineAction = {
+        type: "PHASE_ATTEMPT",
+        correct,
+        passingConcepts,
+      };
+      // The reducer is deterministic — compute the next state here so this
+      // wrapper can persist (phase state + completion) before React applies it.
+      const next = lessonReducer(state, action);
+      if (next.fourPhase) {
+        savePhaseState(next.fourPhase.lessonId, next.fourPhase.phaseState, language);
+      }
+      // The lesson completes ONLY when the incorporated phase passes (design
+      // §3): write progress and unlock the next lesson.
+      if (next.screen === "complete" && next.fourPhase) {
+        recordPhaseProgress(next.fourPhase, language);
+        unlockNextLesson(
+          state.currentLessonIdx,
+          state.unlockedLessons,
+          totalLessons,
+          language,
+        );
+      }
+      dispatch(action);
+    },
+    [state, totalLessons, language],
+  );
+  const resetPhase = useCallback(() => dispatch({ type: "PHASE_RESET" }), []);
+
   return {
     screen: state.screen,
     currentLessonIdx: state.currentLessonIdx,
@@ -253,5 +432,10 @@ export function useLessonEngine(lessons: Lesson[], language: Language = "latin")
     goToDrill,
     goToPlacement,
     goToAIPractice,
+    fourPhase: state.fourPhase,
+    startPhaseLesson,
+    completePhaseTeaching,
+    recordPhaseAttempt,
+    resetPhase,
   };
 }
