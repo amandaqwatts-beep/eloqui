@@ -22,6 +22,14 @@ import englishFallbackBank, {
   ROOT_MEANING_ACCEPTABLE_ANSWERS,
 } from "~/data/englishFallbackBank";
 import { shuffle } from "~/engine/drill";
+import {
+  generateCompoundExercises,
+  generateTranslationExercises,
+  type CompoundFrame,
+  type TranslationDirection,
+} from "~/engine/translationGen";
+import type { LearnedUniverse } from "~/engine/learnedUniverse";
+import { hashString, mulberry32 } from "~/engine/seededRandom";
 
 /** Exercise kinds the fallback generator can produce. */
 export type FallbackExerciseType = "multiple-choice" | "fill-in-blank" | "matching";
@@ -87,6 +95,24 @@ function answerVariants(answer: string): string[] {
     if (!variants.includes(bareNoMacrons)) variants.push(bareNoMacrons);
   }
   return variants;
+}
+
+/**
+ * Run a generator under a seeded Math.random so the same seed reproduces the
+ * same items byte-for-byte (four-phase design §2 — reproducible re-drill of a
+ * weak concept). Restores the real Math.random on return; a `seed === undefined`
+ * leaves behavior unchanged (Math.random as today). The generator is
+ * synchronous/single-threaded, so the override is fully encapsulated.
+ */
+function runSeeded<T>(seed: string | undefined, fn: () => T): T {
+  if (seed === undefined) return fn();
+  const realRandom = Math.random;
+  Math.random = mulberry32(hashString(seed));
+  try {
+    return fn();
+  } finally {
+    Math.random = realRandom;
+  }
 }
 
 // ── Strategy builders (each returns null when the lesson lacks the data) ──
@@ -534,6 +560,9 @@ function buildConceptFallback(
  *               curriculum for distractors
  * @param distractorLessons curriculum array used for concept-fallback
  *               distractors (English passes `englishLessons`; Latin omits it)
+ * @param seed optional string seed — same seed reproduces the same items
+ *               (deterministic re-drill of a weak concept). When omitted,
+ *               generation uses real Math.random exactly as before.
  *
  * Every returned exercise has a valid `type` and the required fields for
  * that type. If the lesson lacks vocabulary and a reference table, exercises
@@ -545,10 +574,12 @@ export function generateFallbackExercises(
   mode: FallbackMode = "mixed",
   language: "latin" | "english" = "latin",
   distractorLessons?: Lesson[],
+  seed?: string,
 ): GeneratedExercise[] {
   const n = Math.max(0, Math.floor(count));
   if (n === 0) return [];
 
+  return runSeeded(seed, () => {
   const builders: Record<FallbackMode, (() => GeneratedExercise | null)[]> = {
     mc: [() => buildVocabMultipleChoice(lesson, language)],
     fill: [() => buildFillInBlank(lesson)],
@@ -599,4 +630,92 @@ export function generateFallbackExercises(
     );
   }
   return out;
+  });
+}
+
+// ── Four-phase lesson structure: phase-aware generation (step 1) ─────────
+// (Design: research/four-phase-lesson-design.md §2.) The same synthesizers —
+// the fallback template builders plus the translation machinery — emit the
+// memorized, quizzed, and incorporated items of the four-phase loop. No new
+// Exercise shapes: everything maps onto the existing GeneratedExercise union
+// so current rendering/scoring consume it unchanged.
+
+/** The four-phase loop's drill modes. */
+export type LessonPhase = "memorized" | "quizzed" | "incorporated";
+
+/** Options for the phase-aware generator entry point. */
+export interface PhaseGenerationOptions {
+  phase: LessonPhase;
+  lesson: Lesson;
+  count: number;
+  /** memorized: which fallback builder(s) to use (default "mixed"). */
+  mode?: FallbackMode;
+  language?: "latin" | "english";
+  /** Same seed reproduces the same items (re-drill a weak concept). */
+  seed?: string;
+  /** quizzed/incorporated: the learned universe bounding the lesson. */
+  universe?: LearnedUniverse;
+  /** quizzed/incorporated: translation direction (default "mixed"). */
+  direction?: TranslationDirection;
+  /** concept-fallback distractors (English passes `englishLessons`). */
+  distractorLessons?: Lesson[];
+  /** incorporated: compound passages to use (default translationGen's catalog). */
+  compoundFrames?: CompoundFrame[];
+}
+
+/**
+ * Phase-aware generative entry point — the four-phase loop's drill machinery.
+ * - "memorized": template inflection/rule/vocab drills over the lesson's OWN
+ *   tables/vocab (the classic fallback builders: MC/fill/matching/conjugation).
+ * - "quizzed": integration/translation drills drawn from the whole learned
+ *   universe (current + prior concepts), bounded by boundUniverseForLesson.
+ * - "incorporated": CompoundFrame passages — 2–3 sentences whose `requires`
+ *   span current + prior grammarIndex topics (translationGen.generateCompoundExercises).
+ * Without a universe, quizzed/incorporated degrade to the lesson's own
+ * template builders (they never fabricate unlearned material). Pure, instant,
+ * and deterministic per seed — no network, no LLM.
+ */
+export function generatePhaseExercises(
+  opts: PhaseGenerationOptions,
+): GeneratedExercise[] {
+  const { phase, lesson, count, language = "latin" } = opts;
+  const fallback = () =>
+    generateFallbackExercises(
+      lesson,
+      count,
+      opts.mode ?? "mixed",
+      language,
+      opts.distractorLessons,
+      opts.seed,
+    );
+  switch (phase) {
+    case "memorized":
+      return fallback();
+    case "quizzed":
+      if (opts.universe) {
+        return generateTranslationExercises({
+          universe: opts.universe,
+          lesson,
+          count,
+          language,
+          direction: opts.direction,
+          seed: opts.seed,
+          withDistractors: true,
+        });
+      }
+      return fallback();
+    case "incorporated":
+      if (opts.universe) {
+        return generateCompoundExercises({
+          universe: opts.universe,
+          lesson,
+          count,
+          language,
+          direction: opts.direction,
+          seed: opts.seed,
+          frames: opts.compoundFrames,
+        });
+      }
+      return fallback();
+  }
 }
