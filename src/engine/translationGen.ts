@@ -72,6 +72,24 @@ export interface GeneratedTranslation {
   distractors?: string[];
 }
 
+/**
+ * A compound passage for the "incorporated" phase: 2–3 sentence frames filled
+ * independently and joined into a short paragraph (four-phase design §2).
+ * `requires` unions the GRAMMAR_INDEX topics the whole passage depends on — it
+ * may span current + prior topics, so the passage only surfaces once EVERY
+ * required topic is within the student's bound (boundUniverseForLesson is the
+ * single eligibility gate). Template-first: deterministic, instant, no LLM.
+ */
+export interface CompoundFrame {
+  id: string;
+  /** GRAMMAR_INDEX topic ids needed across the full passage. */
+  requires: string[];
+  /** The sentence frames composing the passage, filled independently. */
+  sentences: SentenceFrame[];
+  /** Optional connector between sentences (e.g. "et"); default ". " (period). */
+  bridge?: string;
+}
+
 // ── Filler classification (VocabularyItem → slot eligibility) ────────────
 // RISK 6: paradigm/phrase items ("magnus, magna, magnum", "et…et", "-ne")
 // are invalid as frame slots — filtered by single-word/type/gloss checks.
@@ -192,6 +210,31 @@ export const STARTER_FRAMES: SentenceFrame[] = [
   { id: "sv-3rd-conj", requires: ["third-conjugation"], slots: [slot("subject", "noun", { case: "nominative" }), slot("verb", "verb", { person: 3, number: "sg" })], latinTemplate: "{subject} {verb}", englishTemplate: "the {subject} {verb}", productionHint: "Translate into English." },
   // Conjoined first-declension subjects with sunt (agreement-friendly variant).
   { id: "et-sunt-1st-decl", requires: [], slots: [slot("subject1", "noun", { case: "nominative", type: "1st decl." }), slot("subject2", "noun", { case: "nominative", type: "1st decl." })], latinTemplate: "{subject1} et {subject2} sunt", englishTemplate: "the {subject1} and the {subject2} are", productionHint: "Translate into English." },
+];
+
+// ── Compound-frame catalog (the "incorporated" phase) ────────────────────
+
+/** Look up a STARTER_FRAMES entry by id (fail fast on authoring mistakes). */
+function frameById(id: string): SentenceFrame {
+  const f = STARTER_FRAMES.find((x) => x.id === id);
+  if (!f) throw new Error(`compound frame references unknown sentence frame: ${id}`);
+  return f;
+}
+
+/**
+ * Default compound-frame catalog for the "incorporated" phase. Each passage
+ * composes 2–3 seeded sentences; `requires` spans current + prior grammarIndex
+ * topics so a passage only surfaces once ALL of its topics are within the
+ * bound. Template-first and free (deterministic) — no LLM.
+ */
+export const COMPOUND_FRAMES: CompoundFrame[] = [
+  { id: "compound-sv-pair", requires: [], sentences: [frameById("sv-any-decl"), frameById("sv-adv-any-decl")] },
+  { id: "compound-sv-neg", requires: [], sentences: [frameById("sv-any-decl"), frameById("sv-neg-any-decl")] },
+  { id: "compound-1st-decl-pair", requires: ["first-declension"], sentences: [frameById("sv-1st-decl"), frameById("sv-adv-1st-decl")] },
+  { id: "compound-sov-prednom", requires: ["cases-overview"], sentences: [frameById("sov-neuter-object"), frameById("pred-nom-any-decl")] },
+  { id: "compound-3rd-conjugation", requires: ["third-conjugation"], sentences: [frameById("sv-3rd-conj"), frameById("sv-adv-any-decl")] },
+  { id: "compound-et-sunt", requires: ["second-declension"], sentences: [frameById("et-sunt-any-decl"), frameById("sv-2nd-decl")] },
+  { id: "compound-1st-and-3rd-conj", requires: ["first-declension", "third-conjugation"], sentences: [frameById("sv-1st-decl"), frameById("sv-3rd-conj")] },
 ];
 
 // ── Slot filling ─────────────────────────────────────────────────────────
@@ -421,6 +464,117 @@ export function generateTranslationExercises(opts: {
       const distractors = generateDistractors(bound, latin, frame, working, rng);
       if (distractors.length > 0) item.distractors = distractors;
     }
+    out.push(item);
+  }
+  return out;
+}
+
+/** Generate `count` compound passages (the "incorporated" phase) for a lesson,
+ *  bounded to its learned universe. Each passage composes 2–3 seeded sentences
+ *  whose `requires` may span current + prior grammarIndex topics — a passage is
+ *  only eligible when EVERY required topic is within the bound. Emits the same
+ *  `GeneratedTranslation` (fill-in-blank) shape, scored by the same lenient
+ *  translation checker. Template-first and free — no LLM, no aiPractice call.
+ *  Seeded deterministic: same (universe, lesson, seed) → byte-identical output. */
+export function generateCompoundExercises(opts: {
+  universe: LearnedUniverse;
+  lesson: Lesson;
+  count: number;
+  language?: Language; // default "latin"
+  direction?: TranslationDirection; // default "mixed"
+  difficulty?: number; // 0..1 — default order(lesson)/lessons.length
+  seed?: string; // default `compound|${language}|${YYYY-MM-DD UTC}|${lesson.id}`
+  frames?: CompoundFrame[]; // tests may inject; default COMPOUND_FRAMES
+}): GeneratedTranslation[] {
+  const { universe, lesson } = opts;
+  const language = opts.language ?? "latin";
+  const direction = opts.direction ?? "mixed";
+  const seed = opts.seed ?? `compound|${language}|${utcDateStr()}|${lesson.id}`;
+  const frames = opts.frames ?? COMPOUND_FRAMES;
+  const count = Math.max(0, Math.floor(opts.count));
+  if (count === 0) return [];
+
+  const bound = boundUniverseForLesson(universe, lesson);
+  if (bound.words.length === 0) return []; // empty universe — never fabricate
+
+  const lessonsTotal = Math.max(1, universe.lessons.length);
+  const difficulty =
+    opts.difficulty ?? (universe.order.get(lesson.id) ?? 0) / lessonsTotal;
+
+  // Eligible passages: requires ⊆ bound.topics.
+  const eligible = frames.filter((f) =>
+    f.requires.every((t) => bound.topics.some((b) => b.id === t)),
+  );
+  if (eligible.length === 0) return [];
+
+  // ONE seeded stream for the whole generation.
+  const rng = mulberry32(hashString(seed));
+  const out: GeneratedTranslation[] = [];
+  const emitted = new Set<string>();
+  const working = [...eligible];
+  const maxAttempts = count * 60 + 150;
+  let attempts = 0;
+
+  while (out.length < count && working.length > 0 && attempts < maxAttempts) {
+    attempts++;
+    const fi = Math.floor(rng() * working.length);
+    const cf = working[fi];
+
+    // Fill every sentence in the passage; if any fails, drop the passage and
+    // re-pick (the generator never emits an unanswerable item).
+    const latinParts: string[] = [];
+    const glossParts: string[] = [];
+    const allFillers: VocabularyItem[] = [];
+    let ok = true;
+    for (const sf of cf.sentences) {
+      const filled = fillFrame(sf, bound, rng);
+      if (!filled) {
+        ok = false;
+        break;
+      }
+      latinParts.push(
+        sf.latinTemplate.replace(/\{(\w+)\}/g, (_, role: string) => filled.latins[role] ?? ""),
+      );
+      glossParts.push(
+        sf.englishTemplate.replace(/\{(\w+)\}/g, (_, role: string) => filled.glosses[role] ?? ""),
+      );
+      allFillers.push(...filled.fillers);
+    }
+    if (!ok) {
+      working.splice(fi, 1);
+      continue;
+    }
+
+    const connector = cf.bridge ? ` ${cf.bridge} ` : ". ";
+    const latin = latinParts.join(connector) + ".";
+    const gloss = glossParts.join(". ");
+    const key = normalizeAnswer(latin);
+    if (emitted.has(key)) continue; // no duplicate passages in one generation
+    emitted.add(key);
+
+    const itemDirection = directionFor(direction, out.length, difficulty);
+    const lemmas = allFillers.map((f) => normalizeAnswer(f.latin));
+    const answer = itemDirection === "latin-to-english" ? gloss : latin;
+    const prompt =
+      itemDirection === "latin-to-english"
+        ? `Translate this passage into English: ${latin}`
+        : `Translate this passage into Latin: ${gloss}`;
+    const explanation =
+      itemDirection === "latin-to-english"
+        ? `"${latin}" means "${gloss}".`
+        : `"${gloss}" is "${latin}" in Latin.`;
+
+    const item: GeneratedTranslation = {
+      type: "fill-in-blank",
+      prompt,
+      answer,
+      acceptableAnswers: translationAcceptableAnswers(answer, itemDirection),
+      explanation,
+      frameId: cf.id,
+      source: "universe",
+      lemmas,
+      lessonId: lesson.id,
+    };
     out.push(item);
   }
   return out;
