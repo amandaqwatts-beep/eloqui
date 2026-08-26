@@ -63,6 +63,8 @@ import {
 import LessonMenu from "~/screens/LessonMenu";
 import LessonIntro from "~/screens/LessonIntro";
 import TeachingScreen from "~/screens/TeachingScreen";
+import PhaseDrillScreen from "~/screens/PhaseDrillScreen";
+import { sumPhaseTallies } from "~/screens/phaseDrillUtil";
 import ExerciseScreen from "~/screens/ExerciseScreen";
 import LessonCompleteScreen from "~/screens/LessonCompleteScreen";
 import DrillSetup from "~/screens/DrillSetup";
@@ -194,6 +196,19 @@ function LatinLessons() {
   const streak = getImprovementStreak(diagnosticsEvents, { language: language.id });
   const dailyCompleted = dailyLesson ? completedLessonIds.includes(dailyLesson.lessonId) : false;
   const bonusClaimable = streak.streakDays >= IMPROVEMENT_ACTIVE_DAYS && !streak.bonusClaimedToday;
+
+  // ── Four-phase lesson loop (STEP 3: taught→memorized) ─────────────
+  // Every Latin lesson start goes through PHASE_START so a partially-done
+  // four-phase run (persisted per lesson id) resumes where it left off,
+  // instead of the legacy single-pass start. Unlock guard preserved (the
+  // reducer's PHASE_START case itself has no guard).
+  const selectPhaseLesson = useCallback(
+    (idx: number) => {
+      const l = latinLessons[idx];
+      if (l && idx < lesson.unlockedLessons) lesson.startPhaseLesson(idx, l.id);
+    },
+    [lesson],
+  );
 
   // Navigation wrappers: keep engine screen transitions in sync with
   // route-local state the screens don't own.
@@ -338,7 +353,7 @@ function LatinLessons() {
       if (idx >= 0 && idx < lesson.unlockedLessons) {
         setShowProgress(false);
         setShowReview(false);
-        lesson.selectLesson(idx);
+        lesson.startPhaseLesson(idx, latinLessons[idx].id);
       }
     },
     [lesson],
@@ -433,7 +448,9 @@ function LatinLessons() {
   const openDailyLesson = useCallback(() => {
     if (!dailyLesson) return;
     const idx = latinLessons.findIndex((l) => l.id === dailyLesson.lessonId);
-    if (idx >= 0 && idx < lesson.unlockedLessons) lesson.selectLesson(idx);
+    if (idx >= 0 && idx < lesson.unlockedLessons && latinLessons[idx]) {
+      lesson.startPhaseLesson(idx, latinLessons[idx].id);
+    }
   }, [dailyLesson, lesson]);
 
   // Bonus drill card: claim first (gates + records the daily entitlement),
@@ -503,7 +520,7 @@ function LatinLessons() {
           <LessonMenu
             lessons={latinLessons}
             unlockedLessons={lesson.unlockedLessons}
-            onSelectLesson={lesson.selectLesson}
+            onSelectLesson={selectPhaseLesson}
             onOpenDrill={openDrill}
             onOpenPlacement={lesson.goToPlacement}
             onOpenAIPractice={openAIPractice}
@@ -640,6 +657,23 @@ function LatinLessons() {
       );
 
     case "teaching":
+      // In the four-phase flow the teaching screen runs the taught phase:
+      // completion fires PHASE_TEACH_COMPLETE (→ memorized), Skip / Exit
+      // abandon the run (PHASE_RESET → menu). On a memorized→taught bounce
+      // the engine sets reviewMode + reTeachStepIndex so only the mismatched
+      // step is re-presented before the comprehension check re-runs.
+      if (lesson.fourPhase) {
+        return (
+          <TeachingScreen
+            lesson={lesson.currentLesson}
+            reviewMode={lesson.fourPhase.reviewMode}
+            reTeachStepIndex={lesson.fourPhase.reTeachStepIndex}
+            onComplete={lesson.completePhaseTeaching}
+            onSkip={lesson.resetPhase}
+            onExit={lesson.resetPhase}
+          />
+        );
+      }
       return (
         <TeachingScreen
           lesson={lesson.currentLesson}
@@ -647,6 +681,32 @@ function LatinLessons() {
           onSkip={lesson.skipTeaching}
         />
       );
+
+    // ── Four-phase drill loop (STEP 3) ───────────────────────────
+    // memorized is the step-3 loop; quizzed/incorporated render the SAME
+    // component with a minimal fallback (memorized-mode template generation —
+    // their real generators ship in step 4). The key remounts the screen when
+    // the phase advances so the drill loop restarts fresh per phase.
+    case "memorized":
+    case "quizzed":
+    case "incorporated": {
+      const run = lesson.fourPhase;
+      if (!run || run.phase === "taught") return null;
+      return (
+        <PhaseDrillScreen
+          key={`${lesson.currentLesson.id}-${run.phase}`}
+          phase={run.phase}
+          lesson={lesson.currentLesson}
+          run={run}
+          pronMode={pronMode}
+          distractorLessons={latinLessons}
+          onAttempt={(correct, reTeachStepIndex) =>
+            lesson.recordPhaseAttempt(correct, undefined, reTeachStepIndex)
+          }
+          onQuit={lesson.resetPhase}
+        />
+      );
+    }
 
     case "intro":
       return (
@@ -680,25 +740,41 @@ function LatinLessons() {
         />
       );
 
-    case "complete":
-      saveProgress(lesson.currentLesson.id, lesson.correctCount, lesson.totalAnswered, language.id);
+    case "complete": {
+      // A four-phase run completes via the incorporated phase passing — the
+      // hook's recordPhaseAttempt already wrote progress + unlocked the next
+      // lesson, so skip the legacy saveProgress here (it would clobber with
+      // empty results[]), and show the drill-phase tallies on the complete
+      // screen. Legacy completion (fourPhase null) is unchanged.
+      const phaseRun = lesson.fourPhase;
+      if (!phaseRun) {
+        saveProgress(lesson.currentLesson.id, lesson.correctCount, lesson.totalAnswered, language.id);
+      }
       // Improvement streak: idempotent per UTC date key (StrictMode-safe) —
       // below-floor days are no-ops (pause, not break).
       recordStreakDay(language.id);
+      const tally = phaseRun ? sumPhaseTallies(phaseRun) : null;
+      const nextIdx = lesson.currentLessonIdx + 1;
+      const nextLesson = latinLessons[nextIdx];
       return (
         <LessonCompleteScreen
           lesson={lesson.currentLesson}
           totalLessons={lesson.totalLessons}
-          correct={lesson.correctCount}
-          total={lesson.totalAnswered}
+          correct={tally ? tally.correct : lesson.correctCount}
+          total={tally ? tally.attempts : lesson.totalAnswered}
           isLastLesson={lesson.isLastLesson}
-          onNext={lesson.nextLesson}
-          onRestart={lesson.restartLesson}
-          onBack={lesson.backToMenu}
+          onNext={phaseRun && nextLesson
+            ? () => lesson.startPhaseLesson(nextIdx, nextLesson.id)
+            : lesson.nextLesson}
+          onRestart={phaseRun
+            ? () => lesson.startPhaseLesson(lesson.currentLessonIdx, lesson.currentLesson.id)
+            : lesson.restartLesson}
+          onBack={phaseRun ? lesson.resetPhase : lesson.backToMenu}
           onOpenAIPractice={openAIPractice}
           onOpenDrill={openDrill}
         />
       );
+    }
 
     case "drill":
       if (pendingPair && !drillCards) {

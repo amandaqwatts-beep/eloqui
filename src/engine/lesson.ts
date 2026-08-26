@@ -230,7 +230,13 @@ export interface LessonEngine {
   // rule. On a correct incorporated attempt, passingConcepts (grammarIndex
   // topic ids the passage required) are marked incorporated. Persists the
   // resulting phase state; on overall completion also saveProgress's + unlocks.
-  recordPhaseAttempt: (correct: boolean, passingConcepts?: string[]) => void;
+  // reTeachStepIndex (optional) is the screen's pickReTeachStep choice — the
+  // step to re-present when a memorized→taught bounce fires (defaults null).
+  recordPhaseAttempt: (
+    correct: boolean,
+    passingConcepts?: string[],
+    reTeachStepIndex?: number | null,
+  ) => void;
   // Abandon the four-phase run and return to the menu.
   resetPhase: () => void;
 }
@@ -381,11 +387,16 @@ export function useLessonEngine(lessons: Lesson[], language: Language = "latin")
     [],
   );
   const recordPhaseAttempt = useCallback(
-    (correct: boolean, passingConcepts?: string[]) => {
+    (
+      correct: boolean,
+      passingConcepts?: string[],
+      reTeachStepIndex?: number | null,
+    ) => {
       const action: LessonEngineAction = {
         type: "PHASE_ATTEMPT",
         correct,
         passingConcepts,
+        reTeachStepIndex,
       };
       // The reducer is deterministic — compute the next state here so this
       // wrapper can persist (phase state + completion) before React applies it.
