@@ -36,6 +36,7 @@ import {
   completeTaughtPhase,
   emptyPhaseState,
   phaseScreen,
+  resumePhaseFor,
 } from "~/engine/fourPhase";
 import { saveProgress } from "~/engine/progress";
 
@@ -103,20 +104,25 @@ export function lessonReducer(
     // lives in the hook's action wrappers (below) so this stays a pure function
     // of (state, action) — testable without storage or React.
     case "PHASE_START": {
-      // Begin a four-phase run: screen → teaching, phase = taught. The hook
-      // passes the persisted PhaseState it loaded (or undefined for fresh).
+      // Begin a four-phase run. The hook passes the persisted PhaseState it
+      // loaded (or undefined for fresh). STEP 4: a returning student RESUMES
+      // from the first not-yet-passed phase (resumePhaseFor) instead of always
+      // restarting at taught — so a reload mid-memorized keeps the taught pass
+      // AND the in-flight accuracy window (early drill attempts are preserved).
+      const persisted = action.persisted ?? emptyPhaseState();
+      const resumePhase = resumePhaseFor(persisted);
       return {
         ...state,
-        screen: "teaching",
+        screen: phaseScreen(resumePhase),
         currentLessonIdx: action.idx,
         exerciseIdx: 0,
         results: [],
         fourPhase: {
           lessonId: action.lessonId,
-          phase: "taught",
+          phase: resumePhase,
           reviewMode: false,
           reTeachStepIndex: null,
-          phaseState: action.persisted ?? emptyPhaseState(),
+          phaseState: persisted,
           seed:
             action.seed ??
             `phase|${action.lessonId}|${new Date().toISOString().slice(0, 10)}`,
@@ -383,8 +389,21 @@ export function useLessonEngine(lessons: Lesson[], language: Language = "latin")
     [language],
   );
   const completePhaseTeaching = useCallback(
-    () => dispatch({ type: "PHASE_TEACH_COMPLETE" }),
-    [],
+    () => {
+      // STEP 4 persistence follow-up (screens flag): PHASE_TEACH_COMPLETE
+      // marks taught passed and moves the run into memorized — persist that
+      // transition immediately (same pattern as recordPhaseAttempt) so a
+      // reload mid-memorized resumes in memorized (resumePhaseFor) with the
+      // taught pass intact, instead of re-teaching from the top and losing
+      // the fresh window's early drill attempts.
+      const action: LessonEngineAction = { type: "PHASE_TEACH_COMPLETE" };
+      const next = lessonReducer(state, action);
+      if (next.fourPhase) {
+        savePhaseState(next.fourPhase.lessonId, next.fourPhase.phaseState, language);
+      }
+      dispatch(action);
+    },
+    [state, language],
   );
   const recordPhaseAttempt = useCallback(
     (

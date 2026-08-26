@@ -32,12 +32,16 @@ import type {
   Screen,
 } from "~/engine/types";
 import type { Lesson, TeachingStep } from "~/data/latinLessons";
+import type { Language } from "~/data/languages";
 import {
   generatePhaseExercises,
   type GeneratedExercise,
   type LessonPhase,
   type PhaseGenerationOptions,
 } from "~/engine/fallbackGenerator";
+import { buildLearnedUniverse, type LearnedUniverse } from "~/engine/learnedUniverse";
+import { loadProgress } from "~/engine/progress";
+import { passageRequiresFor } from "~/engine/translationGen";
 
 // ── Tunables (research design §1/§4 defaults + owner-confirmed return rule) ─
 /** Rolling accuracy-window HISTORY cap (how many recent attempts we retain). */
@@ -70,6 +74,19 @@ export function nextPhaseName(p: PhaseName): PhaseName | null {
 export function prevPhaseName(p: PhaseName): PhaseName | null {
   const i = PHASE_SEQUENCE.indexOf(p);
   return i <= 0 ? null : PHASE_SEQUENCE[i - 1];
+}
+
+/** The phase a persisted PhaseState should RESUME at on a fresh run: the first
+ *  phase in the sequence that is not yet marked passed. A returning student
+ *  continues from where they stopped (e.g. taught passed + a memorized window
+ *  → resume memorized WITH its attempts; never restart from the top and never
+ *  lose the in-flight window). All-passed states are treated as a fresh taught
+ *  (a completed lesson is normally exited via the complete screen). */
+export function resumePhaseFor(ps: PhaseState): PhaseName {
+  for (const p of PHASE_SEQUENCE) {
+    if (!ps.phases[p]?.passed) return p;
+  }
+  return "taught";
 }
 
 /** Map a phase to the Screen that renders it. "taught" is the teaching screen. */
@@ -299,6 +316,26 @@ export function completeTaughtPhase(run: FourPhaseRun): FourPhaseRun {
 
 // ── Generator seam (wires phases onto the step-1 generative engine) ──────
 /**
+ * Build the learned universe for the run's lesson when the caller does not
+ * supply one: completed lessons (loadProgress) + the current in-flight lesson,
+ * over the full course array. The SAME rule translationGen/reviewSession use —
+ * boundUniverseForLesson then structurally forbids untaught material.
+ */
+export function buildRunUniverse(
+  lesson: Lesson,
+  allLessons: Lesson[],
+  language: Language = "latin",
+): LearnedUniverse {
+  return buildLearnedUniverse({
+    lessons: allLessons,
+    completedLessonIds: loadProgress(language)
+      .filter((p) => p.completed)
+      .map((p) => p.lessonId),
+    currentLessonId: lesson.id,
+  });
+}
+
+/**
  * Build the generatePhaseExercises opts for the run's current DRILL phase.
  * taught maps to nothing (not a generator phase); memorized → template mode;
  * quizzed → translation (when a universe is supplied); incorporated →
@@ -334,6 +371,18 @@ export function phaseGenerationOptions(
  * Convenience wrapper: actually run the generator for the run's current drill
  * phase. Returns an empty array when there is no drill to emit (taught, or the
  * generator found nothing to synthesize). Deterministic for a fixed run.seed.
+ *
+ * STEP 4: quizzed/incorporated now run their REAL generators — translation
+ * sentences (quizzed) and CompoundFrame passages (incorporated) over the
+ * learned universe — instead of the memorized template fallback. A universe is
+ * taken from `opts.universe` when the caller supplies one, otherwise built
+ * internally from `opts.allLessons` + the completed-lessons progress
+ * (buildRunUniverse), so the loop screen needs no knowledge of the universe
+ * machinery. Direction flips L→E ↔ E→L by lesson difficulty inside
+ * translationGen (direction "mixed" default); the seed threads through, so the
+ * same (run.seed, batch) re-drills the same items. Without a universe source
+ * (no allLessons), quizzed/incorporated degrade to the lesson's own template
+ * builders — they never fabricate unlearned material.
  */
 export function generateForPhase(
   run: FourPhaseRun,
@@ -343,11 +392,37 @@ export function generateForPhase(
     universe?: PhaseGenerationOptions["universe"];
     direction?: PhaseGenerationOptions["direction"];
     distractorLessons?: Lesson[];
+    /** Full course array — STEP 4: lets the engine build the learned universe
+     *  internally when the caller didn't pass one explicitly. */
+    allLessons?: Lesson[];
+    language?: Language;
   },
 ): GeneratedExercise[] {
-  const genOpts = phaseGenerationOptions(run, lesson, opts);
+  let universe = opts?.universe;
+  const phase = run.phase as LessonPhase;
+  if (
+    !universe &&
+    (phase === "quizzed" || phase === "incorporated") &&
+    opts?.allLessons
+  ) {
+    universe = buildRunUniverse(lesson, opts.allLessons, opts.language ?? "latin");
+  }
+  const genOpts = phaseGenerationOptions(run, lesson, { ...opts, universe });
   if (!genOpts) return [];
   return generatePhaseExercises(genOpts);
+}
+
+/**
+ * The GRAMMAR_INDEX topic ids a generated (incorporated) exercise requires —
+ * the `passingConcepts` to report for a correct attempt so the state machine
+ * marks them incorporated (design §3). Compound passages carry their compound
+ * frame id on the generated item (`frameId`); unknown ids (memorized/quizzed
+ * template items, or custom test frames) resolve to [] — nothing is marked.
+ */
+export function passingConceptsFor(exercise: GeneratedExercise): string[] {
+  const frameId = (exercise as { frameId?: unknown }).frameId;
+  if (typeof frameId !== "string") return [];
+  return passageRequiresFor(frameId);
 }
 
 // ── Re-teach step selection (design §1: re-teach the mismatched step) ─────
