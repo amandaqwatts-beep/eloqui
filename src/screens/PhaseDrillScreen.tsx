@@ -1,11 +1,11 @@
 /**
  * PhaseDrillScreen.tsx — Screens department: the four-phase drill loop.
  *
- * Renders when the lesson flow is in a generative drill phase — "memorized"
- * (and, via the same component, the "quizzed"/"incorporated" screens, which
- * for STEP 3 fall back to memorized-mode template generation until step 4
- * adds their real generators). Production/wiring only (STEP 3 scope: the
- * taught→memorized loop).
+ * Renders the three generative drill phases — "memorized" (template drills),
+ * "quizzed" (translation sentences) and "incorporated" (CompoundFrame passages)
+ * — driven by the step-1 generative engine (generateForPhase via
+ * engine/fourPhase; STEP 4 re-enabled the quizzed/incorporated generators over
+ * the learned universe). Production/wiring only.
  *
  * It pulls a seeded exercise batch from the step-1 generative engine
  * (generateForPhase via engine/fourPhase), scores each attempt with the
@@ -21,6 +21,7 @@ import type { Lesson } from "~/data/latinLessons";
 import type { FourPhaseRun } from "~/engine/types";
 import {
   generateForPhase,
+  passingConceptsFor,
   pickReTeachStep,
   windowAccuracy,
 } from "~/engine/fourPhase";
@@ -46,8 +47,18 @@ interface Props {
   run: FourPhaseRun;
   pronMode: PronMode;
   distractorLessons?: Lesson[];
-  /** → lesson.recordPhaseAttempt (dispatch PHASE_ATTEMPT + persist). */
-  onAttempt: (correct: boolean, reTeachStepIndex?: number | null) => void;
+  /**
+   * → lesson.recordPhaseAttempt (dispatch PHASE_ATTEMPT + persist).
+   * reTeachStepIndex: the step to re-present on a memorized→taught bounce.
+   * passingConcepts: grammarIndex topic ids the (incorporated) passage
+   * required — reported on a CORRECT attempt so the engine marks them
+   * incorporated (STEP 4). Undefined for memorized/quizzed or wrong answers.
+   */
+  onAttempt: (
+    correct: boolean,
+    reTeachStepIndex?: number | null,
+    passingConcepts?: string[],
+  ) => void;
   /** → lesson.resetPhase — abandon the run and return to the menu. */
   onQuit: () => void;
 }
@@ -62,6 +73,12 @@ function buildBatch(
     return generateForPhase({ ...run, seed }, lesson, {
       count: BATCH_SIZE,
       distractorLessons,
+      // STEP 4: the engine builds the learned universe from the full course
+      // array (completed lessons + this in-flight lesson) so quizzed emits
+      // real translation sentences and incorporated emits CompoundFrame
+      // passages instead of the memorized template fallback. The route passes
+      // the full latinLessons array as distractorLessons today.
+      allLessons: distractorLessons,
     });
   } catch {
     return [];
@@ -102,7 +119,13 @@ export default function PhaseDrillScreen({
         wrongCountsRef.current[step] = (wrongCountsRef.current[step] ?? 0) + 1;
         reTeachStepIndex = pickReTeachStep(steps, wrongCountsRef.current);
       }
-      onAttempt(correct, reTeachStepIndex);
+      // STEP 4: report the compound passage's required topics as passingConcepts
+      // so a CORRECT incorporated attempt marks them incorporated (design §3).
+      const passingConcepts =
+        phase === "incorporated" && correct
+          ? passingConceptsFor(exercises[currentIdx])
+          : undefined;
+      onAttempt(correct, reTeachStepIndex, passingConcepts);
 
       const next = currentIdx + 1;
       if (next >= exercises.length) {
@@ -124,6 +147,7 @@ export default function PhaseDrillScreen({
       batchNo,
       run,
       lesson,
+      phase,
       distractorLessons,
       onAttempt,
     ],

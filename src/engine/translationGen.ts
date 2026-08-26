@@ -237,6 +237,16 @@ export const COMPOUND_FRAMES: CompoundFrame[] = [
   { id: "compound-1st-and-3rd-conj", requires: ["first-declension", "third-conjugation"], sentences: [frameById("sv-1st-decl"), frameById("sv-3rd-conj")] },
 ];
 
+/** The GRAMMAR_INDEX topic ids a compound passage (by id) requires across its
+ *  whole passage — used by the incorporated phase to report `passingConcepts`
+ *  so the state machine can mark a topic "incorporated" once the passage
+ *  requiring it passes (four-phase design §3). [] for unknown ids (custom
+ *  frames injected by tests) — the caller then simply marks nothing. */
+export function passageRequiresFor(frameId: string): string[] {
+  const cf = COMPOUND_FRAMES.find((f) => f.id === frameId);
+  return cf ? cf.requires : [];
+}
+
 // ── Slot filling ─────────────────────────────────────────────────────────
 
 function fillersForSlot(slotDef: FrameSlot, bound: LessonBound, transitiveOnly: boolean): VocabularyItem[] {

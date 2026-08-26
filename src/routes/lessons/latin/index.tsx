@@ -682,11 +682,11 @@ function LatinLessons() {
         />
       );
 
-    // ── Four-phase drill loop (STEP 3) ───────────────────────────
-    // memorized is the step-3 loop; quizzed/incorporated render the SAME
-    // component with a minimal fallback (memorized-mode template generation —
-    // their real generators ship in step 4). The key remounts the screen when
-    // the phase advances so the drill loop restarts fresh per phase.
+    // ── Four-phase drill loop (STEP 3 loop, STEP 4 generators) ──────────
+    // memorized = template drills; quizzed/incorporated = the REAL translation
+    // and CompoundFrame-passage generators (STEP 4 re-enabled them over the
+    // learned universe). The key remounts the screen when the phase advances
+    // so the drill loop restarts fresh per phase.
     case "memorized":
     case "quizzed":
     case "incorporated": {
@@ -700,8 +700,8 @@ function LatinLessons() {
           run={run}
           pronMode={pronMode}
           distractorLessons={latinLessons}
-          onAttempt={(correct, reTeachStepIndex) =>
-            lesson.recordPhaseAttempt(correct, undefined, reTeachStepIndex)
+          onAttempt={(correct, reTeachStepIndex, passingConcepts) =>
+            lesson.recordPhaseAttempt(correct, passingConcepts, reTeachStepIndex)
           }
           onQuit={lesson.resetPhase}
         />

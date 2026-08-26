@@ -36,10 +36,12 @@ import {
   consecutiveFails,
   emptyPhaseState,
   generateForPhase,
+  passingConceptsFor,
   phaseGenerationOptions,
   PHASE_HISTORY_LENGTH,
   pickReTeachStep,
   pushPhaseAttempt,
+  resumePhaseFor,
   shouldReturnToPreviousPhase,
   windowAccuracy,
 } from "~/engine/fourPhase";
@@ -47,6 +49,8 @@ import {
   loadPhaseStateFor,
   savePhaseState,
 } from "~/engine/storage";
+import { saveProgress } from "~/engine/progress";
+import { COMPOUND_FRAMES } from "~/engine/translationGen";
 
 // ── Tiny harness (mirrors the other engine tests) ────────────────────────
 let passed = 0;
@@ -298,21 +302,24 @@ test("seam: incorporated uses CompoundFrame passages when a universe is given", 
 // ── 8. Persistence round-trip ─────────────────────────────────────────────
 function installMemoryStorage(): Map<string, string> {
   const store = new Map<string, string>();
-  (globalThis as { window?: unknown }).window = {
-    localStorage: {
-      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-      setItem: (k: string, v: string) => {
-        store.set(k, v);
-      },
-      removeItem: (k: string) => {
-        store.delete(k);
-      },
+  const ls = {
+    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+    setItem: (k: string, v: string) => {
+      store.set(k, v);
+    },
+    removeItem: (k: string) => {
+      store.delete(k);
     },
   };
+  (globalThis as { window?: unknown }).window = { localStorage: ls };
+  // Some engine modules (progress.ts) read bare `localStorage`, not
+  // window.localStorage — expose the same store on the global too.
+  (globalThis as { localStorage?: unknown }).localStorage = ls;
   return store;
 }
 function uninstallMemoryStorage(): void {
   delete (globalThis as { window?: unknown }).window;
+  delete (globalThis as { localStorage?: unknown }).localStorage;
 }
 
 test("persistence: PhaseState round-trips through storage keyed by lesson id", () => {
@@ -374,6 +381,171 @@ test("completeTaughtPhase marks taught passed and enters memorized", () => {
   ok(!next.reviewMode, "re-teach mode cleared");
   ok(next.phaseState.phases.taught!.passed, "taught marked passed");
   eq(next.phaseState.accuracyWindow.length, 0, "fresh window for the new phase");
+});
+
+// ── 10. STEP 4: real generators for quizzed/incorporated + resume ───────
+test("resumePhaseFor: first unpassed phase in sequence", () => {
+  eq(resumePhaseFor(emptyPhaseState()), "taught", "fresh state → taught");
+  eq(
+    resumePhaseFor({
+      phases: { taught: { passed: true, attempts: 1, correct: 1 } },
+      accuracyWindow: [],
+      incorporatedConcepts: [],
+    }),
+    "memorized",
+    "taught passed → memorized",
+  );
+  eq(
+    resumePhaseFor({
+      phases: {
+        taught: { passed: true, attempts: 1, correct: 1 },
+        memorized: { passed: true, attempts: 5, correct: 4 },
+      },
+      accuracyWindow: [],
+      incorporatedConcepts: [],
+    }),
+    "quizzed",
+    "taught+memorized passed → quizzed",
+  );
+  eq(
+    resumePhaseFor({
+      phases: {
+        taught: { passed: true, attempts: 1, correct: 1 },
+        memorized: { passed: true, attempts: 5, correct: 4 },
+        quizzed: { passed: true, attempts: 5, correct: 5 },
+      },
+      accuracyWindow: [],
+      incorporatedConcepts: [],
+    }),
+    "incorporated",
+    "first three passed → incorporated",
+  );
+  eq(
+    resumePhaseFor({
+      phases: {
+        taught: { passed: true, attempts: 1, correct: 1 },
+        memorized: { passed: true, attempts: 5, correct: 4 },
+        quizzed: { passed: true, attempts: 5, correct: 4 },
+        incorporated: { passed: true, attempts: 1, correct: 1 },
+      },
+      accuracyWindow: [],
+      incorporatedConcepts: [],
+    }),
+    "taught",
+    "all passed (lesson effectively complete) → restart at taught",
+  );
+});
+test("generation: quizzed via allLessons emits translation sentences (universe built internally)", () => {
+  installMemoryStorage();
+  try {
+    for (const id of completedThrough(53)) saveProgress(id, 1, 1, "latin");
+    let s = startRun(53);
+    s = lessonReducer(s, { type: "PHASE_TEACH_COMPLETE" }); // → memorized
+    s = runAttempts(s, [true, true, true, true, true]); // → quizzed
+    // NO explicit universe — the engine must build it from allLessons.
+    const items = generateForPhase(s.fourPhase!, lessonOf(53), {
+      count: 4,
+      allLessons: lessons,
+    });
+    ok(items.length > 0, "quizzed emits items from the internally-built universe");
+    for (const it of items) {
+      ok(
+        it.type === "fill-in-blank" && it.prompt.startsWith("Translate"),
+        `quizzed item is a translation exercise (prompt: ${it.prompt})`,
+      );
+      ok(
+        (it as { source?: string }).source === "universe",
+        "quizzed item is universe-sourced (not template fallback)",
+      );
+    }
+  } finally {
+    uninstallMemoryStorage();
+  }
+});
+test("generation: incorporated via allLessons emits CompoundFrame passages (universe built internally)", () => {
+  installMemoryStorage();
+  try {
+    for (const id of completedThrough(53)) saveProgress(id, 1, 1, "latin");
+    let s = startRun(53);
+    s = lessonReducer(s, { type: "PHASE_TEACH_COMPLETE" });
+    s = runAttempts(s, [true, true, true, true, true]); // → quizzed
+    s = runAttempts(s, [true, true, true, true, true]); // → incorporated
+    const items = generateForPhase(s.fourPhase!, lessonOf(53), {
+      count: 3,
+      allLessons: lessons,
+    });
+    ok(items.length > 0, "incorporated emits passages from the internally-built universe");
+    for (const it of items) {
+      ok(
+        it.type === "fill-in-blank" && it.prompt.startsWith("Translate this passage"),
+        `incorporated item is a compound passage (prompt: ${it.prompt})`,
+      );
+    }
+  } finally {
+    uninstallMemoryStorage();
+  }
+});
+test("concepts: passingConceptsFor resolves a compound passage's required topics", () => {
+  // The 1st-and-3rd-conjugation catalog passage requires both topics.
+  const frame = COMPOUND_FRAMES.find((f) => f.id === "compound-1st-and-3rd-conj")!;
+  ok(
+    frame.requires.includes("first-declension") &&
+      frame.requires.includes("third-conjugation"),
+    "catalog passage requires current + prior topics",
+  );
+  const passage = {
+    type: "fill-in-blank" as const,
+    prompt: "Translate this passage into English: X. Y.",
+    answer: "the x y",
+    acceptableAnswers: ["the x y"],
+    explanation: "",
+    frameId: frame.id,
+    source: "universe",
+  };
+  const concepts = passingConceptsFor(passage);
+  eq(concepts, frame.requires, "passingConceptsFor returns the passage's requires");
+  // A template (memorized) item has no frameId → nothing is marked.
+  eq(
+    passingConceptsFor({
+      type: "multiple-choice",
+      prompt: "q",
+      options: ["a"],
+      correctIndex: 0,
+    }),
+    [],
+    "non-passage item → no concepts",
+  );
+});
+test("persistence: PHASE_START resumes mid-memorized at memorized and keeps the window", () => {
+  installMemoryStorage();
+  try {
+    // Teach → memorized → 3 attempts (2 correct, 1 wrong) — mid-phase.
+    let s = startRun(1);
+    s = lessonReducer(s, { type: "PHASE_TEACH_COMPLETE" });
+    s = runAttempts(s, [true, false, true]);
+    eq(s.fourPhase!.phase, "memorized");
+    const midRun = s.fourPhase!;
+    // Persist exactly what the hook would at this point, then "reload".
+    savePhaseState(midRun.lessonId, midRun.phaseState, "latin");
+    const persisted = loadPhaseStateFor(1, "latin");
+    eq(persisted, midRun.phaseState, "mid-memorized state round-trips");
+    const reloaded = lessonReducer(createInitialState(), {
+      type: "PHASE_START",
+      idx: 0,
+      lessonId: 1,
+      persisted,
+    });
+    eq(reloaded.fourPhase!.phase, "memorized", "reload resumes at memorized, not taught");
+    eq(
+      reloaded.fourPhase!.phaseState.accuracyWindow.length,
+      3,
+      "in-flight window preserved (early drill attempts not lost)",
+    );
+    eq(reloaded.screen, "memorized", "reload lands on the drill screen");
+    ok(reloaded.fourPhase!.phaseState.phases.taught!.passed, "taught pass preserved");
+  } finally {
+    uninstallMemoryStorage();
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
