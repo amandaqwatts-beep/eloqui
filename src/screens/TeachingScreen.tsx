@@ -5,23 +5,42 @@ import TeachingStepCard from "~/components/TeachingStepCard";
 
 interface Props {
   lesson: Lesson; // from ~/data/latinLessons
-  onComplete: () => void; // advance to lesson intro
-  onSkip: () => void; // skip teaching, go to intro
+  onComplete: () => void; // advance to lesson intro (legacy) / PHASE_TEACH_COMPLETE (four-phase)
+  onSkip: () => void; // skip teaching, go to intro (legacy) / abandon run (four-phase)
+  // Four-phase loop (STEP 3 — optional; absent → legacy behavior unchanged):
+  /** Bounce re-teach: when the run returns memorized→taught, start here. */
+  reviewMode?: boolean;
+  /** teachingSteps[] index to re-present when reviewMode (pickReTeachStep; null → 0). */
+  reTeachStepIndex?: number | null;
+  /** Four-phase quit path (PHASE_RESET → menu) — shown instead of Skip while re-teaching. */
+  onExit?: () => void;
 }
 
 type Phase = "teaching" | "check" | "review" | "success";
 
-export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
+export default function TeachingScreen({
+  lesson,
+  onComplete,
+  onSkip,
+  reviewMode = false,
+  reTeachStepIndex = null,
+  onExit,
+}: Props) {
   const steps = lesson.teachingSteps ?? [];
   const questions = lesson.comprehensionCheck ?? [];
 
-  const [phase, setPhase] = useState<Phase>("teaching");
+  // Bounce re-teach (design §1): re-present ONLY the mismatched teaching step
+  // (reviewMode lands on the review phase at the reTeachStepIndex step), then
+  // re-run the comprehension check before the loop re-enters memorized.
+  const [phase, setPhase] = useState<Phase>(reviewMode ? "review" : "teaching");
   const [stepIdx, setStepIdx] = useState(0);
   const [qIdx, setQIdx] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [graded, setGraded] = useState(false);
   const [wrongIdxs, setWrongIdxs] = useState<number[]>([]);
-  const [reviewStepIdx, setReviewStepIdx] = useState(0);
+  const [reviewStepIdx, setReviewStepIdx] = useState(
+    reviewMode ? (reTeachStepIndex ?? 0) : 0,
+  );
 
   // Safety net: lessons without teaching content have nothing to show —
   // complete immediately (no render loop).
@@ -82,6 +101,20 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
     </button>
   );
 
+  // In a bounce re-teach, "Skip" is replaced by an explicit Exit-to-Menu
+  // (PHASE_RESET) — abandoning the re-teach abandons the whole four-phase run.
+  const exitLink =
+    reviewMode && onExit ? (
+      <button
+        onClick={onExit}
+        className="mt-3 block w-full py-2 text-center text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+      >
+        Exit to Menu
+      </button>
+    ) : null;
+
+  const footerExit = reviewMode && onExit ? exitLink : skipLink;
+
   // ── Phase 1: teaching steps ──────────────────────────────────────────
   if (phase === "teaching") {
     return (
@@ -107,7 +140,7 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
                   ? "Next"
                   : "Check Understanding →"}
               </button>
-              {skipLink}
+              {footerExit}
             </div>
           </div>
         </main>
@@ -199,7 +232,7 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
                 </>
               )}
             </div>
-            {skipLink}
+            {footerExit}
           </div>
         </main>
       </div>
@@ -234,7 +267,7 @@ export default function TeachingScreen({ lesson, onComplete, onSkip }: Props) {
               >
                 Continue to Understanding Check →
               </button>
-              {skipLink}
+              {footerExit}
             </div>
           </div>
         </main>
