@@ -14,12 +14,15 @@ import type {
   AttemptRecord,
   DiagnosticEvent,
   FeedbackEntry,
+  PhaseName,
+  PhaseState,
   VerbumSettings,
 } from "~/engine/types";
 import type { StreakDay } from "~/engine/improvementStreak";
 import { SETTINGS_DEFAULTS } from "~/data/settings";
 import type { Language } from "~/data/languages";
 import type { RecitationSource } from "~/engine/recitation";
+import { emptyPhaseState } from "~/engine/fourPhase";
 
 export const STORAGE_KEYS = {
   PLACEMENT_RESULT: "verbum-placement-result",
@@ -32,6 +35,10 @@ export const STORAGE_KEYS = {
   SLEEP_AUDIO: "verbum-sleep-audio",
   UNIT_REVIEW: "verbum-unit-review",
   RECITATION: "verbum-recitation",
+  // Four-phase lesson loop (owner-greenlit 2026-08-23): per-lesson phase state,
+  // keyed by lesson id under one namespaced key (design §3). Added here so
+  // clearAllData wipes it too.
+  PHASE_STATE: "verbum-phase-state",
   // Owned by progress.ts, which writes them directly (bypassing this module);
   // listed here so clearAllData wipes them too, incl. legacy unscoped Latin.
   PROGRESS: "verbum-progress",
@@ -529,6 +536,102 @@ export function getUserId(): string | null {
 
 export function getDeviceId(): string | null {
   return loadUserIdentity()?.deviceId ?? null;
+}
+
+// ── Four-phase lesson-loop storage (owner direction 2026-08-23) ─────────
+// Per-lesson phase state (design §3) under one namespaced key, keyed by
+// lesson id — "verbum-phase-state-<lang>" with payload { v: 1, lessons: {...} }.
+// Keyed by id in a single map (not one key per lesson) so clearAllData and the
+// sync engine treat it like the other per-language blobs. Namespaced per
+// language with the usual legacy latin-unscoped fallback (no legacy key exists
+// — harmless, consistent with diagnostics).
+
+export const PHASE_STATE_SCHEMA_VERSION = 1;
+
+/** Persisted payload: version inside, key stable across versions. */
+export interface PhaseStatePayload {
+  v: number;
+  /** key = String(lessonId). */
+  lessons: Record<string, PhaseState>;
+}
+
+const PHASE_NAMES: readonly PhaseName[] = [
+  "taught",
+  "memorized",
+  "quizzed",
+  "incorporated",
+];
+
+function isPhasePass(x: unknown): x is PhaseState["phases"][PhaseName] {
+  const p = x as { passed?: unknown; attempts?: unknown; correct?: unknown } | null;
+  return (
+    !!p &&
+    typeof p.passed === "boolean" &&
+    typeof p.attempts === "number" &&
+    typeof p.correct === "number"
+  );
+}
+
+/** Corrupt/absent payload → empty map, never throws (loadUnitReviews pattern). */
+export function loadPhaseStates(language: Language = "latin"): PhaseStatePayload {
+  const raw = loadJSON<unknown>(STORAGE_KEYS.PHASE_STATE, null, language);
+  if (!raw || typeof raw !== "object") {
+    return { v: PHASE_STATE_SCHEMA_VERSION, lessons: {} };
+  }
+  const p = raw as Partial<PhaseStatePayload>;
+  const lessons: Record<string, PhaseState> = {};
+  if (p.lessons && typeof p.lessons === "object") {
+    for (const [k, v] of Object.entries(p.lessons)) {
+      const ps = v as Partial<PhaseState> | null;
+      if (!ps || typeof ps !== "object") continue;
+      const phases: PhaseState["phases"] = {};
+      for (const name of PHASE_NAMES) {
+        const pass = ps.phases?.[name];
+        if (isPhasePass(pass)) phases[name] = pass;
+      }
+      const window = Array.isArray(ps.accuracyWindow)
+        ? ps.accuracyWindow.filter(
+            (a) =>
+              a &&
+              typeof a.correct === "number" &&
+              typeof a.attempts === "number" &&
+              (a.correct === 0 || a.correct === 1),
+          )
+        : [];
+      const incorporatedConcepts = Array.isArray(ps.incorporatedConcepts)
+        ? ps.incorporatedConcepts.filter((c) => typeof c === "string")
+        : [];
+      lessons[k] = { phases, accuracyWindow: window, incorporatedConcepts };
+    }
+  }
+  return { v: PHASE_STATE_SCHEMA_VERSION, lessons };
+}
+
+export function savePhaseStates(
+  payload: PhaseStatePayload,
+  language: Language = "latin",
+): void {
+  saveJSON(STORAGE_KEYS.PHASE_STATE, payload, language);
+}
+
+export function loadPhaseStateFor(
+  lessonId: number,
+  language: Language = "latin",
+): PhaseState {
+  const all = loadPhaseStates(language);
+  return all.lessons[String(lessonId)] ?? emptyPhaseState();
+}
+
+/** Load map → upsert one lesson's state → save. Idempotent per call. */
+export function savePhaseState(
+  lessonId: number,
+  phaseState: PhaseState,
+  language: Language = "latin",
+): void {
+  if (!isClient()) return;
+  const all = loadPhaseStates(language);
+  all.lessons[String(lessonId)] = phaseState;
+  savePhaseStates(all, language);
 }
 
 /** Mark the first-sync claim (§4.5): after the first successful push that

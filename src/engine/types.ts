@@ -20,7 +20,16 @@ export type Screen =
   | "complete"
   | "drill"
   | "placement"
-  | "ai-practice";
+  | "ai-practice"
+  // Four-phase lesson loop (design §1/§3): the three generative drill phases,
+  // sat between the existing "teaching" (taught) and "complete" screens. The
+  // loop is taught → memorized → quizzed → incorporated → complete, gating on
+  // mastery (see engine/fourPhase.ts) instead of a single pass. Shape is
+  // ADDITIVE — the legacy single-pass flow (menu/teaching/intro/exercise/
+  // complete) still works untouched; step 3 wraps the screens onto these.
+  | "memorized"
+  | "quizzed"
+  | "incorporated";
 
 /** Payload persisted under STORAGE_KEYS.PLACEMENT_RESULT. */
 export interface PlacementResult {
@@ -305,6 +314,65 @@ export interface FormLabel {
   gender?: string;
 }
 
+// ── Four-phase lesson loop (research/four-phase-lesson-design.md §1/§3) ──
+// Owner-greenlit 2026-08-23. Each lesson becomes a mastery loop, not a single
+// pass: taught → memorized → quizzed → incorporated → complete. The pure state
+// machine lives in engine/fourPhase.ts; these are the shared shapes. The
+// return-to-previous-phase rule uses the OWNER-CONFIRMED AND-threshold:
+// bounce ONLY when (2 consecutive wrong) AND (<70% over last 5) — see
+// fourPhase.ts shouldReturnToPreviousPhase.
+
+/** One phase of the four-phase loop. "taught" is the teaching/comprehension
+ *  step (no generative drills); the other three are generative drill phases
+ *  that map 1:1 onto fallbackGenerator's LessonPhase. */
+export type PhaseName = "taught" | "memorized" | "quizzed" | "incorporated";
+
+/** Persisted per-phase pass record (also doubles as a lifetime attempt tally). */
+export interface PhasePass {
+  passed: boolean;
+  passedAt?: string; // ISO UTC — when the phase's mastery criterion was met
+  attempts: number; // lifetime attempts in this phase
+  correct: number; // lifetime correct in this phase
+}
+
+/** One slot of the rolling accuracy window. Per design §3 the shape is
+ *  {correct, attempts}; attempts is always 1 (one attempt per slot) so the
+ *  "consecutive fails / last 5 accuracy" rule can be computed directly. */
+export interface AccuracyAttempt {
+  correct: number; // 0 | 1
+  attempts: number; // always 1
+}
+
+/** Per-lesson persistent four-phase state, keyed by lesson id (storage.ts). */
+export interface PhaseState {
+  /** Per-phase pass + lifetime tally (a phase may not have been entered yet). */
+  phases: Partial<Record<PhaseName, PhasePass>>;
+  /** Rolling window of the CURRENT phase's most-recent attempts, newest last,
+   *  capped at PHASE_ACCURACY_WINDOW. Reset when the active phase changes. */
+  accuracyWindow: AccuracyAttempt[];
+  /** grammarIndex topic ids proven "incorporated" via passed compound passages. */
+  incorporatedConcepts: string[];
+}
+
+/** Live in-flight four-phase run held on LessonEngineState.fourPhase. */
+export interface FourPhaseRun {
+  lessonId: number;
+  /** Current active phase. "taught" twice while a run is open (initial teach,
+   *  and again on a memorized→taught bounce). */
+  phase: PhaseName;
+  /** True when the loop is re-teaching after a bounce (not the initial teach);
+   *  the screen re-presents only the mismatched teaching step (design §1). */
+  reviewMode: boolean;
+  /** teachingSteps[] index to re-present when reviewMode — set on bounce.
+   *  null means step 3 has not provided a worst-step pick (defaults to 0). */
+  reTeachStepIndex: number | null;
+  /** Persistable state (window, passes, incorporated concepts). */
+  phaseState: PhaseState;
+  /** Deterministic drill seed so the same run/phase re-drills reproducible
+   *  items (seeded re-drill — design §2). */
+  seed: string;
+}
+
 /** Internal state of the lesson flow state machine (see engine/lesson.ts). */
 export interface LessonEngineState {
   screen: Screen;
@@ -316,6 +384,9 @@ export interface LessonEngineState {
   results: boolean[];
   /** Lesson id last requested via goToAIPractice (navigation preview). */
   aiLessonId: number | null;
+  /** Active four-phase run, or null when the legacy single-pass flow (or no
+   *  lesson) is active. Additive — legacy flow leaves this null. */
+  fourPhase: FourPhaseRun | null;
 }
 
 /**
@@ -335,4 +406,20 @@ export type LessonEngineAction =
   | { type: "BACK_TO_MENU" }
   | { type: "GO_TO_DRILL" }
   | { type: "GO_TO_PLACEMENT" }
-  | { type: "GO_TO_AI_PRACTICE"; lessonId: number };
+  | { type: "GO_TO_AI_PRACTICE"; lessonId: number }
+  // ── Four-phase loop actions (design §3) ──
+  // PHASE_START begins a four-phase run for a lesson: screen → teaching,
+  // phase = taught. `persisted` carries the per-lesson PhaseState the hook
+  // loaded so the reducer stays a pure function of (state, action).
+  | { type: "PHASE_START"; idx: number; lessonId: number; persisted?: PhaseState; seed?: string }
+  // PHASE_TEACH_COMPLETE advances taught → memorized (initial teach OR a
+  // re-teach after a memorized→taught bounce re-enters the drill loop).
+  | { type: "PHASE_TEACH_COMPLETE" }
+  // PHASE_ATTEMPT records one drill-phase answer against the rolling window
+  // and applies the mastery + return-to-previous-phase rule (pure — done in
+  // the reducer via applyPhaseAttempt). passingConcepts are grammarIndex
+  // topic ids the current (incorporated) passage required — merged into
+  // incorporatedConcepts when the attempt is correct.
+  | { type: "PHASE_ATTEMPT"; correct: boolean; passingConcepts?: string[]; reTeachStepIndex?: number | null }
+  // PHASE_RESET abandons the run and returns to the menu.
+  | { type: "PHASE_RESET" };
