@@ -3,8 +3,9 @@
  * STEP 2: the state machine (research/four-phase-lesson-design.md §1/§3).
  * Covers:
  *   - rolling accuracy window (push/cap/accuracy/consecutive-fails)
- *   - the OWNER-CONFIRMED return-to-previous-phase AND-threshold
- *     (2 fails & >70% → NO bounce; 2 fails & <70% → bounce; 1 fail & <70% → NO)
+ *   - the OWNER-CONFIRMED return-to-previous-phase OR-threshold
+ *     (2 fails even at ≥70% last-5 → bounce; <70% last-5 even without 2-in-a-row
+ *     → bounce; 1 fail & ≥70% last-5 → no bounce; both arms → bounce)
  *   - phase state transitions through the reducer (taught→memorized→quizzed→
  *     incorporated→complete) and the return-to-previous-phase rule
  *   - re-teach-first ordering (bounce to taught lands on the teaching screen
@@ -36,7 +37,6 @@ import {
   emptyPhaseState,
   generateForPhase,
   phaseGenerationOptions,
-  phasePassed,
   PHASE_HISTORY_LENGTH,
   pickReTeachStep,
   pushPhaseAttempt,
@@ -125,19 +125,23 @@ test("window: accuracyOverLastN reads the last 5 by default", () => {
   eq(accuracyOverLastN(win), 3 / 5, "last 5 = 3 correct / 5");
 });
 
-// ── 2. OWNER-CONFIRMED AND-threshold ─────────────────────────────────────
-test("return rule: 2 fails & >70% over last 5 → does NOT bounce (AND)", () => {
-  // Max run of 2 wrongs, but last 5 = 100%.
-  ok(!shouldReturnToPreviousPhase(w([0, 0, 1, 1, 1, 1, 1, 1])), "no bounce");
+// ── 2. OWNER-CONFIRMED OR-threshold ──────────────────────────────────────
+test("return rule OR: 2 consecutive fails even with last-5 accuracy ≥70% → bounces", () => {
+  // Max run of 2 wrongs, but last 5 = 100% (accuracy arm false) — arm 1 alone bounces.
+  ok(shouldReturnToPreviousPhase(w([0, 0, 1, 1, 1, 1, 1, 1])), "bounces on consecutive fails alone");
 });
 
-test("return rule: 2 fails & <70% over last 5 → DOES bounce (AND)", () => {
-  ok(shouldReturnToPreviousPhase(w([0, 0, 1, 1, 1])), "bounces");
+test("return rule OR: <70% over last 5 without 2 consecutive fails → bounces", () => {
+  // Wrongs are isolated (run of 1) but last 5 = 60% < 70% — arm 2 alone bounces.
+  ok(shouldReturnToPreviousPhase(w([0, 1, 0, 1, 0, 1])), "bounces on low last-5 accuracy alone");
 });
 
-test("return rule: 1 fail & <70% over last 5 → does NOT bounce (consecutive arm false)", () => {
-  // Wrongs are isolated (run of 1) even though last 5 is under 70%.
-  ok(!shouldReturnToPreviousPhase(w([0, 1, 0, 1, 0, 1])), "no bounce");
+test("return rule OR: 1 fail AND ≥70% over last 5 → does NOT bounce", () => {
+  ok(!shouldReturnToPreviousPhase(w([1, 1, 1, 1, 0])), "no bounce (neither arm)");
+});
+
+test("return rule OR: both arms satisfied → bounces", () => {
+  ok(shouldReturnToPreviousPhase(w([0, 0, 1, 1, 1])), "bounces (both arms)");
 });
 
 test("return rule: pure helpers agree", () => {
@@ -328,7 +332,8 @@ test("persistence: PhaseState round-trips through storage keyed by lesson id", (
     // A different lesson id is untouched / absent.
     eq(loadPhaseStateFor(7, "latin"), emptyPhaseState(), "absent id → empty state");
     // Corrupt window entries are filtered defensively on read.
-    (globalThis as { window?: unknown }).window!.localStorage.setItem(
+    (globalThis as unknown as { window: { localStorage: Storage } }).window.localStorage.setItem(
+
       "verbum-phase-state-latin",
       JSON.stringify({
         v: 1,

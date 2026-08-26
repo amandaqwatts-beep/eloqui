@@ -12,13 +12,11 @@
  * the mismatched step before re-entering the drill loop.
  *
  * IMPORTANT — the return-to-previous-phase threshold is OWNER-CONFIRMED and is
- * an AND, not an OR (earlier research drafts said "or"):
- *   bounce ⟺ (2 consecutive wrong) AND (<70% correct over the last 5).
- * This is encoded exactly in shouldReturnToPreviousPhase. The task's test
- * matrix follows from it:
- *   2 fails & >70%  → does NOT bounce   (accuracy arm false)
- *   2 fails & <70%  → DOES bounce       (both arms true)
- *   1 fail  & <70%  → does NOT bounce   (consecutive arm false)
+ * an OR: the learner returns to the previous phase if EITHER fail state holds —
+ * (2 consecutive wrong answers) OR (<70% correct over the last 5). The two
+ * arms are judged independently, so either one alone triggers a bounce (and
+ * both together also bounce). This is encoded exactly in
+ * shouldReturnToPreviousPhase.
  *
  * Pure TypeScript — zero JSX, zero rendering, zero storage. All functions here
  * are deterministic pure functions of their arguments; persistence lives in
@@ -47,9 +45,9 @@ export const PHASE_HISTORY_LENGTH = 10;
 /** The "last N" the rules read: owner says "<70% over the last 5", and pass is
  *  judged over the last 5 too. */
 export const PHASE_ACCURACY_LAST_N = 5;
-/** Return-to-previous-phase: minimum consecutive wrongs in the window (AND). */
+/** Return-to-previous-phase: minimum consecutive wrongs in the window (OR arm 1). */
 export const PHASE_RETURN_CONSECUTIVE_FAILS = 2;
-/** Return-to-previous-phase: must ALSO be under this accuracy over last 5 (AND). */
+/** Return-to-previous-phase: OR else under this accuracy over last 5 (OR arm 2). */
 export const PHASE_RETURN_ACCURACY = 0.7;
 /** Pass criterion for memorized/quizzed (≥80% over the last 5, design §4). */
 export const PHASE_PASS_ACCURACY = 0.8;
@@ -136,17 +134,22 @@ export function consecutiveFails(window: AccuracyAttempt[]): number {
 }
 
 /**
- * OWNER-CONFIRMED return-to-previous-phase rule (AND, not OR):
- *   bounce ⟺ (≥2 consecutive wrong answers) AND (<70% correct over the last 5).
- * Because the two arms are judged independently, all three required cases are
- * distinguishable:
- *   [w,w,c,c,c,c,c,c]  → 2-in-a-row but last-5 = 100% ≥ 70%  → NO bounce
- *   [w,w,c,c,c]        → 2-in-a-row AND last-5 = 60%  < 70%  → bounce
- *   [w,c,w,c,w,c]      → run of 1 (<2) even though last-5 <70%→ NO bounce
+ * OWNER-CONFIRMED return-to-previous-phase rule (OR):
+ *   bounce ⟺ (≥2 consecutive wrong answers) OR (<70% correct over the last 5).
+ * The two arms are judged independently, so EITHER alone is enough to bounce
+ * (and both together also bounce). The accuracy arm only fires once there IS a
+ * full last-5 window (window.length ≥ PHASE_ACCURACY_LAST_N); before that the
+ * window has no "last 5" to judge, so a lone early wrong alone doesn't bounce —
+ * only the 2-consecutive arm can fire until the window fills. Discriminating
+ * cases:
+ *   [w,w,c,c,c,c,c,c]  → 2-in-a-row even though last-5 = 100% ≥ 70% → bounce (arm 1)
+ *   [w,c,w,c,w,c]      → run of 1 (<2) but last-5 = 60% < 70%       → bounce (arm 2)
+ *   [w,c,c,c,c,c]      → run of 1 AND last-5 ≥ 70%                  → NO bounce
  */
 export function shouldReturnToPreviousPhase(window: AccuracyAttempt[]): boolean {
+  if (consecutiveFails(window) >= PHASE_RETURN_CONSECUTIVE_FAILS) return true;
   return (
-    consecutiveFails(window) >= PHASE_RETURN_CONSECUTIVE_FAILS &&
+    window.length >= PHASE_ACCURACY_LAST_N &&
     accuracyOverLastN(window) < PHASE_RETURN_ACCURACY
   );
 }
