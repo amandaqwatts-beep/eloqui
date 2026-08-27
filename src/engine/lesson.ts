@@ -199,6 +199,9 @@ export interface LessonEngine {
   // State (read-only)
   screen: Screen;
   currentLessonIdx: number;
+  // Display-only lesson number (= array index + 1). The real `id` stays the
+  // persistence/unlock key — English uses ids 2001–2010 but should display 1–10.
+  currentLessonNumber: number;
   unlockedLessons: number;
   exerciseIdx: number;
   results: boolean[];
@@ -443,6 +446,7 @@ export function useLessonEngine(lessons: Lesson[], language: Language = "latin")
   return {
     screen: state.screen,
     currentLessonIdx: state.currentLessonIdx,
+    currentLessonNumber: state.currentLessonIdx + 1,
     unlockedLessons: state.unlockedLessons,
     exerciseIdx: state.exerciseIdx,
     results: state.results,

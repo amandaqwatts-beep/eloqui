@@ -97,9 +97,9 @@ export default function AudioPlayerScreen({ lessons, unlockedLessons, onBack }: 
                 onChange={(e) => setLessonId(+e.target.value)}
                 className="w-full rounded-lg border p-3"
               >
-                {available.map((l) => (
+                {available.map((l, i) => (
                   <option key={l.id} value={l.id}>
-                    Lesson {l.id}: {l.title}
+                    Lesson {i + 1}: {l.title}
                   </option>
                 ))}
               </select>

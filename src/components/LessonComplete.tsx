@@ -3,6 +3,9 @@ import { saveFeedback } from "~/lib/feedbackStore";
 
 interface LessonCompleteProps {
   lessonNumber: number;
+  // Persistence key for feedback — keep the REAL lesson id (not the display
+  // number) so English feedback stays keyed by 2001–2010.
+  feedbackLessonId?: number;
   totalLessons: number;
   correct: number;
   total: number;
@@ -67,6 +70,7 @@ type FeedbackState = "idle" | "submitted" | "error";
 
 export default function LessonComplete({
   lessonNumber,
+  feedbackLessonId,
   totalLessons,
   correct,
   total,
@@ -109,7 +113,11 @@ export default function LessonComplete({
   const handleSubmitFeedback = () => {
     if (feedbackRating === 0) return;
     try {
-      saveFeedback(lessonNumber, feedbackRating, feedbackComment || undefined);
+      saveFeedback(
+        feedbackLessonId ?? lessonNumber,
+        feedbackRating,
+        feedbackComment || undefined,
+      );
       setFeedbackState("submitted");
     } catch {
       setFeedbackState("error");

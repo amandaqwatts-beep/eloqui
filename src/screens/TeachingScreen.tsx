@@ -5,6 +5,8 @@ import TeachingStepCard from "~/components/TeachingStepCard";
 
 interface Props {
   lesson: Lesson; // from ~/data/latinLessons
+  // Display-only lesson number (= array index + 1); see LessonEngine.currentLessonNumber.
+  lessonNumber: number;
   onComplete: () => void; // advance to lesson intro (legacy) / PHASE_TEACH_COMPLETE (four-phase)
   onSkip: () => void; // skip teaching, go to intro (legacy) / abandon run (four-phase)
   // Four-phase loop (STEP 3 — optional; absent → legacy behavior unchanged):
@@ -20,6 +22,7 @@ type Phase = "teaching" | "check" | "review" | "success";
 
 export default function TeachingScreen({
   lesson,
+  lessonNumber,
   onComplete,
   onSkip,
   reviewMode = false,
@@ -123,7 +126,7 @@ export default function TeachingScreen({
         <main className="paper-desk flex-1 px-4 py-6 sm:py-10">
           <div className="mx-auto w-full max-w-2xl">
             <span className="mb-3 inline-block rounded-full bg-burgundy-100 px-3 py-1 text-xs font-medium text-burgundy-700">
-              Lesson {lesson.id} · Teaching
+              Lesson {lessonNumber} · Teaching
             </span>
             <div className="paper-rule mb-3" />
             <TeachingStepCard
@@ -159,7 +162,7 @@ export default function TeachingScreen({
           <div className="mx-auto w-full max-w-2xl">
             <div className="mb-6 flex items-center justify-between">
               <span className="inline-block rounded-full bg-burgundy-100 px-3 py-1 text-xs font-medium text-burgundy-700">
-                Lesson {lesson.id} · Understanding Check
+                Lesson {lessonNumber} · Understanding Check
               </span>
               <span className="text-sm font-semibold text-burgundy-700">
                 Question {qIdx + 1} of {questions.length}

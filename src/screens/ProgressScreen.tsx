@@ -215,11 +215,11 @@ export default function ProgressScreen({
         )}
 
         <div className="mt-6 space-y-2 rounded-2xl bg-white p-4 shadow">
-          {(lessons.length ? lessons : Array.from({length:stats.totalLessons},(_,i)=>({id:i+1,title:"Lesson"} as Lesson))).map(l=>{
+          {(lessons.length ? lessons : Array.from({length:stats.totalLessons},(_,i)=>({id:i+1,title:"Lesson"} as Lesson))).map((l,i)=>{
             const p=lessonProgress.find(x=>x.lessonId===l.id);
             return <div className="flex items-center gap-3" key={l.id}>
               <span>{p?.completed?"✅":"🔒"}</span>
-              <span className="w-48 truncate text-sm">Lesson {l.id}: {l.title}</span>
+              <span className="w-48 truncate text-sm">Lesson {i+1}: {l.title}</span>
               <div className="h-2 flex-1 rounded bg-gray-100"><div className="h-full rounded bg-green-500" style={{width:`${p?.bestScore??0}%`}}/></div>
               <span className="text-xs">{p?`${p.bestScore}%`:"Not attempted"}</span>
             </div>;

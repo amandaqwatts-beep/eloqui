@@ -248,6 +248,7 @@ function EnglishLessons() {
       return (
         <TeachingScreen
           lesson={lesson.currentLesson}
+          lessonNumber={lesson.currentLessonNumber}
           onComplete={lesson.completeTeaching}
           onSkip={lesson.skipTeaching}
         />
@@ -258,6 +259,7 @@ function EnglishLessons() {
         <LessonIntro
           lesson={lesson.currentLesson}
           totalLessons={lesson.totalLessons}
+          lessonNumber={lesson.currentLessonNumber}
           pronMode={pronMode}
           onStart={lesson.startLesson}
           onBack={lesson.backToMenu}
@@ -273,6 +275,7 @@ function EnglishLessons() {
         <ExerciseScreen
           lesson={lesson.currentLesson}
           exerciseIdx={lesson.exerciseIdx}
+          lessonNumber={lesson.currentLessonNumber}
           pronMode={pronMode}
           allLessons={englishLessons}
           onComplete={(detail: ExerciseResultDetail) => {
@@ -292,6 +295,7 @@ function EnglishLessons() {
         <LessonCompleteScreen
           lesson={lesson.currentLesson}
           totalLessons={lesson.totalLessons}
+          lessonNumber={lesson.currentLessonNumber}
           correct={lesson.correctCount}
           total={lesson.totalAnswered}
           isLastLesson={lesson.isLastLesson}
