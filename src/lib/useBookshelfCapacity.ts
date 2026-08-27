@@ -8,7 +8,14 @@
  */
 import { useEffect, useRef, useState, type RefObject } from "react";
 
-export const BOOK_SLOT_WIDTH = 52;
+/**
+ * Per-book horizontal footprint. Was 52 = widest 44 + 8px gap; after the
+ * thin-book pass the spines now sit FLUSH (no inter-book gap) and the widest
+ * thematic spine is ~32px (earthly/henle books are ~16–26px), so 34 gives a
+ * little headroom for the cluster divider/unit gap while still packing far
+ * more books per shelf than before.
+ */
+export const BOOK_SLOT_WIDTH = 34;
 
 export function useBookshelfCapacity<T extends HTMLElement>(): {
   ref: RefObject<T | null>;

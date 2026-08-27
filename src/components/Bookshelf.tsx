@@ -479,7 +479,11 @@ function UnitCluster({
       <h3 className="mb-1 text-[10px] font-black uppercase tracking-wider text-burgundy-800">
         Unit {unit}
       </h3>
-      <div className="relative z-0 flex flex-wrap items-end gap-2 pt-2">
+      {/* Owner: books sit FLUSH on their sides (no horizontal gap) like a real
+          shelf of leaning volumes; gap-y-2 keeps only the vertical rhythm
+          between flex-wrapped rows. The raised current book (z-10 + -translate-y)
+          cleanly overlaps the neighbors it now touches. */}
+      <div className="relative z-0 flex flex-wrap items-end gap-y-2 pt-2">
         {books.map((book) => (
           <Spine
             key={book.bookKey}
@@ -554,10 +558,20 @@ function spineGeometry(book: ShelfBook): { width: number; height: number } {
     (acc, c) => (acc * 31 + c.charCodeAt(0)) % 997,
     7,
   );
-  // thickness: 36px base climbing ~1px per chapter (clamped at 6), ±2 jitter
-  const width = Math.max(32, Math.min(44, 36 + Math.min(chapters, 6) + ((hash % 5) - 2)));
-  // height: 64px base (sm:h-16) lightly varied ±2
-  const height = Math.max(54, Math.min(72, 64 + (((hash >> 3) % 5) - 2)));
+  // thickness (width): real hardcovers are thin relative to their height. The
+  // physical/earthly books (henle lessons + unit-review + review) get slim
+  // ~20px spines (clamped 16–26) so they read as books standing on edge. The
+  // thematic/artifact books (culture 🏛️ / explore ✨) stay a bit chunkier so
+  // they read as display volumes — but still near-narrow enough to pack
+  // (clamped 26–32, per-book footprint no wider than BOOK_SLOT_WIDTH).
+  const thematic = book.kind === "culture" || book.kind === "explore";
+  const width = thematic
+    ? Math.max(26, Math.min(32, 26 + Math.min(chapters, 2) + ((hash % 3) - 1)))
+    : Math.max(16, Math.min(26, 20 + Math.min(chapters, 3) + ((hash % 3) - 1)));
+  // height: ~64px base with a wide ragged spread (clamp 52–84, ~25px range)
+  // so a shelf top reads as an organic, mismatched-volume skyline. Bottoms
+  // align (items-end), tops vary — heights stay sensible/tappable.
+  const height = Math.max(52, Math.min(84, 68 + (((hash >> 2) % 6) * 5) - 10));
   return { width, height };
 }
 
