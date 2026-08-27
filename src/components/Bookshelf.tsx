@@ -547,10 +547,10 @@ const LEGACY_REVIEW_UNITS = new Set([1, 2, 5, 14]);
  * §B spine geometry — variable, book-driven. Width (thickness) grows with a
  * book's chapter count (clamped) plus a small deterministic hash-of-bookKey
  * jitter, and height varies lightly too, so a shelf reads as a row of organic
- * books rather than identical slabs. Culture/explore (0 chapters) and locked
- * spines keep their own slightly distinct sizes — intentional, not random.
- * Widest stays ≤ 44px (w-11) so shelf packing stays valid against
- * BOOK_SLOT_WIDTH/useBookshelfCapacity (52px slot).
+ * books rather than identical slabs. The THIN profile below now applies to
+ * EVERY book kind — henle lessons, unit-review, review, culture 🏛️, and
+ * explore ✨ — so no spine on the shelf reads as a flat digital slab. Widest
+ * stays ≤ 26px, comfortably within BOOK_SLOT_WIDTH (34px) for shelf packing.
  */
 function spineGeometry(book: ShelfBook): { width: number; height: number } {
   const chapters = book.chapterIds.length;
@@ -558,16 +558,12 @@ function spineGeometry(book: ShelfBook): { width: number; height: number } {
     (acc, c) => (acc * 31 + c.charCodeAt(0)) % 997,
     7,
   );
-  // thickness (width): real hardcovers are thin relative to their height. The
-  // physical/earthly books (henle lessons + unit-review + review) get slim
-  // ~20px spines (clamped 16–26) so they read as books standing on edge. The
-  // thematic/artifact books (culture 🏛️ / explore ✨) stay a bit chunkier so
-  // they read as display volumes — but still near-narrow enough to pack
-  // (clamped 26–32, per-book footprint no wider than BOOK_SLOT_WIDTH).
-  const thematic = book.kind === "culture" || book.kind === "explore";
-  const width = thematic
-    ? Math.max(26, Math.min(32, 26 + Math.min(chapters, 2) + ((hash % 3) - 1)))
-    : Math.max(16, Math.min(26, 20 + Math.min(chapters, 3) + ((hash % 3) - 1)));
+  // thickness (width): real hardcovers are thin relative to their height, so
+  // every kind gets the slim ~20px spine (clamped 16–26) that reads as books
+  // standing on edge. The prior pass kept culture/explore chunkier as a
+  // "digital contrast"; the owner's realism directive removes that exception
+  // so all spines share the same thin organic profile.
+  const width = Math.max(16, Math.min(26, 20 + Math.min(chapters, 3) + ((hash % 3) - 1)));
   // height: ~64px base with a wide ragged spread (clamp 52–84, ~25px range)
   // so a shelf top reads as an organic, mismatched-volume skyline. Bottoms
   // align (items-end), tops vary — heights stay sensible/tappable.
