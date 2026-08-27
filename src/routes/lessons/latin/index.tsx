@@ -666,6 +666,7 @@ function LatinLessons() {
         return (
           <TeachingScreen
             lesson={lesson.currentLesson}
+            lessonNumber={lesson.currentLessonNumber}
             reviewMode={lesson.fourPhase.reviewMode}
             reTeachStepIndex={lesson.fourPhase.reTeachStepIndex}
             onComplete={lesson.completePhaseTeaching}
@@ -677,6 +678,7 @@ function LatinLessons() {
       return (
         <TeachingScreen
           lesson={lesson.currentLesson}
+          lessonNumber={lesson.currentLessonNumber}
           onComplete={lesson.completeTeaching}
           onSkip={lesson.skipTeaching}
         />
@@ -713,6 +715,7 @@ function LatinLessons() {
         <LessonIntro
           lesson={lesson.currentLesson}
           totalLessons={lesson.totalLessons}
+          lessonNumber={lesson.currentLessonNumber}
           pronMode={pronMode}
           onStart={lesson.startLesson}
           onBack={lesson.backToMenu}
@@ -729,6 +732,7 @@ function LatinLessons() {
         <ExerciseScreen
           lesson={lesson.currentLesson}
           exerciseIdx={lesson.exerciseIdx}
+          lessonNumber={lesson.currentLessonNumber}
           pronMode={pronMode}
           allLessons={latinLessons}
           onComplete={(detail: ExerciseResultDetail) => {
@@ -760,6 +764,7 @@ function LatinLessons() {
         <LessonCompleteScreen
           lesson={lesson.currentLesson}
           totalLessons={lesson.totalLessons}
+          lessonNumber={lesson.currentLessonNumber}
           correct={tally ? tally.correct : lesson.correctCount}
           total={tally ? tally.attempts : lesson.totalAnswered}
           isLastLesson={lesson.isLastLesson}

@@ -118,10 +118,11 @@ export function buildSearchIndex(
   };
 
   for (const [idx, l] of lessons.entries()) {
-    const title = `Lesson ${l.id}: ${l.title}`;
+    // Display number = array index + 1 (ids are persistence keys, not display).
+    const title = `Lesson ${idx + 1}: ${l.title}`;
     const concept = stripHtml(l.conceptHtml ?? l.concept);
     add(
-      { kind: "lesson", lessonId: l.id, idx, title: `Lesson ${l.id}: ${l.title}`, match: concept },
+      { kind: "lesson", lessonId: l.id, idx, title: `Lesson ${idx + 1}: ${l.title}`, match: concept },
       [l.title, l.subtitle ?? "", concept],
       0,
     );
@@ -163,7 +164,7 @@ export function buildSearchIndex(
             kind: "culture",
             lessonId: l.id,
             idx,
-            title: `Culture · Lesson ${l.id}`,
+            title: `Culture · Lesson ${idx + 1}`,
             match: ex.prompt,
             exerciseId: ex.id,
           },

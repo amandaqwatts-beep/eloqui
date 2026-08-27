@@ -306,9 +306,9 @@ export default function RecitationScreen({
                   onChange={(e) => setLessonId(+e.target.value)}
                   className="mt-1 w-full rounded-lg border border-burgundy-200 bg-white p-3"
                 >
-                  {available.map((l) => (
+                  {available.map((l, i) => (
                     <option key={l.id} value={l.id}>
-                      Lesson {l.id}: {l.title}
+                      Lesson {i + 1}: {l.title}
                     </option>
                   ))}
                 </select>
