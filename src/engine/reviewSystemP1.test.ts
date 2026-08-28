@@ -188,12 +188,19 @@ test("checkTranslation: rewordings pass, number/verb mismatches fail", () => {
 // ── 6. Unit reviews: gating, composition, mastery anchors ───────────────
 test("unit data: 14 units, VERIFIED boundaries, mastery anchors, focusTopicIds", () => {
   eq(UNIT_REVIEWS.length, 14, "14 unit reviews");
+  // NLE supplemental lessons (135–157) are wired into Henle books' subLessonIds
+  // by design (bookLessons.ts: 136→book 20/H18·U5, 135+151→book 33/H30·U9,
+  // 137→book 38/H35·U10, 155→book 39/H36·U10, 138→book 40/H37·U11, 150+152→
+  // book 42/H39·U12, 156+157→book 43/H40·U13, 142+153→book 44/H41·U13,
+  // 139–141+143–149+154→book 45/H42·U14), so unit review universes include
+  // them at their wired positions; the expected arrays below are the verified
+  // shape as of master f27a638.
   eq(unitToLessonIds[1], Array.from({ length: 25 }, (_, i) => i + 1), "U1 = 1–25");
   eq(unitToLessonIds[2], Array.from({ length: 8 }, (_, i) => i + 26), "U2 = 26–33");
   eq(unitToLessonIds[3], Array.from({ length: 19 }, (_, i) => i + 34), "U3 = 34–52");
   eq(unitToLessonIds[4], Array.from({ length: 6 }, (_, i) => i + 53), "U4 = 53–58");
-  eq(unitToLessonIds[5], Array.from({ length: 12 }, (_, i) => i + 59), "U5 = 59–70");
-  eq(unitToLessonIds[14], Array.from({ length: 4 }, (_, i) => i + 131), "U14 = 131–134");
+  eq(unitToLessonIds[5], [59, 60, 61, 62, 63, 64, 136, 65, 66, 67, 68, 69, 70], "U5 = 59–70 with 136 at its book-20 (H18) wired position");
+  eq(unitToLessonIds[14], [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 134], "U14 = 131–133 + book-45 (H42) NLE ids + mastery anchor 134 last");
   eq(unitForLesson[25], 1, "lesson 25 → unit 1");
   eq(unitForLesson[134], 14, "lesson 134 → unit 14");
   const anchors = UNIT_REVIEWS.filter((u) => u.masteryLessonId !== undefined).map((u) => [u.unitNumber, u.masteryLessonId]);
