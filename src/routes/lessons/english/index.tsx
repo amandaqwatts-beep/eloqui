@@ -10,7 +10,7 @@
  * consumes pronMode for English since every item carries its own respelling).
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import englishLessons from "~/data/englishLessons";
 import englishPlacementQuestions from "~/data/englishPlacementTest";
@@ -31,6 +31,8 @@ import { recordLessonAttempt } from "~/engine/diagnostics";
 import { loadDiagnostics, recordAccuracy } from "~/engine/storage";
 import { useAccountSync } from "~/engine/sync";
 import type { ExerciseResultDetail } from "~/engine/types";
+import { flushBugReports } from "~/lib/bugReport";
+import BugReportDialog from "~/components/BugReportDialog";
 import { speakEnglish } from "~/engine/speech";
 import type { PronMode } from "~/lib/pronunciation";
 
@@ -71,6 +73,11 @@ function EnglishLessons() {
   // Account sync (Phase 1): boots the background sync engine once (client
   // only, offline-first, never a gate — SSR stays anonymous).
   useAccountSync();
+  // Bug reports (beta bug-report flow): retry anything queued while offline
+  // — exactly-once on the server, no-op when empty.
+  useEffect(() => {
+    flushBugReports();
+  }, []);
   const totalLevels = PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE.english;
   const lesson = useLessonEngine(englishLessons, language.id);
   const placement = usePlacementEngine(englishPlacementQuestions, totalLevels, language.id);
@@ -84,6 +91,7 @@ function EnglishLessons() {
   const [drillCount, setDrillCount] = useState<10 | 20 | "all">(10);
   const [drillCards, setDrillCards] = useState<DrillCard[] | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [aiLessonId, setAiLessonId] = useState<number | null>(null);
   // Bonus-drill session meta (P2): title/badge/instructionOverride for DrillView.
@@ -208,11 +216,13 @@ function EnglishLessons() {
             onClearData={settingsEngine.clearAllData}
             onEnableDevMode={settingsEngine.enableDevMode}
             onBack={() => setShowSettings(false)}
+            onReportBug={() => setShowBugReport(true)}
             showPronunciation={false}
           />
         );
       }
       return (
+        <>
         <LessonMenu
           lessons={englishLessons}
           unlockedLessons={lesson.unlockedLessons}
@@ -221,6 +231,7 @@ function EnglishLessons() {
           onOpenPlacement={lesson.goToPlacement}
           onOpenAIPractice={openAIPractice}
           onOpenSettings={() => setShowSettings(true)}
+          onReportBug={() => setShowBugReport(true)}
           onOpenProgress={() => setShowProgress(true)}
           devMode={settingsEngine.settings.devMode}
           title="English 101"
@@ -242,6 +253,14 @@ function EnglishLessons() {
             </>
           }
         />
+        {showBugReport && (
+          <BugReportDialog
+            context={{ screen: "menu" }}
+            language={language.id}
+            onBack={() => setShowBugReport(false)}
+          />
+        )}
+        </>
       );
 
     case "teaching":

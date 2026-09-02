@@ -12,6 +12,7 @@ import type { PronMode } from "~/data/settings";
 import type {
   AccuracyEntry,
   AttemptRecord,
+  BugReport,
   DiagnosticEvent,
   FeedbackEntry,
   PhaseName,
@@ -52,6 +53,12 @@ export const STORAGE_KEYS = {
   // key per browser, never per-language, so it survives per-language
   // Clear All Data. clearAllData explicitly SKIPS it (see below).
   USER: "verbum-user",
+  // Bug reports (beta bug-report flow, owner directive 2026-08-23). One
+  // GLOBAL key like USER: reports are app-level feedback, not per-language
+  // learning data — `language` rides in the payload. Listed here so
+  // clearAllData's sweep wipes it too (a student clearing data clears their
+  // unsent reports as well).
+  BUG_REPORT: "verbum-bug-reports",
 } as const;
 
 export const DIAGNOSTICS_SCHEMA_VERSION = 1;
@@ -646,4 +653,67 @@ export function markIdentityClaimed(): void {
       JSON.stringify({ ...id, claimedAt: new Date().toISOString() }),
     );
   } catch { /* unavailable */ }
+}
+
+// ── Bug reports (beta bug-report flow, owner directive 2026-08-23) ──────
+// One GLOBAL key: reports are app-level feedback (not per-language learning
+// data), so the weekly dump reads a single queue and `language` rides in the
+// payload. clearAllData wipes it via the STORAGE_KEYS sweep. Listed in
+// STORAGE_KEYS.BUG_REPORT above.
+export const BUG_REPORT_SCHEMA_VERSION = 1;
+/** Hard cap so a broken client can't fill localStorage unboundedly. */
+export const MAX_QUEUED_BUG_REPORTS = 200;
+
+/** Read the whole queue (oldest first). Missing/corrupt payload → []. */
+export function loadBugReports(): BugReport[] {
+  if (!isClient()) return [];
+  const raw = loadJSON<unknown>(STORAGE_KEYS.BUG_REPORT, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (r): r is BugReport =>
+      r && typeof r === "object" &&
+      typeof (r as BugReport).id === "string" &&
+      typeof (r as BugReport).createdAt === "string",
+  );
+}
+
+/** Append (dedupe on id, cap at MAX_QUEUED_BUG_REPORTS, keep newest). */
+export function saveBugReport(report: BugReport): void {
+  if (!isClient()) return;
+  const reports = loadBugReports();
+  if (reports.some((r) => r.id === report.id)) return;
+  reports.push(report);
+  const capped =
+    reports.length > MAX_QUEUED_BUG_REPORTS
+      ? reports.slice(reports.length - MAX_QUEUED_BUG_REPORTS)
+      : reports;
+  saveJSON(STORAGE_KEYS.BUG_REPORT, capped);
+}
+
+/** Overwrite the stored queue (flush/ack bookkeeping). No-op when empty. */
+export function saveBugReports(reports: BugReport[]): void {
+  if (!isClient()) return;
+  saveJSON(STORAGE_KEYS.BUG_REPORT, reports);
+}
+
+/** After a server ack: report.id → status "sent". Unknown id → no-op. */
+export function markBugReportSent(id: string): void {
+  if (!isClient()) return;
+  saveBugReports(
+    loadBugReports().map((r) =>
+      r.id === id ? { ...r, status: "sent" as const } : r,
+    ),
+  );
+}
+
+/** After a failed POST: attempts++ / status "failed" (retry later). */
+export function markBugReportFailed(id: string): void {
+  if (!isClient()) return;
+  saveBugReports(
+    loadBugReports().map((r) =>
+      r.id === id
+        ? { ...r, status: "failed" as const, attempts: r.attempts + 1 }
+        : r,
+    ),
+  );
 }

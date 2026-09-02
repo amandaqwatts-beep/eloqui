@@ -11,6 +11,9 @@ interface Props {
   onEnableDevMode: () => void;
   onBack: () => void;
   showPronunciation?: boolean;
+  /** Beta bug-report flow (owner directive 2026-08-23): opens the one
+   *  BugReportDialog (route-rendered). Omit → the Feedback card hides. */
+  onReportBug?: () => void;
 }
 
 /** Simple on/off switch (track + sliding knob). */
@@ -58,6 +61,7 @@ export default function SettingsScreen({
   onEnableDevMode,
   onBack,
   showPronunciation = true,
+  onReportBug,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -175,6 +179,29 @@ export default function SettingsScreen({
               </div>
             </SectionCard>
 
+            {/* ── Feedback (beta bug-report flow, owner 2026-08-23) ── */}
+            {onReportBug && (
+              <SectionCard title="Feedback">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-burgundy-900">
+                      Report a problem
+                    </p>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      Spotted a bug? Tell us what happened — your report
+                      includes what screen you were on.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onReportBug}
+                    className="shrink-0 rounded-xl bg-burgundy-700 px-5 py-2.5 text-sm font-bold text-cream-50 shadow transition hover:bg-burgundy-800"
+                  >
+                    🪲 Report a problem
+                  </button>
+                </div>
+              </SectionCard>
+            )}
             {/* ── Developer ─────────────────────────────────────────── */}
             <SectionCard title="Developer">
               <div className="flex items-center justify-between gap-4">
