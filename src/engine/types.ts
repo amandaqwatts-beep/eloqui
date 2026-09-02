@@ -49,6 +49,43 @@ export interface FeedbackEntry {
   createdAt: string;
 }
 
+/** Delivery status of a locally-queued bug report (beta bug-report flow). */
+export type BugReportStatus = "queued" | "sent" | "failed";
+/** Context captured automatically with every bug report (beta bug-report
+ *  flow, owner directive 2026-08-23). All fields optional — the dialog fills
+ *  what it knows (lesson/phase/exercise inside a lesson, bare route outside). */
+export interface BugContext {
+  /** LessonEngine screen id the report was filed from (e.g. "quizzed"). */
+  screen?: string | null;
+  /** Real lesson id (the persistence/unlock key, per engine/lesson.ts). */
+  lessonId?: number | null;
+  /** Display-only lesson number (= array index + 1). */
+  lessonNumber?: number | null;
+  /** Active four-phase loop phase, when inside the loop. */
+  phase?: PhaseName | null;
+  /** id of the exercise on screen, when one is visible. */
+  exerciseId?: string | null;
+}
+/** One student bug report. Persisted under STORAGE_KEYS.BUG_REPORT (one
+ *  GLOBAL key — reports are app-level feedback, not per-language learning
+ *  data, so the weekly dump reads a single queue; the `language` field rides
+ *  in the payload for the owner's review). */
+export interface BugReport extends BugContext {
+  /** `${Date.now()}-${seq}` — dedupe key locally and on the server. */
+  id: string;
+  /** Track the report was filed from ("latin", "english", …). */
+  language: Language;
+  /** window.location.pathname at submit time. */
+  route: string;
+  /** Optional free-text description from the student (not required). */
+  description: string | null;
+  /** ISO timestamp captured at submit time. */
+  createdAt: string;
+  /** Delivery state: queued → sent (server ack) | failed (kept for retry). */
+  status: BugReportStatus;
+  /** Send attempts so far (failed attempts increment; sent freezes). */
+  attempts: number;
+}
 /** User-configurable application settings. */
 export interface VerbumSettings {
   pronMode: "ecclesiastical" | "classical";
