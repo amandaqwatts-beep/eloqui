@@ -45,6 +45,35 @@ export async function ensureFeedbackTable() {
 }
 
 /**
+ * Ensure the bug_reports table exists (beta bug-report flow, owner directive
+ * 2026-08-23). Separate from `feedback` (which stays the 1–5 lesson-rating
+ * path); IF NOT EXISTS so it is safe on every submit/export. The client's
+ * Date.now()-seq id is the PK → ON CONFLICT DO NOTHING makes retries
+ * exactly-once.
+ */
+export async function ensureBugReportsTable() {
+  await sql()`
+    CREATE TABLE IF NOT EXISTS bug_reports (
+      id            TEXT PRIMARY KEY,
+      language      TEXT NOT NULL,
+      route         TEXT NOT NULL,
+      screen        TEXT,
+      lesson_id     INTEGER,
+      lesson_number INTEGER,
+      phase         TEXT,
+      exercise_id   TEXT,
+      description   TEXT,
+      created_at    TIMESTAMPTZ NOT NULL,
+      received_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      attempts      INTEGER NOT NULL DEFAULT 0
+    )
+  `;
+  await sql()`
+    CREATE INDEX IF NOT EXISTS bug_reports_created
+      ON bug_reports (created_at)
+  `;
+}
+/**
  * Ensure the account infrastructure tables exist (account-infrastructure-design
  * §4.1): users, user_state (per-key last-write-wins sync blobs), and
  * diagnostics_events (row-per-event, exactly-once append). Safe to call on
