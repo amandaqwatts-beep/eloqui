@@ -17,6 +17,9 @@ interface Props {
   onOpenDrill: () => void; onOpenPlacement: () => void; onOpenAIPractice: (lessonId: number) => void;
   // Optional until the route integration phase wires them in (keeps build green).
   onOpenSettings?: () => void; onOpenAudio?: () => void; onOpenSleep?: () => void; onOpenProgress?: () => void; onOpenReview?: () => void;
+  /** Beta bug-report affordance (owner directive 2026-08-23): 🪲 in the desk
+   *  bar — 1 tap from the bookshelf. Route renders the dialog. */
+  onReportBug?: () => void;
   /** 🗣️ Speak (speech recitation) — optional until the route wires it in (keeps English build green). */
   onOpenRecite?: () => void;
   devMode?: boolean;
@@ -52,7 +55,7 @@ const ICON_TILE =
 
 export default function LessonMenu({
   lessons,unlockedLessons,onSelectLesson,onOpenDrill,onOpenPlacement,onOpenAIPractice,
-  onOpenSettings,onOpenAudio,onOpenSleep,onOpenProgress,onOpenReview,onOpenRecite,devMode=false,
+  onOpenSettings,onOpenAudio,onOpenSleep,onOpenProgress,onOpenReview,onOpenRecite,onReportBug,devMode=false,
   title="Latin 101",description="Master Latin grammar through bite-sized, interactive lessons — from first declension through passive voice, following Henle's <em>First Year Latin</em>.",
   emoji="🏛️",showAIPractice=true,backTo="/",lessonProgress,
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
@@ -171,6 +174,17 @@ export default function LessonMenu({
                   className={`${ICON_TILE} sm:order-10`}
                 >
                   ⚙️
+                </button>
+              )}
+              {onReportBug && (
+                <button
+                  type="button"
+                  onClick={onReportBug}
+                  title="Report a problem"
+                  aria-label="Report a problem"
+                  className={`${ICON_TILE} sm:order-11`}
+                >
+                  🪲
                 </button>
               )}
             </div>
