@@ -52,6 +52,8 @@ import {
 } from "~/engine/diagnostics";
 import { loadDiagnostics, recordAttempt, recordUnitReviewCompletion } from "~/engine/storage";
 import type { ConceptKind, ConfusionPair, ExerciseResultDetail } from "~/engine/types";
+import { flushBugReports } from "~/lib/bugReport";
+import BugReportDialog from "~/components/BugReportDialog";
 import {
   buildWordDrillCards,
   buildPairDrillCards,
@@ -107,6 +109,11 @@ function LatinLessons() {
   // Account sync (Phase 1): boots the background sync engine once (client
   // only, offline-first, never a gate — SSR stays anonymous).
   useAccountSync();
+  // Bug reports (beta bug-report flow): retry anything queued while offline
+  // — exactly-once on the server (ON CONFLICT DO NOTHING), no-op when empty.
+  useEffect(() => {
+    flushBugReports();
+  }, []);
   // Placement runs at UNIT granularity (14 units × 2 questions each; the
   // result grid shows one row per unit). The engine's raw startLevel is a
   // UNIT number 1–14; the mapper converts it to a LESSON COUNT (this unit's
@@ -135,6 +142,7 @@ function LatinLessons() {
   const [drillCards, setDrillCards] = useState<DrillCard[] | null>(null);
   const [aiLessonId, setAiLessonId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
   const [showAudio, setShowAudio] = useState(false);
   const [showRecite, setShowRecite] = useState(false);
   const [showSleepAudio, setShowSleepAudio] = useState(false);
@@ -525,6 +533,7 @@ function LatinLessons() {
             onOpenPlacement={lesson.goToPlacement}
             onOpenAIPractice={openAIPractice}
             onOpenSettings={() => setShowSettings(true)}
+            onReportBug={() => setShowBugReport(true)}
             onOpenAudio={() => setShowAudio(true)}
             onOpenRecite={() => setShowRecite(true)}
             onOpenSleep={() => setShowSleepAudio(true)}
@@ -577,6 +586,7 @@ function LatinLessons() {
               onClearData={settingsEngine.clearAllData}
               onEnableDevMode={settingsEngine.enableDevMode}
               onBack={() => setShowSettings(false)}
+            onReportBug={() => setShowBugReport(true)}
             />
           )}
           {showProgress && (
@@ -635,6 +645,13 @@ function LatinLessons() {
                 onBack={() => setShowSleepAudio(false)}
               />
             </WindowFrame>
+          )}
+          {showBugReport && (
+            <BugReportDialog
+              context={{ screen: "menu" }}
+              language={language.id}
+              onBack={() => setShowBugReport(false)}
+            />
           )}
           {unitReview && (
             <WindowFrame
