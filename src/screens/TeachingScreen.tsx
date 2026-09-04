@@ -16,6 +16,10 @@ interface Props {
   reTeachStepIndex?: number | null;
   /** Four-phase quit path (PHASE_RESET → menu) — shown instead of Skip while re-teaching. */
   onExit?: () => void;
+  /** Beta bug-report affordance (PR #78 pattern): 🪲 link so a student can
+   *  report from the taught phase without backing out. Route renders the one
+   *  dialog (BugReportDialog); optional — absent → nothing renders. */
+  onReportBug?: () => void;
 }
 
 type Phase = "teaching" | "check" | "review" | "success";
@@ -28,6 +32,7 @@ export default function TeachingScreen({
   reviewMode = false,
   reTeachStepIndex = null,
   onExit,
+  onReportBug,
 }: Props) {
   const steps = lesson.teachingSteps ?? [];
   const questions = lesson.comprehensionCheck ?? [];
@@ -144,6 +149,15 @@ export default function TeachingScreen({
                   : "Check Understanding →"}
               </button>
               {footerExit}
+              {onReportBug && (
+                <button
+                  type="button"
+                  onClick={onReportBug}
+                  className="mt-1 block w-full py-2 text-center text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+                >
+                  🪲 Report a problem
+                </button>
+              )}
             </div>
           </div>
         </main>
@@ -232,6 +246,15 @@ export default function TeachingScreen({
                         ? "Finish — Review Needed"
                         : "Finish"}
                   </button>
+                  {onReportBug && (
+                    <button
+                      type="button"
+                      onClick={onReportBug}
+                      className="mt-2 block w-full py-2 text-center text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+                    >
+                      🪲 Report a problem
+                    </button>
+                  )}
                 </>
               )}
             </div>

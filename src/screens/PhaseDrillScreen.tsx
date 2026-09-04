@@ -61,6 +61,10 @@ interface Props {
   ) => void;
   /** → lesson.resetPhase — abandon the run and return to the menu. */
   onQuit: () => void;
+  /** Beta bug-report affordance (PR #78 pattern): 🪲 link so a student can
+   *  report from inside the drill loop without backing out. Route renders the
+   *  one BugReportDialog; optional — absent → nothing renders. */
+  onReportBug?: () => void;
 }
 
 function buildBatch(
@@ -93,6 +97,7 @@ export default function PhaseDrillScreen({
   distractorLessons,
   onAttempt,
   onQuit,
+  onReportBug,
 }: Props) {
   const steps = lesson.teachingSteps ?? [];
   const [batchNo, setBatchNo] = useState(0);
@@ -228,6 +233,15 @@ export default function PhaseDrillScreen({
               >
                 Exit to Lessons
               </button>
+              {onReportBug && (
+                <button
+                  type="button"
+                  onClick={onReportBug}
+                  className="block w-full py-1 text-center text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+                >
+                  🪲 Report a problem
+                </button>
+              )}
             </div>
           ) : (
             <div className="paper-page p-8 text-center text-gray-500">

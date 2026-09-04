@@ -13,6 +13,7 @@ export default function DrillView({
   exitLabel,
   instructionOverride,
   badgeLine,
+  onReportBug,
 }: {
   cards: DrillCard[];
   onExit: () => void;
@@ -23,6 +24,8 @@ export default function DrillView({
   exitLabel?: string;
   instructionOverride?: Partial<Record<DrillKind, string>>;
   badgeLine?: string;
+  /** Beta bug-report affordance (PR #78 pattern) — optional; route renders the one BugReportDialog. */
+  onReportBug?: () => void;
 }) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -87,6 +90,15 @@ export default function DrillView({
                 {exitLabel ?? "Back to Lessons"}
               </button>
             </div>
+            {onReportBug && (
+              <button
+                type="button"
+                onClick={onReportBug}
+                className="mt-2 block w-full py-1 text-center text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+              >
+                🪲 Report a problem
+              </button>
+            )}
           </div>
         </main>
       </WindowFrame>
@@ -192,6 +204,15 @@ export default function DrillView({
             <p className="mt-4 text-center text-sm text-gray-400">
               Tap the card when you're ready to check.
             </p>
+          )}
+          {onReportBug && (
+            <button
+              type="button"
+              onClick={onReportBug}
+              className="mt-2 block w-full py-1 text-center text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+            >
+              🪲 Report a problem
+            </button>
           )}
         </div>
       </main>
