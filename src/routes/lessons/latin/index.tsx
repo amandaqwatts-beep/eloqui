@@ -87,6 +87,7 @@ import ReviewScreen from "~/screens/ReviewScreen";
 import PairDrillScreen from "~/screens/PairDrillScreen";
 import { DailyLessonCard, BonusLessonCard } from "~/components/ProficiencyCards";
 import WindowFrame from "~/components/WindowFrame";
+import FoundationsEntry from "~/components/FoundationsEntry";
 
 export const Route = createFileRoute("/lessons/latin/")({
   component: LatinLessons,
@@ -554,6 +555,7 @@ function LatinLessons() {
             suppressFrontierScroll={suppressFrontierScroll}
             onOpenUnitReview={openUnitReview}
             unitReviewUnlocked={unitReviewUnlocked}
+            foundationsEntry={<FoundationsEntry />}
             menuCards={
               <>
                 <DailyLessonCard

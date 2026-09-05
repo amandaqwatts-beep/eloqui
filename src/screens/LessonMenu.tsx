@@ -47,6 +47,11 @@ interface Props {
    *  handler + the isUnitComplete-derived unlocked unit set (pass-through). */
   onOpenUnitReview?: (unitNumber: number) => void;
   unitReviewUnlocked?: Set<number>;
+
+  /** Grammar-basics Foundations entry (beta deliverable #3): a thin-spine
+   *  book + caption rendered after the course shelves (presentational node —
+   *  the route supplies <FoundationsEntry /> or nothing). */
+  foundationsEntry?: ReactNode;
 }
 
 /** Base class for the desk bar's 44px icon tiles (📖 ⚙ 🎧 🌙 📊 🎯). */
@@ -60,7 +65,7 @@ export default function LessonMenu({
   emoji="🏛️",showAIPractice=true,backTo="/",lessonProgress,
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
   languageId="latin",suppressFrontierScroll=false,
-  onOpenUnitReview,unitReviewUnlocked,
+  onOpenUnitReview,unitReviewUnlocked,foundationsEntry,
 }: Props) {
   const hasShelf = (bookLessons?.length ?? 0) > 0;
 
@@ -275,6 +280,7 @@ export default function LessonMenu({
               onOpenAIPractice={onOpenAIPractice}
             />
           )}
+{foundationsEntry}
 
           <div className="mt-10 text-center">
             <Link to={backTo} className="text-sm text-gray-400 hover:text-burgundy-600 transition">
