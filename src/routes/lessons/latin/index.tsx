@@ -51,7 +51,7 @@ import {
   recordLessonAttempt,
 } from "~/engine/diagnostics";
 import { loadDiagnostics, recordAttempt, recordUnitReviewCompletion } from "~/engine/storage";
-import type { ConceptKind, ConfusionPair, ExerciseResultDetail } from "~/engine/types";
+import type { BugContext, ConceptKind, ConfusionPair, ExerciseResultDetail } from "~/engine/types";
 import { flushBugReports } from "~/lib/bugReport";
 import BugReportDialog from "~/components/BugReportDialog";
 import {
@@ -87,6 +87,7 @@ import ReviewScreen from "~/screens/ReviewScreen";
 import PairDrillScreen from "~/screens/PairDrillScreen";
 import { DailyLessonCard, BonusLessonCard } from "~/components/ProficiencyCards";
 import WindowFrame from "~/components/WindowFrame";
+import FoundationsEntry from "~/components/FoundationsEntry";
 
 export const Route = createFileRoute("/lessons/latin/")({
   component: LatinLessons,
@@ -142,7 +143,13 @@ function LatinLessons() {
   const [drillCards, setDrillCards] = useState<DrillCard[] | null>(null);
   const [aiLessonId, setAiLessonId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showBugReport, setShowBugReport] = useState(false);
+  // Bug-report dialog (beta, PR #78 pattern): the route owns the ONE dialog.
+  // Screens get an onReportBug callback; the captured context reflects the
+  // screen the student filed from (BugContext fields auto-attach in the dialog).
+  const [bugContext, setBugContext] = useState<BugContext | null>(null);
+  const showBugReportOpen = bugContext !== null;
+  /** PR #78 pattern: capture-and-open — each caller passes the context it knows. */
+  const openBugReport = useCallback((ctx: BugContext) => setBugContext(ctx), []);
   const [showAudio, setShowAudio] = useState(false);
   const [showRecite, setShowRecite] = useState(false);
   const [showSleepAudio, setShowSleepAudio] = useState(false);
@@ -533,7 +540,7 @@ function LatinLessons() {
             onOpenPlacement={lesson.goToPlacement}
             onOpenAIPractice={openAIPractice}
             onOpenSettings={() => setShowSettings(true)}
-            onReportBug={() => setShowBugReport(true)}
+            onReportBug={() => openBugReport({ screen: "menu" })}
             onOpenAudio={() => setShowAudio(true)}
             onOpenRecite={() => setShowRecite(true)}
             onOpenSleep={() => setShowSleepAudio(true)}
@@ -548,6 +555,7 @@ function LatinLessons() {
             suppressFrontierScroll={suppressFrontierScroll}
             onOpenUnitReview={openUnitReview}
             unitReviewUnlocked={unitReviewUnlocked}
+            foundationsEntry={<FoundationsEntry />}
             menuCards={
               <>
                 <DailyLessonCard
@@ -586,7 +594,7 @@ function LatinLessons() {
               onClearData={settingsEngine.clearAllData}
               onEnableDevMode={settingsEngine.enableDevMode}
               onBack={() => setShowSettings(false)}
-            onReportBug={() => setShowBugReport(true)}
+              onReportBug={() => openBugReport({ screen: "settings" })}
             />
           )}
           {showProgress && (
@@ -612,6 +620,7 @@ function LatinLessons() {
               onDrillWord={startWordDrill}
               onDrillPair={beginPairDrill}
               onOpenLesson={openLessonFromDiagnostics}
+              onReportBug={() => openBugReport({ screen: "review" })}
             />
           )}
           {showAudio && (
@@ -646,11 +655,11 @@ function LatinLessons() {
               />
             </WindowFrame>
           )}
-          {showBugReport && (
+          {showBugReportOpen && (
             <BugReportDialog
-              context={{ screen: "menu" }}
+              context={bugContext ?? { screen: "menu" }}
               language={language.id}
-              onBack={() => setShowBugReport(false)}
+              onBack={() => setBugContext(null)}
             />
           )}
           {unitReview && (
@@ -689,6 +698,14 @@ function LatinLessons() {
             onComplete={lesson.completePhaseTeaching}
             onSkip={lesson.resetPhase}
             onExit={lesson.resetPhase}
+            onReportBug={() =>
+              openBugReport({
+                screen: "teaching",
+                lessonId: lesson.currentLesson.id,
+                lessonNumber: lesson.currentLessonNumber,
+                phase: "taught",
+              })
+            }
           />
         );
       }
@@ -698,6 +715,13 @@ function LatinLessons() {
           lessonNumber={lesson.currentLessonNumber}
           onComplete={lesson.completeTeaching}
           onSkip={lesson.skipTeaching}
+          onReportBug={() =>
+            openBugReport({
+              screen: "teaching",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+            })
+          }
         />
       );
 
@@ -723,6 +747,14 @@ function LatinLessons() {
             lesson.recordPhaseAttempt(correct, passingConcepts, reTeachStepIndex)
           }
           onQuit={lesson.resetPhase}
+          onReportBug={() =>
+            openBugReport({
+              screen: run.phase,
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+              phase: run.phase,
+            })
+          }
         />
       );
     }
@@ -741,6 +773,13 @@ function LatinLessons() {
           // ecclesiastical default). Pass the active mode so the spoken form
           // follows the pronunciation toggle (audit G9 minimal).
           onSpeakLeft={(t) => speakLatin(t, pronMode)}
+          onReportBug={() =>
+            openBugReport({
+              screen: "intro",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+            })
+          }
         />
       );
 
@@ -758,6 +797,14 @@ function LatinLessons() {
             lesson.completeExercise(detail.correct);
           }}
           onQuit={lesson.backToMenu}
+          onReportBug={() =>
+            openBugReport({
+              screen: "exercise",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+              exerciseId: lesson.currentLesson.exercises[lesson.exerciseIdx]?.id ?? null,
+            })
+          }
         />
       );
 
@@ -794,6 +841,13 @@ function LatinLessons() {
           onBack={phaseRun ? lesson.resetPhase : lesson.backToMenu}
           onOpenAIPractice={openAIPractice}
           onOpenDrill={openDrill}
+          onReportBug={() =>
+            openBugReport({
+              screen: "complete",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+            })
+          }
         />
       );
     }
@@ -823,6 +877,13 @@ function LatinLessons() {
           exitLabel={drillMeta?.exitLabel}
           instructionOverride={drillMeta?.instructionOverride}
           badgeLine={drillMeta?.badgeLine}
+          onReportBug={() =>
+            openBugReport({
+              screen: "drill",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+            })
+          }
         />
       ) : (
         <DrillSetup

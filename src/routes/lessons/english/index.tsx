@@ -30,7 +30,7 @@ import {
 import { recordLessonAttempt } from "~/engine/diagnostics";
 import { loadDiagnostics, recordAccuracy } from "~/engine/storage";
 import { useAccountSync } from "~/engine/sync";
-import type { ExerciseResultDetail } from "~/engine/types";
+import type { BugContext, ExerciseResultDetail } from "~/engine/types";
 import { flushBugReports } from "~/lib/bugReport";
 import BugReportDialog from "~/components/BugReportDialog";
 import { speakEnglish } from "~/engine/speech";
@@ -91,7 +91,11 @@ function EnglishLessons() {
   const [drillCount, setDrillCount] = useState<10 | 20 | "all">(10);
   const [drillCards, setDrillCards] = useState<DrillCard[] | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showBugReport, setShowBugReport] = useState(false);
+  // Bug-report dialog (beta, PR #78 pattern): the route owns the ONE dialog;
+  // screens get an onReportBug callback with the context they know.
+  const [bugContext, setBugContext] = useState<BugContext | null>(null);
+  const showBugReportOpen = bugContext !== null;
+  const openBugReport = useCallback((ctx: BugContext) => setBugContext(ctx), []);
   const [showProgress, setShowProgress] = useState(false);
   const [aiLessonId, setAiLessonId] = useState<number | null>(null);
   // Bonus-drill session meta (P2): title/badge/instructionOverride for DrillView.
@@ -216,7 +220,7 @@ function EnglishLessons() {
             onClearData={settingsEngine.clearAllData}
             onEnableDevMode={settingsEngine.enableDevMode}
             onBack={() => setShowSettings(false)}
-            onReportBug={() => setShowBugReport(true)}
+            onReportBug={() => openBugReport({ screen: "settings" })}
             showPronunciation={false}
           />
         );
@@ -231,7 +235,7 @@ function EnglishLessons() {
           onOpenPlacement={lesson.goToPlacement}
           onOpenAIPractice={openAIPractice}
           onOpenSettings={() => setShowSettings(true)}
-          onReportBug={() => setShowBugReport(true)}
+          onReportBug={() => openBugReport({ screen: "menu" })}
           onOpenProgress={() => setShowProgress(true)}
           devMode={settingsEngine.settings.devMode}
           title="English 101"
@@ -253,11 +257,11 @@ function EnglishLessons() {
             </>
           }
         />
-        {showBugReport && (
+        {showBugReportOpen && (
           <BugReportDialog
-            context={{ screen: "menu" }}
+            context={bugContext ?? { screen: "menu" }}
             language={language.id}
-            onBack={() => setShowBugReport(false)}
+            onBack={() => setBugContext(null)}
           />
         )}
         </>
@@ -270,6 +274,13 @@ function EnglishLessons() {
           lessonNumber={lesson.currentLessonNumber}
           onComplete={lesson.completeTeaching}
           onSkip={lesson.skipTeaching}
+          onReportBug={() =>
+            openBugReport({
+              screen: "teaching",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+            })
+          }
         />
       );
 
@@ -303,6 +314,14 @@ function EnglishLessons() {
             lesson.completeExercise(detail.correct);
           }}
           onQuit={lesson.backToMenu}
+          onReportBug={() =>
+            openBugReport({
+              screen: "exercise",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+              exerciseId: lesson.currentLesson.exercises[lesson.exerciseIdx]?.id ?? null,
+            })
+          }
         />
       );
 
@@ -323,6 +342,13 @@ function EnglishLessons() {
           onBack={lesson.backToMenu}
           onOpenAIPractice={openAIPractice}
           onOpenDrill={openDrill}
+          onReportBug={() =>
+            openBugReport({
+              screen: "complete",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+            })
+          }
         />
       );
 
@@ -339,6 +365,13 @@ function EnglishLessons() {
           exitLabel={drillMeta?.exitLabel}
           instructionOverride={drillMeta?.instructionOverride ?? ENGLISH_DRILL_INSTRUCTIONS}
           badgeLine={drillMeta?.badgeLine}
+          onReportBug={() =>
+            openBugReport({
+              screen: "drill",
+              lessonId: lesson.currentLesson.id,
+              lessonNumber: lesson.currentLessonNumber,
+            })
+          }
         />
       ) : (
         <DrillSetup

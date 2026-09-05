@@ -28,6 +28,8 @@ interface Props {
   onDrillWord?: (conceptId: string) => void;
   onDrillPair?: (pair: ConfusionPair) => void;
   onOpenLesson?: (lessonId: number) => void;
+  /** Beta bug-report affordance (PR #78 pattern) — optional; the route renders the one BugReportDialog. */
+  onReportBug?: () => void;
 }
 
 export default function ReviewScreen({
@@ -39,6 +41,7 @@ export default function ReviewScreen({
   onDrillWord,
   onDrillPair,
   onOpenLesson,
+  onReportBug,
 }: Props) {
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
   const selectedSpot =
@@ -82,7 +85,18 @@ export default function ReviewScreen({
   return (
     <WindowFrame title="Review" onBack={onBack} variant="overlay">
       <main className="mx-auto max-w-2xl px-4 py-8">
-        <h1 className="text-3xl font-black">🔍 Review Weak Spots</h1>
+        <div className="flex items-baseline justify-between gap-3">
+          <h1 className="text-3xl font-black">🔍 Review Weak Spots</h1>
+          {onReportBug && (
+            <button
+              type="button"
+              onClick={onReportBug}
+              className="shrink-0 text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+            >
+              🪲 Report a problem
+            </button>
+          )}
+        </div>
 
         <section className="mt-6 space-y-3" aria-label="Diagnostics">
           <div className="flex items-baseline justify-between">
