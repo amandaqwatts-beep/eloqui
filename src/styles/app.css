@@ -369,3 +369,34 @@
     animation: none;
   }
 }
+
+/* ── Launch gate (src/components/LaunchGate.tsx) ────────────────────
+   Short horizontal shake on a wrong passcode. Reduced-motion safe:
+   disabled entirely under prefers-reduced-motion. */
+@keyframes gate-shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+.gate-shake {
+  animation: gate-shake 0.4s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate-shake {
+    animation: none;
+  }
+}
