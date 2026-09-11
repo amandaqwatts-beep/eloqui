@@ -21,6 +21,9 @@ export interface TeachingStep {
   exampleLatin: string;
   exampleEnglish: string;
   tip?: string;
+  /** GrammarTopic ids (src/data/grammarIndex.ts) this step teaches — links the
+   *  step to the Grammar Index; renderers resolve id → topic → henleGrammarRef. */
+  grammarRefs?: string[];
 }
 
 export interface ConjugationRow {
