@@ -81,6 +81,11 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 14, henleNumber: 12, unitNumber: 3, title: "The Third Conjugation", subtitle: "IDs 46–49 · Principal parts; present; imperfect; future", subLessonIds: [46, 47, 48, 49], kind: "lesson" },
   { id: 15, henleNumber: 13, unitNumber: 3, title: "The Fourth Conjugation", subtitle: "ID 50", subLessonIds: [50], kind: "lesson" },
   { id: 16, henleNumber: 14, unitNumber: 3, title: "Sum — Present, Imperfect, and Future", subtitle: "IDs 51–52 · Sum + compounds (absum)", subLessonIds: [51, 52], kind: "lesson" },
+  // Exception to the id-ascending note above: book 57 is Unit 3's mastery review
+  // (FY General Review Exercises E1–E9, sub-lessons 158–166 appended at the END
+  // of latinLessons.ts). Placed immediately after book 16 so Unit 3's checkpoint
+  // sits with its unit, matching the interleaved-by-unit shelf model.
+  { id: 57, henleNumber: null, unitNumber: 3, title: "Unit 3 General Review", subtitle: "IDs 158–166 · FY General Review Exercises E1–E9", subLessonIds: [158, 159, 160, 161, 162, 163, 164, 165, 166], kind: "mastery-review" },
 
   // ── UNIT 4 · Henle 15–16 ──────────────────────────────────────
   { id: 17, henleNumber: 15, unitNumber: 4, title: "The Perfect Active System", subtitle: "IDs 53–55 · Perfect; perfect indicative; pluperfect/future perfect", subLessonIds: [53, 54, 55], kind: "lesson" },

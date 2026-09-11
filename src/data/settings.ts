@@ -1,9 +1,9 @@
 import type { Language } from "~/data/languages";
 export const APP_NAME = "Eloqui";
 export const SETTINGS_DEFAULTS = { aiEnabled: true, devMode: false } as const;
-export const LESSONS_PER_UNIT = 157;
-export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 157, greek: 0, hebrew: 0, english: 10 };
-export const LATIN_LESSONS = 157;
+export const LESSONS_PER_UNIT = 166;
+export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 166, greek: 0, hebrew: 0, english: 10 };
+export const LATIN_LESSONS = 166;
 export const EXERCISES_PER_LESSON = 7;
 export const DRILL_KINDS = ["vocab-latin", "vocab-english", "conjugation", "declension", "mixed"] as const;
 export const DRILL_COUNTS = [10, 20, "all"] as const;
