@@ -7,6 +7,8 @@ import type { Language } from "~/data/languages";
 import MultipleChoice from "~/components/MultipleChoice";
 import FillInBlank from "~/components/FillInBlank";
 import MatchingPairs from "~/components/MatchingPairs";
+import RecommendedButton from "~/components/RecommendedButton";
+import type { Recommendation } from "~/engine/recommendation";
 import type { PronMode } from "~/lib/pronunciation";
 
 // ── Types ────────────────────────────────────────────────────
@@ -21,13 +23,16 @@ interface AIPracticeProps {
   language?: Language;
   /** Curriculum used for fallback distractors (English passes englishLessons; Latin omits it). */
   distractorLessons?: Lesson[];
+  /** Free-zone "do the recommended" idle callout (optional — absent → byte-identical). */
+  recommendation?: Recommendation | null;
+  onDoRecommended?: () => void;
 }
 
 type AIState = "idle" | "loading" | "practicing" | "complete";
 
 // ── Component ────────────────────────────────────────────────
 
-export default function AIPractice({ lesson, pronMode, onBack, aiEnabled, language = "latin", distractorLessons }: AIPracticeProps) {
+export default function AIPractice({ lesson, pronMode, onBack, aiEnabled, language = "latin", distractorLessons, recommendation, onDoRecommended }: AIPracticeProps) {
   const [state, setState] = useState<AIState>("idle");
   const [exercises, setExercises] = useState<GeneratedExercise[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -139,6 +144,17 @@ export default function AIPractice({ lesson, pronMode, onBack, aiEnabled, langua
           <p className="text-sm text-gray-400 mb-6">
             Based on: {lesson.title}
           </p>
+
+          {/* Free-zone "do the recommended" — idle callout above the generate
+              buttons. Hidden when the recommendation IS this lesson (the
+              student is already doing it). Idle-only: never mid-practice. */}
+          {recommendation && onDoRecommended && !(
+            recommendation.kind === "lesson" && recommendation.id === lesson.id
+          ) && (
+            <div className="mb-6">
+              <RecommendedButton recommendation={recommendation} onDoRecommended={onDoRecommended} />
+            </div>
+          )}
 
           <div className="flex flex-col gap-3 items-center">
             <button

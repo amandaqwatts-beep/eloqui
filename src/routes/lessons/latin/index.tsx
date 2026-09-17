@@ -26,6 +26,7 @@ import { UNIT_REVIEWS, unitToLessonIds, unitToFirstLessonCount, type UnitReview 
 import { DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
 import { LANGUAGES } from "~/data/languages";
 import { getDailyWorstLesson } from "~/engine/dailyLesson";
+import { getRecommendation } from "~/engine/recommendation";
 import { getImprovementStreak, claimBonusDrill, buildBonusDrillDeck, recordStreakDay } from "~/engine/improvementStreak";
 import { useLessonEngine } from "~/engine/lesson";
 import { usePlacementEngine } from "~/engine/placement";
@@ -50,7 +51,7 @@ import {
   getConfusionPairs,
   recordLessonAttempt,
 } from "~/engine/diagnostics";
-import { loadDiagnostics, recordAttempt, recordUnitReviewCompletion } from "~/engine/storage";
+import { loadDiagnostics, recordAttempt, recordUnitReviewCompletion, loadUnitReviews } from "~/engine/storage";
 import type { BugContext, ConceptKind, ConfusionPair, ExerciseResultDetail } from "~/engine/types";
 import { flushBugReports } from "~/lib/bugReport";
 import BugReportDialog from "~/components/BugReportDialog";
@@ -211,6 +212,23 @@ function LatinLessons() {
   const streak = getImprovementStreak(diagnosticsEvents, { language: language.id });
   const dailyCompleted = dailyLesson ? completedLessonIds.includes(dailyLesson.lessonId) : false;
   const bonusClaimable = streak.streakDays >= IMPROVEMENT_ACTIVE_DAYS && !streak.bonusClaimedToday;
+
+  // ── Free-zone "do the recommended" (owner directive 2026-09-10) ──
+  // One composer call per render, next to the other derivations — pure, no
+  // storage writes (mirrors dailyLesson). Inputs reuse what the route already
+  // loaded: progress, diagnostics, unit-review unlock set, streak state.
+  const unitReviewsCompleted = Object.keys(loadUnitReviews(language.id).completed).map(Number);
+  const recommendation = getRecommendation({
+    lessons: latinLessons,
+    unlockedLessons: lesson.unlockedLessons,
+    completedLessonIds,
+    unitReviewUnlocked: [...unitReviewUnlocked].sort((a, b) => a - b),
+    unitReviewsCompleted,
+    bonusClaimable,
+    streakDays: streak.streakDays,
+    dailyLesson,
+    language: language.id,
+  });
 
   // ── Four-phase lesson loop (STEP 3: taught→memorized) ─────────────
   // Every Latin lesson start goes through PHASE_START so a partially-done
@@ -499,6 +517,35 @@ function LatinLessons() {
     lesson.goToDrill();
   }, [streak.tier, diagnosticsEvents, pronMode, lesson]);
 
+  // ── Free-zone "do the recommended" dispatch ───────────────────
+  // default zone (LessonMenu + DrillSetup): lesson → four-phase start
+  // (idx<unlockedLessons findIndex guard), unit-review → menu + overlay,
+  // drill → bonus claim. AI zone: a lesson rec jumps AI practice to that
+  // lesson instead (idle-only — AIPracticeScreen remounts on key={lesson.id}).
+  const doRecommended = useCallback(
+    (zone: "default" | "ai" = "default") => {
+      if (!recommendation) return;
+      if (recommendation.kind === "drill") {
+        startBonusDrill();
+        return;
+      }
+      if (recommendation.kind === "unit-review") {
+        lesson.backToMenu(); // the route renders the review overlay over the menu
+        openUnitReview(recommendation.id);
+        return;
+      }
+      if (zone === "ai") {
+        openAIPractice(recommendation.id);
+        return;
+      }
+      const idx = latinLessons.findIndex((l) => l.id === recommendation.id);
+      if (idx >= 0 && idx < lesson.unlockedLessons && latinLessons[idx]) {
+        lesson.startPhaseLesson(idx, latinLessons[idx].id);
+      }
+    },
+    [recommendation, startBonusDrill, lesson, openUnitReview, openAIPractice],
+  );
+
   const aiLesson =
     latinLessons.find((l) => l.id === aiLessonId) ?? lesson.currentLesson;
 
@@ -555,6 +602,8 @@ function LatinLessons() {
             suppressFrontierScroll={suppressFrontierScroll}
             onOpenUnitReview={openUnitReview}
             unitReviewUnlocked={unitReviewUnlocked}
+            recommendation={recommendation}
+            onDoRecommended={() => doRecommended()}
             foundationsEntry={<FoundationsEntry />}
             menuCards={
               <>
@@ -894,6 +943,8 @@ function LatinLessons() {
           onPronModeChange={(mode) => settingsEngine.updateSettings({ pronMode: mode })}
           onStart={startDrill}
           onBack={lesson.backToMenu}
+          recommendation={recommendation}
+          onDoRecommended={() => doRecommended()}
         />
       );
 
@@ -926,6 +977,8 @@ function LatinLessons() {
           pronMode={pronMode}
           onBack={lesson.backToMenu}
           aiEnabled={settingsEngine.settings.aiEnabled}
+          recommendation={recommendation}
+          onDoRecommended={() => doRecommended("ai")}
         />
       );
 

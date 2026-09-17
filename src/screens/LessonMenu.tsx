@@ -8,9 +8,11 @@ import type { LessonProgress } from "~/engine/progress";
 import type { ExerciseResultDetail } from "~/engine/types";
 import NavBar from "~/components/NavBar";
 import Bookshelf from "~/components/Bookshelf";
+import RecommendedButton from "~/components/RecommendedButton";
 import SearchBox from "~/components/SearchBox";
 import GrammarDrawer from "~/components/GrammarDrawer";
 import { buildSearchIndex } from "~/lib/searchIndex";
+import type { Recommendation } from "~/engine/recommendation";
 
 interface Props {
   lessons: Lesson[]; unlockedLessons: number; onSelectLesson: (idx: number) => void;
@@ -52,6 +54,10 @@ interface Props {
    *  book + caption rendered after the course shelves (presentational node —
    *  the route supplies <FoundationsEntry /> or nothing). */
   foundationsEntry?: ReactNode;
+  /** Free-zone "do the recommended" — canonical banner slot between the
+   *  desk-bar and menuCards (optional — absent → byte-identical rendering). */
+  recommendation?: Recommendation | null;
+  onDoRecommended?: () => void;
 }
 
 /** Base class for the desk bar's 44px icon tiles (📖 ⚙ 🎧 🌙 📊 🎯). */
@@ -66,6 +72,7 @@ export default function LessonMenu({
   bookLessons,sideLessons,grammarTopics,menuCards,onCultureResult,
   languageId="latin",suppressFrontierScroll=false,
   onOpenUnitReview,unitReviewUnlocked,foundationsEntry,
+  recommendation,onDoRecommended,
 }: Props) {
   const hasShelf = (bookLessons?.length ?? 0) > 0;
 
@@ -249,6 +256,12 @@ export default function LessonMenu({
               )}
             </div>
           </div>
+
+          {/* Free-zone "do the recommended" — canonical banner slot (v1: a
+              single menu-level banner, no per-ExpansionPanel buttons). */}
+          {recommendation && onDoRecommended && (
+            <RecommendedButton recommendation={recommendation} onDoRecommended={onDoRecommended} />
+          )}
 
           {/* Reserved slot for daily-lesson / improvement-streak cards */}
           {menuCards && (
