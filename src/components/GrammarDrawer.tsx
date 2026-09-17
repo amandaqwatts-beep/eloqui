@@ -1,6 +1,6 @@
 /**
- * GrammarDrawer.tsx — right-hand drawer listing the grammar index (67 topics
- * from GRAMMAR_INDEX). Presentational (screens dept): renders whatever topic
+ * GrammarDrawer.tsx — right-hand drawer listing the grammar index (the topics
+ * of GRAMMAR_INDEX). Presentational (screens dept): renders whatever topic
  * array it is given; gated on the `topics` prop upstream so the build stays
  * green even when the data has not landed.
  *
