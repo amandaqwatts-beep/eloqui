@@ -12,9 +12,21 @@
  * Self-contained (no bun:test import) so the project's `tsc --noEmit` stays
  * at its 7-error baseline. Run with:
  *   bun src/engine/reviewSystemP1.test.ts
+ *
+ * Fixture refresh (2026-09-12): PR #87 appended the Unit-3 General Review
+ * (ids 158–166, mastery-review book 57) — U3's completion set and derived
+ * mastery anchor (158) updated here; composition expectations are derived
+ * from the data the same way production composes them.
  */
 
-import latinLessons, { type Lesson } from "~/data/latinLessons";
+import latinLessons, {
+  type FillInBlankExercise,
+  type Lesson,
+  type MatchingExercise,
+  type MultipleChoiceExercise,
+} from "~/data/latinLessons";
+import { bookLessons } from "~/data/bookLessons";
+import { LATIN_LESSONS, UNIT_REVIEW_ITEM_COUNT } from "~/data/settings";
 import { buildLearnedUniverse, boundUniverseForLesson } from "~/engine/learnedUniverse";
 import {
   STARTER_FRAMES,
@@ -23,6 +35,7 @@ import {
   type SentenceFrame,
 } from "~/engine/translationGen";
 import { checkTranslation, normalizeAnswer } from "~/engine/answers";
+import { seededShuffle } from "~/engine/seededRandom";
 import {
   UNIT_REVIEWS,
   unitToLessonIds,
@@ -188,53 +201,94 @@ test("checkTranslation: rewordings pass, number/verb mismatches fail", () => {
 // ── 6. Unit reviews: gating, composition, mastery anchors ───────────────
 test("unit data: 14 units, VERIFIED boundaries, mastery anchors, focusTopicIds", () => {
   eq(UNIT_REVIEWS.length, 14, "14 unit reviews");
+  eq(lessons.length, LATIN_LESSONS, `latinLessons length matches settings LATIN_LESSONS (${LATIN_LESSONS})`);
   // NLE supplemental lessons (135–157) are wired into Henle books' subLessonIds
   // by design (bookLessons.ts: 136→book 20/H18·U5, 135+151→book 33/H30·U9,
   // 137→book 38/H35·U10, 155→book 39/H36·U10, 138→book 40/H37·U11, 150+152→
   // book 42/H39·U12, 156+157→book 43/H40·U13, 142+153→book 44/H41·U13,
   // 139–141+143–149+154→book 45/H42·U14), so unit review universes include
-  // them at their wired positions; the expected arrays below are the verified
-  // shape as of master f27a638.
+  // them at their wired positions. The Unit-3 General Review chapters
+  // (158–166, mastery-review book 57) are appended at the latinLessons array
+  // END (order is sacred, never reordered) but belong to U3's completion set
+  // (unitForLesson[158–166] = 3). The expected arrays below are the verified
+  // shape as of master f1cc67a (PR #87).
   eq(unitToLessonIds[1], Array.from({ length: 25 }, (_, i) => i + 1), "U1 = 1–25");
   eq(unitToLessonIds[2], Array.from({ length: 8 }, (_, i) => i + 26), "U2 = 26–33");
-  eq(unitToLessonIds[3], Array.from({ length: 19 }, (_, i) => i + 34), "U3 = 34–52");
+  eq(
+    unitToLessonIds[3],
+    Array.from({ length: 19 }, (_, i) => i + 34).concat(Array.from({ length: 9 }, (_, i) => i + 158)),
+    "U3 = 34–52 + appended General Review chapters 158–166 (book 57)",
+  );
   eq(unitToLessonIds[4], Array.from({ length: 6 }, (_, i) => i + 53), "U4 = 53–58");
   eq(unitToLessonIds[5], [59, 60, 61, 62, 63, 64, 136, 65, 66, 67, 68, 69, 70], "U5 = 59–70 with 136 at its book-20 (H18) wired position");
   eq(unitToLessonIds[14], [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 134], "U14 = 131–133 + book-45 (H42) NLE ids + mastery anchor 134 last");
+  const book57 = bookLessons.find((b) => b.id === 57);
+  ok(book57 !== undefined, "book 57 (U3 General Review) exists");
+  eq(book57!.kind, "mastery-review", "book 57 is a mastery-review book");
+  deepEq(book57!.subLessonIds, Array.from({ length: 9 }, (_, i) => i + 158), "book 57 sub-lessons = 158–166");
+  ok(
+    bookLessons.findIndex((b) => b.id === 57) > bookLessons.findIndex((b) => b.id === 16),
+    "book 57 sits after book 16 (U3's last regular book) in shelf order",
+  );
   eq(unitForLesson[25], 1, "lesson 25 → unit 1");
   eq(unitForLesson[134], 14, "lesson 134 → unit 14");
+  eq(unitForLesson[158], 3, "appended General Review chapter 158 → unit 3");
+  eq(unitForLesson[166], 3, "appended General Review chapter 166 → unit 3");
   const anchors = UNIT_REVIEWS.filter((u) => u.masteryLessonId !== undefined).map((u) => [u.unitNumber, u.masteryLessonId]);
-  deepEq(anchors, [[1, 25], [2, 33], [5, 70], [14, 134]], "mastery anchors 25/33/70/134");
+  deepEq(anchors, [[1, 25], [2, 33], [3, 158], [5, 70], [14, 134]], "mastery anchors 25/33/158/70/134 — U3's 158 derives from mastery-review book 57");
   for (const u of UNIT_REVIEWS) ok(u.focusTopicIds.length > 0, `unit ${u.unitNumber} has focusTopicIds`);
 });
 
 test("review: unit 3 complete → 10 items across the 4 types; incomplete → []", () => {
   const u3 = UNIT_REVIEWS.find((u) => u.unitNumber === 3)!;
+  // A U3-complete student has finished the unit's FULL membership — which now
+  // includes the appended General Review chapters 158–166 (book 57). Complete
+  // U1–U3 membership from unitToLessonIds (the data production gates on) —
+  // NOT completedThrough(maxOrderLesson): 166 is the array's last lesson, so
+  // "through 166" would model whole-course completion, not a U3 student.
+  const completed = [...unitToLessonIds[1], ...unitToLessonIds[2], ...unitToLessonIds[3]];
   const maxOrderLesson = [...u3.lessonIds].sort((a, b) => order.get(b)! - order.get(a)!)[0];
-  const universe = buildLearnedUniverse({
-    lessons,
-    completedLessonIds: completedThrough(maxOrderLesson),
-    currentLessonId: maxOrderLesson,
-  });
-  const progress = progressOf(completedThrough(maxOrderLesson));
-  ok(isUnitComplete(u3, progress), "unit 3 complete");
+  const universe = buildLearnedUniverse({ lessons, completedLessonIds: completed, currentLessonId: maxOrderLesson });
+  const progress = progressOf(completed);
+  ok(isUnitComplete(u3, progress), "unit 3 complete (including appended chapters 158–166)");
   const items = composeUnitReview({ unit: u3, lessons, universe, progress, seed: "review-test-u3" });
-  eq(items.length, 10, "10 items");
+  eq(items.length, UNIT_REVIEW_ITEM_COUNT, "10 items");
+  // Documented composition (reviewSession.composeUnitReview docstring): with a
+  // mastery anchor, 2 vocab MC + 2 anchors + 2 grammar MC + 2 translation
+  // fills + 2 matching. U3's anchor is now the DERIVED masteryLessonId 158
+  // (book 57), so derive the anchor item types exactly the way production
+  // does (masteryAnchor: seededShuffle over lesson 158's anchor-eligible pool).
+  const anchorLesson = lessonOf(u3.masteryLessonId!);
+  const anchorPool = anchorLesson.exercises.filter(
+    (e): e is MultipleChoiceExercise | FillInBlankExercise | MatchingExercise =>
+      e.type === "multiple-choice" || e.type === "fill-in-blank" || e.type === "matching",
+  );
+  const anchorTypes = [0, 1].map((i) => seededShuffle(anchorPool, `review-test-u3|a${i}`)[0]?.type);
+  const expected: Record<string, number> = { "multiple-choice": 4, "fill-in-blank": 2, "matching": 2 };
+  for (const t of anchorTypes) if (t) expected[t] = (expected[t] ?? 0) + 1;
   const byType: Record<string, number> = {};
   for (const it of items) byType[it.type] = (byType[it.type] ?? 0) + 1;
-  ok((byType["multiple-choice"] ?? 0) >= 6, `vocab+grammar MC present (${byType["multiple-choice"]})`);
-  ok((byType["fill-in-blank"] ?? 0) >= 2, `translation fills present (${byType["fill-in-blank"]})`);
-  ok((byType["matching"] ?? 0) >= 2, `matching present (${byType["matching"]})`);
+  eq(byType["multiple-choice"], expected["multiple-choice"], `vocab+grammar MC (${byType["multiple-choice"]}) = 2 vocab + 2 grammar + ${expected["multiple-choice"] - 4} anchor(s)`);
+  eq(byType["fill-in-blank"], expected["fill-in-blank"], `translation fills + anchor fills (${byType["fill-in-blank"]})`);
+  eq(byType["matching"], expected["matching"], `matching (${byType["matching"]})`);
+  // Anchors: authored lesson-158 items carrying the derived mastery conceptId.
+  const anchors = items.filter((it) => it.conceptId === `lesson:${u3.masteryLessonId}`);
+  eq(anchors.length, 2, "2 mastery anchors from derived anchor lesson 158 (book 57)");
+  for (const a of anchors) ok(anchorTypes.includes(a.type), `anchor item type ${a.type} matches production's seeded pick`);
+  // 2 vocab MC + 2 grammar MC (mastery-anchored units emit 2 vocab MC, not 4).
+  eq(items.filter((it) => it.type === "multiple-choice" && it.conceptId.startsWith("vocab:")).length, 2, "2 vocab MC");
+  eq(items.filter((it) => it.type === "multiple-choice" && it.conceptId.startsWith("concept:")).length, 2, "2 grammar MC from the unit's comprehensionChecks");
   // Per-item diagnostic metadata attached at composition time.
   for (const it of items) {
     ok(typeof it.conceptId === "string" && it.conceptId.length > 0, "conceptId set");
     ok(it.tags.some((t) => t.startsWith("lesson:")), "lesson tag set");
     ok(typeof it.expected === "string" && it.expected.length > 0, "expected set");
   }
-  // Incomplete unit → [].
-  const incomplete = progressOf([1, 2, 3]);
+  // Incomplete unit → [] — one uncompleted membership lesson (an appended
+  // review chapter here) closes the review.
+  const incomplete = progressOf(completed.filter((id) => id !== 166));
   eq(composeUnitReview({ unit: u3, lessons, universe, progress: incomplete, seed: "review-test-u3" }).length, 0, "incomplete → []");
-  ok(!isUnitComplete(u3, incomplete), "unit 3 not complete with partial progress");
+  ok(!isUnitComplete(u3, incomplete), "unit 3 not complete with appended chapter 166 outstanding");
 });
 
 test("review: unit 1 anchors the composed review with authored lesson-25 items", () => {
