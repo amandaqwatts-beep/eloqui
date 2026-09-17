@@ -21,6 +21,7 @@ import {
   seedProgressFromPlacement,
 } from "~/engine/placement";
 import {
+  MASTERY_REVIEW_LESSON_IDS,
   unitToFirstLessonCount,
   unitToLessonIds,
 } from "~/data/unitReviews";
@@ -108,19 +109,36 @@ function lesson(id: number): Lesson {
   const placedLessonCount = unitToFirstLessonCount[scored.startLevel];
   const seeded = seedProgressFromPlacement(latinLessons, placedLessonCount, []);
   const seededIds = new Set(seeded.map((p) => p.lessonId));
-  let unitsFullyCompleted = true;
-  for (let u = 1; u <= 4; u++) {
-    for (const id of unitToLessonIds[u]) {
-      if (!seededIds.has(id)) { unitsFullyCompleted = false; console.log(`   unit ${u} missing lesson ${id}`); }
-    }
-  }
+  // Units 1–4 completed → their reviews open. The placement seed covers the
+  // taught spine (array indices < 59). Review chapters appended at the array's
+  // END — U3's General Review ids 158–166 (book 57) today — sit INSIDE U3's
+  // completion set (unitForLesson[158–166] = 3) but are not placement-seeded:
+  // they are physically past the frontier, the same shape as U5's NLE lesson
+  // 136 (asserted unseeded below). Drive completion from the unit's membership
+  // (unitToLessonIds) so future appends can't stale this fixture — and prove
+  // every membership lesson the seed missed is an appended mastery-review
+  // chapter beyond the frontier (a missed TEACHING lesson would be a real bug).
+  const arrayIndex = new Map(latinLessons.map((l, i) => [l.id, i] as const));
+  const missed = [1, 2, 3, 4]
+    .flatMap((u) => unitToLessonIds[u])
+    .filter((id) => !seededIds.has(id));
+  ok(
+    missed.every(
+      (id) => MASTERY_REVIEW_LESSON_IDS.includes(id) && arrayIndex.get(id)! >= placedLessonCount - 1,
+    ),
+    `every U1–U4 lesson the placement seed missed is an appended mastery-review chapter beyond the frontier (${missed.join(", ") || "none"})`,
+  );
+  const completedIds = new Set([...seededIds, ...missed]);
+  const unitsFullyCompleted = [1, 2, 3, 4].every((u) =>
+    unitToLessonIds[u].every((id) => completedIds.has(id)),
+  );
   ok(scored.startLevel === 5, "scored placement into unit 5");
   ok(
     unitToFirstLessonCount[5] === 59,
     `placed lesson count for unit 5 = ${placedLessonCount} (expected 59)`,
   );
   ok(seeded.length === 58, `seed shape after Unit-5 placement: ${seeded.length} completed entries (indices 0..57)`);
-  ok(unitsFullyCompleted, "units 1–4 fully completed → their reviews open");
+  ok(unitsFullyCompleted, "units 1–4 fully completed → their reviews open (seeded spine + appended review chapters 158–166)");
   const unit5Seeded = unitToLessonIds[5].filter((id) => seededIds.has(id));
   ok(unit5Seeded.length === 0, `unit 5 lessons NOT seeded (${unit5Seeded.length}) — student starts unit 5 fresh`);
 }
