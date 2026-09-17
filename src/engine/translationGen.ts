@@ -401,6 +401,11 @@ export function generateTranslationExercises(opts: {
   seed?: string; // default `trans|${language}|${YYYY-MM-DD UTC}|${lesson.id}`; tests freeze
   frames?: SentenceFrame[]; // tests may inject; default STARTER_FRAMES
   withDistractors?: boolean; // MC flavor: 3 distractor sentences (L→E items)
+  /** Bound override — for callers that bound by a policy other than array
+   *  order (unit reviews bound by unit MEMBERSHIP + cumulative topics; see
+   *  reviewSession.composeUnitReview). Must be a subset of the universe —
+   *  never unmet material. Default: boundUniverseForLesson(universe, lesson). */
+  boundOverride?: LessonBound;
 }): GeneratedTranslation[] {
   const { universe, lesson } = opts;
   const language = opts.language ?? "latin";
@@ -410,7 +415,7 @@ export function generateTranslationExercises(opts: {
   const count = Math.max(0, Math.floor(opts.count));
   if (count === 0) return [];
 
-  const bound = boundUniverseForLesson(universe, lesson);
+  const bound = opts.boundOverride ?? boundUniverseForLesson(universe, lesson);
   if (bound.words.length === 0) return []; // empty universe — never fabricate
 
   const lessonsTotal = Math.max(1, universe.lessons.length);

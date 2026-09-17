@@ -17,6 +17,14 @@
  * (ids 158–166, mastery-review book 57) — U3's completion set and derived
  * mastery anchor (158) updated here; composition expectations are derived
  * from the data the same way production composes them.
+ *
+ * Membership-bound refresh (2026-09-12): composeUnitReview now bounds its
+ * vocab pool by the unit's MEMBERSHIP (unitToLessonIds union), not the max
+ * array index of its members — the appended chapters made the old bound
+ * equal the whole course for U3. The unit-3 fixture below still derives its
+ * expectations from the data (the composition SHAPE is pool-independent);
+ * two tests were added: whole-course membership containment and the thin-
+ * pool fallback widening.
  */
 
 import latinLessons, {
@@ -40,6 +48,7 @@ import {
   UNIT_REVIEWS,
   unitToLessonIds,
   unitForLesson,
+  type UnitReview,
 } from "~/data/unitReviews";
 import {
   composeUnitReview,
@@ -289,6 +298,126 @@ test("review: unit 3 complete → 10 items across the 4 types; incomplete → []
   const incomplete = progressOf(completed.filter((id) => id !== 166));
   eq(composeUnitReview({ unit: u3, lessons, universe, progress: incomplete, seed: "review-test-u3" }).length, 0, "incomplete → []");
   ok(!isUnitComplete(u3, incomplete), "unit 3 not complete with appended chapter 166 outstanding");
+});
+
+// ── Helpers for the membership-bound tests ───────────────────────────────
+/** Every vocab lemma a POOL-SOURCED item references: conceptId/tags
+ *  `vocab:<lemma>`, matching pair lefts, translation filler lemmas, and the
+ *  Latin options of E→L vocab MCs (drawn from the pool). Mirrors production
+ *  provenance. Mastery-anchor items (conceptId `lesson:<id>` — authored
+ *  member-chapter content, e.g. lesson 158's declension matchings) are NOT
+ *  pool-sourced and are excluded; the membership guarantee is about the
+ *  generated pool, and anchors are members by definition. */
+function collectVocabLemmas(items: ReturnType<typeof composeUnitReview>): Set<string> {
+  const lemmas = new Set<string>();
+  for (const it of items) {
+    if (!it.conceptId.startsWith("vocab:")) continue;
+    const cm = /^vocab:(.+)$/.exec(it.conceptId);
+    if (cm) lemmas.add(cm[1]);
+    for (const t of it.tags) {
+      const tm = /^vocab:(.+)$/.exec(t);
+      if (tm) lemmas.add(tm[1]);
+    }
+    if (it.type === "matching") for (const p of it.pairs) lemmas.add(normalizeAnswer(p.left));
+    const genLemmas = (it as { lemmas?: string[] }).lemmas;
+    if (genLemmas) for (const l of genLemmas) lemmas.add(l);
+    if (it.type === "multiple-choice" && it.prompt.startsWith("Which Latin word means")) {
+      for (const o of it.options) lemmas.add(normalizeAnswer(o));
+    }
+  }
+  return lemmas;
+}
+/** The vocab lemma set production derives for a lesson-id list: the union of
+ *  the lessons' vocabulary lists, normalized (the membership-bounded pool
+ *  source and the fallback's widened source both use this shape). */
+function vocabLemmasOf(ids: number[]): Set<string> {
+  const lemmas = new Set<string>();
+  for (const id of ids) {
+    const l = lessons.find((x) => x.id === id);
+    for (const w of l?.vocabulary ?? []) lemmas.add(normalizeAnswer(w.latin));
+  }
+  return lemmas;
+}
+/** First eligible single-word vocab entry from a lesson with id > 100 (and
+ *  outside 158–166) whose normalized lemma is NOT in `exclude` — a later-unit
+ *  word the old array-order bound leaked into U3 reviews. Derived from data,
+ *  never hard-coded. */
+function findLaterUnitProbe(exclude: Set<string>): { lessonId: number; latin: string } {
+  for (const l of lessons) {
+    if (l.id <= 100 || (l.id >= 158 && l.id <= 166)) continue;
+    for (const w of l.vocabulary ?? []) {
+      if (w.latin.length > 0 && !/[\s,;]/.test(w.latin) && w.english.length > 0 && !exclude.has(normalizeAnswer(w.latin))) {
+        return { lessonId: l.id, latin: w.latin };
+      }
+    }
+  }
+  throw new Error("no later-unit probe word found — data shape changed");
+}
+
+test("membership: a U3 review draws vocabulary ONLY from U3's member lessons (even whole-course)", () => {
+  const u3 = UNIT_REVIEWS.find((u) => u.unitNumber === 3)!;
+  // Whole-course student: EVERY unit's membership completed — the maximal
+  // universe. Under the old max-array-order bound (order ≤ order(166) = the
+  // array end) this review's pool spanned every unit; membership must
+  // contain it now.
+  const completed = [...new Set(Object.values(unitToLessonIds).flat())];
+  const universe = buildLearnedUniverse({ lessons, completedLessonIds: completed, currentLessonId: 166 });
+  const progress = progressOf(completed);
+  ok(isUnitComplete(u3, progress), "U3 complete for a whole-course student");
+  const items = composeUnitReview({ unit: u3, lessons, universe, progress, seed: "review-test-u3-all" });
+  eq(items.length, UNIT_REVIEW_ITEM_COUNT, "10 items");
+  // The member pool, derived the same way production does: the union of the
+  // member lessons' vocabulary lists (incl. appended chapters 158–166).
+  const memberLemmas = vocabLemmasOf(u3.lessonIds);
+  const referenced = collectVocabLemmas(items);
+  ok(referenced.size > 0, "items reference vocabulary");
+  for (const lemma of referenced) {
+    ok(memberLemmas.has(lemma), `lemma "${lemma}" is U3 member vocabulary`);
+  }
+  // Regression probe: a real later-unit word (id > 100, not 158–166, not
+  // re-listed by any member) that the OLD derivation leaked in — its lesson
+  // sits within the old array-order bound, but it is not member vocabulary.
+  const probe = findLaterUnitProbe(memberLemmas);
+  ok(order.get(probe.lessonId)! <= order.get(166)!, "probe within the OLD array-order bound (the leak this guards)");
+  ok(!referenced.has(normalizeAnswer(probe.latin)), `later-unit word "${probe.latin}" (lesson ${probe.lessonId}) absent from the U3 review`);
+});
+
+test("fallback: thin member pool widens to everything learned through the unit — never later units", () => {
+  // Lesson 166 (U3's appended sight-list chapter) lists no vocabulary, so a
+  // unit whose only member is 166 has an EMPTY member pool: the primary
+  // composition cannot fill the review, and the documented fallback must
+  // widen ONCE to everything learned through the unit — here U1–U3's full
+  // membership, all completed — composing 10 items WITHOUT touching unit-4+
+  // vocabulary (a whole-course U3 student reopening this review is the
+  // real-world shape).
+  const thin: UnitReview = {
+    unitNumber: 3,
+    title: "Thin U3 fixture (member = appended chapter 166 only)",
+    lessonIds: [166],
+    focusTopicIds: [],
+  };
+  const completed = [...unitToLessonIds[1], ...unitToLessonIds[2], ...unitToLessonIds[3]];
+  const universe = buildLearnedUniverse({ lessons, completedLessonIds: completed, currentLessonId: 166 });
+  const progress = progressOf(completed);
+  ok(isUnitComplete(thin, progress), "thin unit complete (166 ∈ completed)");
+  eq(
+    (lessons.find((l) => l.id === 166)?.vocabulary ?? []).length,
+    0,
+    "lesson 166 lists no vocabulary — the thin fixture is real, fallback is the only path",
+  );
+  const items = composeUnitReview({ unit: thin, lessons, universe, progress, seed: "review-test-thin" });
+  eq(items.length, UNIT_REVIEW_ITEM_COUNT, "fallback composes a full review");
+  // The widened source, derived the way production's fallback does: vocab of
+  // units ≤ 3 (earlier units' membership plus the unit's own).
+  const widenedLemmas = vocabLemmasOf([...unitToLessonIds[1], ...unitToLessonIds[2], ...unitToLessonIds[3]]);
+  const referenced = collectVocabLemmas(items);
+  ok(referenced.size >= 4, `widening actually contributed material (${referenced.size} lemmas ≥ the 4-pair matching floor; member pool is empty)`);
+  for (const lemma of referenced) {
+    ok(widenedLemmas.has(lemma), `lemma "${lemma}" was learned through unit 3`);
+  }
+  // And the containment guarantee holds on the widened pool too.
+  const probe = findLaterUnitProbe(widenedLemmas);
+  ok(!referenced.has(normalizeAnswer(probe.latin)), `later-unit word "${probe.latin}" (lesson ${probe.lessonId}) absent even after widening`);
 });
 
 test("review: unit 1 anchors the composed review with authored lesson-25 items", () => {
