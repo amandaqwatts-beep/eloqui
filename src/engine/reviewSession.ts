@@ -32,6 +32,7 @@ import type {
   MultipleChoiceExercise,
   VocabularyItem,
 } from "~/data/latinLessons";
+import type { GrammarTopic } from "~/data/grammarIndex";
 import type { LessonProgress } from "~/engine/progress";
 import type { Language } from "~/data/languages";
 import type { PronMode } from "~/data/settings";
@@ -39,9 +40,9 @@ import { UNIT_REVIEW_CANDIDATE_POOL, UNIT_REVIEW_ITEM_COUNT } from "~/data/setti
 import { hashString, seededShuffle } from "~/engine/seededRandom";
 import { utcDateStr } from "~/engine/dailyLesson";
 import { normalizeAnswer } from "~/engine/answers";
-import { boundUniverseForLesson, type LearnedUniverse } from "~/engine/learnedUniverse";
+import { type LearnedUniverse, type LessonBound } from "~/engine/learnedUniverse";
 import { generateTranslationExercises } from "~/engine/translationGen";
-import type { UnitReview } from "~/data/unitReviews";
+import { unitForLesson, type UnitReview } from "~/data/unitReviews";
 
 /** Per-item diagnostic metadata attached at composition time (design §2.4). */
 export interface ReviewItemMeta {
@@ -267,10 +268,20 @@ function matching(
  * Compose the 10-item review for a unit (design §2.3):
  *   4 vocab MC (or 2 vocab MC + 2 mastery anchors for units 1/2/5/14),
  *   2 grammar MC (authored comprehensionCheck of the unit's lessons),
- *   2 translation fills (L→E, generated from the unit-bound universe),
+ *   2 translation fills (L→E, fillers from the unit's member vocabulary),
  *   2 matching (4 pairs from the unit's vocab).
  * Returns [] when the unit is incomplete or has no items — never fabricates.
  * Seeded deterministic per (language, unit, UTC day); tests freeze seeds.
+ *
+ * Pool bounding (2026-09-12): the pool is bounded by the unit's MEMBERSHIP
+ * SET (unit.lessonIds = the union of its unitToLessonIds entries), NOT by the
+ * max array index of its members. The old array-order bound assumed units are
+ * contiguous index ranges; that broke when whole chapters were appended at
+ * the array end — U3's General Review (ids 158–166, book 57) sits after every
+ * later unit, so a U3 review's pool spanned the entire learned universe and
+ * could quiz vocabulary from Units 4–14 the student had not met (NLE lesson
+ * 136 wired into U5 is the same shape). See the membership block below for
+ * the appended-chapter and fallback rules.
  */
 export function composeUnitReview(opts: {
   unit: UnitReview;
@@ -286,80 +297,173 @@ export function composeUnitReview(opts: {
   if (!isUnitComplete(unit, progress)) return [];
   const seed = opts.seed ?? `review|${language}|${utcDateStr()}|${unit.unitNumber}`;
 
-  // Bound = the unit's max-order lesson (units are contiguous index ranges,
-  // so this covers the whole unit's learned words/topics).
+  // ── Pool bounding: unit MEMBERSHIP, not array order ──────────────────────
+  // A word is eligible iff it appears in a member lesson's `vocabulary` list
+  // (normalized). Appended review chapters ARE members, so their re-listed
+  // vocabulary stays eligible; a unit whose derived masteryLessonId is an
+  // appended chapter (U3 → 158, book 57) keeps surfacing its authored anchor
+  // exercises, and the grammar lane still reads every member's
+  // comprehensionCheck — the anchor-surfacing behavior is intact; only the
+  // later-unit leak is removed.
+  const memberIds = new Set(unit.lessonIds);
+  const memberLemmas = new Set<string>();
+  for (const id of unit.lessonIds) {
+    const member = lessons.find((l) => l.id === id);
+    for (const w of member?.vocabulary ?? []) {
+      const key = normalizeAnswer(w.latin);
+      if (key) memberLemmas.add(key);
+    }
+  }
+
+  // Translation anchor lesson: the unit's max-array-order member — used ONLY
+  // for the generator's difficulty curve and the item's lesson:<id>
+  // provenance tag. It does NOT bound the pool anymore (see above).
   const boundLesson = unit.lessonIds
     .map((id) => lessons.find((l) => l.id === id))
     .filter((l): l is Lesson => l !== undefined)
     .sort((a, b) => (universe.order.get(a.id) ?? 0) - (universe.order.get(b.id) ?? 0))
     .pop();
   if (!boundLesson) return [];
-  const bound = boundUniverseForLesson(universe, boundLesson);
-  const mcPool = bound.words.filter(mcEligible);
-  const items: ReviewItem[] = [];
 
-  // ── 4 vocab MC, or 2 vocab MC + 2 mastery anchors ──────────────
-  const masteryLesson =
-    unit.masteryLessonId !== undefined ? lessons.find((l) => l.id === unit.masteryLessonId) : undefined;
-  const anchorExercises: (MultipleChoiceExercise | FillInBlankExercise | MatchingExercise)[] =
-    masteryLesson?.exercises.filter(
-      (e): e is MultipleChoiceExercise | FillInBlankExercise | MatchingExercise =>
-        e.type === "multiple-choice" || e.type === "fill-in-blank" || e.type === "matching",
-    ) ?? [];
-  const vocabMcCount = masteryLesson ? 2 : 4;
-  for (let i = 0; i < vocabMcCount; i++) {
-    const item = vocabMc(unit, mcPool, universe, seed, i);
-    if (item) items.push(item);
-  }
-  if (masteryLesson) {
-    for (let i = 0; i < 2; i++) {
-      const item = masteryAnchor(masteryLesson, anchorExercises, seed, i);
-      if (item) items.push(item);
+  // Frontier: the member set's max array index — the farthest array position
+  // this unit's membership reaches (for appended-chapter units, the array
+  // end). Used by the topic bound and the fallback below.
+  const frontier = Math.max(-1, ...unit.lessonIds.map((id) => universe.order.get(id) ?? -1));
+
+  // "Learned through this unit": the lesson introduced the material AND (a)
+  // it is a member, or (b) it belongs to a unit ≤ this unit's number and sits
+  // at/before the frontier — i.e. everything the student has actually met by
+  // this unit. Paired with universe.words (met lessons only), later-unit
+  // appended chapters within the frontier and unmet material are both
+  // excluded structurally.
+  const learnedThroughUnit = (introLesson: number): boolean => {
+    if (memberIds.has(introLesson)) return true;
+    const introUnit = unitForLesson[introLesson];
+    return (
+      introUnit !== undefined &&
+      introUnit <= unit.unitNumber &&
+      (universe.order.get(introLesson) ?? -1) <= frontier
+    );
+  };
+
+  // Grammar topics ride a CUMULATIVE bound, not the member bound: translation
+  // frames may use any construction learned through this unit (a U3 review
+  // may build sentences with U1 grammar — cumulative knowledge, not a leak),
+  // but never a later unit's. Words stay strictly member-bounded; frames
+  // only pick their FILLERS from words.
+  const unitTopics: GrammarTopic[] = [];
+  {
+    const seen = new Set<string>();
+    for (const [intro, topicList] of universe.grammarByLesson) {
+      if (!learnedThroughUnit(intro)) continue;
+      for (const topic of topicList) {
+        if (!seen.has(topic.id)) {
+          seen.add(topic.id);
+          unitTopics.push(topic);
+        }
+      }
     }
   }
+  const unitBound: LessonBound = {
+    words: universe.words.filter((w) => memberLemmas.has(normalizeAnswer(w.latin))),
+    topics: unitTopics,
+    orderOf: (id: number) => universe.order.get(id) ?? -1,
+  };
 
-  // ── 2 grammar MC from the unit's comprehensionChecks ───────────
-  const ccLessons = unit.lessonIds
-    .map((id) => lessons.find((l) => l.id === id))
-    .filter((l): l is Lesson => l !== undefined && (l.comprehensionCheck?.length ?? 0) > 0);
-  for (let i = 0; i < 2; i++) {
-    const item = grammarMc(unit, ccLessons, seed, i);
-    if (item) items.push(item);
-  }
+  const composeFrom = (bound: LessonBound): ReviewItem[] => {
+    const mcPool = bound.words.filter(mcEligible);
+    const items: ReviewItem[] = [];
 
-  // ── 2 translation fills (L→E, bounded to the unit) ─────────────
-  const translations = generateTranslationExercises({
-    universe,
-    lesson: boundLesson,
-    count: 2,
-    direction: "latin-to-english",
-    language,
-    seed: `${seed}|trans`,
-  });
-  translations.forEach((t, i) => {
-    items.push({
-      ...t,
-      id: `review-u${unit.unitNumber}-t${i}`,
-      conceptId: `vocab:${t.lemmas[0] ?? ""}`,
-      tags: [`lesson:${t.lessonId}`, ...t.lemmas.slice(1).map((l) => `vocab:${l}`)],
-      expected: t.answer,
+    // ── 4 vocab MC, or 2 vocab MC + 2 mastery anchors ──────────────
+    const masteryLesson =
+      unit.masteryLessonId !== undefined ? lessons.find((l) => l.id === unit.masteryLessonId) : undefined;
+    const anchorExercises: (MultipleChoiceExercise | FillInBlankExercise | MatchingExercise)[] =
+      masteryLesson?.exercises.filter(
+        (e): e is MultipleChoiceExercise | FillInBlankExercise | MatchingExercise =>
+          e.type === "multiple-choice" || e.type === "fill-in-blank" || e.type === "matching",
+      ) ?? [];
+    const vocabMcCount = masteryLesson ? 2 : 4;
+    for (let i = 0; i < vocabMcCount; i++) {
+      const item = vocabMc(unit, mcPool, universe, seed, i);
+      if (item) items.push(item);
+    }
+    if (masteryLesson) {
+      for (let i = 0; i < 2; i++) {
+        const item = masteryAnchor(masteryLesson, anchorExercises, seed, i);
+        if (item) items.push(item);
+      }
+    }
+
+    // ── 2 grammar MC from the unit's comprehensionChecks ───────────
+    const ccLessons = unit.lessonIds
+      .map((id) => lessons.find((l) => l.id === id))
+      .filter((l): l is Lesson => l !== undefined && (l.comprehensionCheck?.length ?? 0) > 0);
+    for (let i = 0; i < 2; i++) {
+      const item = grammarMc(unit, ccLessons, seed, i);
+      if (item) items.push(item);
+    }
+
+    // ── 2 translation fills (L→E, member-bounded fillers) ──────────
+    const translations = generateTranslationExercises({
+      universe,
+      lesson: boundLesson,
+      count: 2,
+      direction: "latin-to-english",
+      language,
+      seed: `${seed}|trans`,
+      boundOverride: bound, // membership/cumulative bound — NOT array order
     });
-  });
+    translations.forEach((t, i) => {
+      items.push({
+        ...t,
+        id: `review-u${unit.unitNumber}-t${i}`,
+        conceptId: `vocab:${t.lemmas[0] ?? ""}`,
+        tags: [`lesson:${t.lessonId}`, ...t.lemmas.slice(1).map((l) => `vocab:${l}`)],
+        expected: t.answer,
+      });
+    });
 
-  // ── 2 matching (4 pairs from the unit's vocab) ─────────────────
-  for (let i = 0; i < 2; i++) {
-    const item = matching(unit, mcPool, universe, seed, i);
-    if (item) items.push(item);
-  }
+    // ── 2 matching (4 pairs from the unit's vocab) ─────────────────
+    for (let i = 0; i < 2; i++) {
+      const item = matching(unit, mcPool, universe, seed, i);
+      if (item) items.push(item);
+    }
 
-  // Top-up: if any source came up short (never for real units), extend with
-  // extra vocab MCs up to UNIT_REVIEW_ITEM_COUNT or the pool's exhaustion.
-  let guard = 0;
-  while (items.length < UNIT_REVIEW_ITEM_COUNT && guard < 20) {
-    guard++;
-    const item = vocabMc(unit, mcPool, universe, seed, items.length);
-    if (!item) break;
-    items.push(item);
+    // Top-up: if any source came up short (never for real units), extend with
+    // extra vocab MCs up to UNIT_REVIEW_ITEM_COUNT or the pool's exhaustion.
+    let guard = 0;
+    while (items.length < UNIT_REVIEW_ITEM_COUNT && guard < 20) {
+      guard++;
+      const item = vocabMc(unit, mcPool, universe, seed, items.length);
+      if (!item) break;
+      items.push(item);
+    }
+    return items;
+  };
+
+  let items = composeFrom(unitBound);
+
+  // ── Fallback (single documented widening) ────────────────────────────────
+  // A thin member pool — a unit whose member lessons list too little single-
+  // word vocabulary to fill the review (matching alone needs 4 pair words) —
+  // widens ONCE to everything the student has actually learned through this
+  // unit: earlier units' membership plus this unit's own (learnedThroughUnit
+  // above). Deliberately NOT the old max-array-index bound, which for
+  // appended-chapter units equals the whole course: a later unit's appended
+  // chapter inside the frontier fails the unit-number check, and unmet
+  // material is structurally absent (universe.words is met lessons only).
+  // Still short after widening (a student who has met almost nothing) → the
+  // partial review is returned; composition never fabricates.
+  if (items.length < UNIT_REVIEW_ITEM_COUNT) {
+    const widened: LessonBound = {
+      words: universe.words.filter((w) => {
+        const intro = universe.wordIntroLesson.get(normalizeAnswer(w.latin));
+        return intro !== undefined && learnedThroughUnit(intro);
+      }),
+      topics: unitBound.topics, // already cumulative — learned through the unit
+      orderOf: unitBound.orderOf,
+    };
+    items = composeFrom(widened);
   }
   return items;
 }
