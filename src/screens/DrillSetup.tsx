@@ -1,6 +1,8 @@
 import type { PronMode } from "~/lib/pronunciation";
 import PronunciationToggle from "~/components/PronunciationToggle";
+import RecommendedButton from "~/components/RecommendedButton";
 import WindowFrame from "~/components/WindowFrame";
+import type { Recommendation } from "~/engine/recommendation";
 
 interface Props {
   drillMode: string;
@@ -12,6 +14,9 @@ interface Props {
   onBack: () => void;
   kinds?: readonly (readonly [string, string])[];
   showPronToggle?: boolean;
+  /** Free-zone "do the recommended" (optional — absent → byte-identical). */
+  recommendation?: Recommendation | null;
+  onDoRecommended?: () => void;
 }
 
 const DEFAULT_KINDS: readonly (readonly [string, string])[] = [
@@ -32,6 +37,8 @@ export default function DrillSetup({
   onBack,
   kinds = DEFAULT_KINDS,
   showPronToggle = true,
+  recommendation,
+  onDoRecommended,
 }: Props) {
   return (
     <WindowFrame title="Drill" onBack={onBack}>
@@ -42,6 +49,11 @@ export default function DrillSetup({
             <p className="mt-2 text-gray-600">
               Rapid-fire practice from all your unlocked lessons.
             </p>
+            {recommendation && onDoRecommended && (
+              <div className="mt-4">
+                <RecommendedButton recommendation={recommendation} onDoRecommended={onDoRecommended} />
+              </div>
+            )}
             {showPronToggle && (
               <div className="mt-6 flex justify-center">
                 <PronunciationToggle onChange={onPronModeChange} />
