@@ -1,10 +1,10 @@
 // Verbum — Grammar index (grammarIndex.ts)
-// Data-only file. 94 topics: the original 67 from the bookshelf-v2 grammar
+// Data-only file. 95 topics: the original 67 from the bookshelf-v2 grammar
 // skeleton (research/bookshelf-v2-content-mapping.md §B; lead-ratified
 // 2026-08-12) plus the NLE-supplement and Phase 3a–3c topic blocks.
 // `henleGrammarRef` citations are filled from the 1980-edition Henle Grammar
 // mapping table (research/henle-owner-notes/henle-grammar-section-mapping-1980.md):
-// 88 filled / 2 pending owner dictation — the placeholder remains ONLY on
+// 89 filled / 2 pending owner dictation — the placeholder remains ONLY on
 // special-plural-meanings and irregular-noun-iesus (SKIP list, worklist §3).
 // § strings are 1980-Grammar numbering, never FY-archive face value.
 // `relatedLessonIds` are sub-lesson ids verified against latinLessons.ts.
@@ -61,6 +61,7 @@ export const GRAMMAR_INDEX: GrammarTopic[] = [
   { id: "reflexive-pronouns", topic: "Reflexive Pronouns", category: "pronouns", definition: "Reflexive pronouns refer back to the subject: suī ('of himself/herself/themselves') and the possessive suus, -a, -um ('his/her/their own'). They have genitive, dative, accusative, and ablative forms but no nominative.", henleGrammarRef: "127; suus = 131", relatedLessonIds: [45, 92, 93], keywords: ["suus", "suī", "reflexive", "himself", "herself", "themselves", "own", "sē"] },
   { id: "relative-pronoun", topic: "The Relative Pronoun", category: "pronouns", definition: "The relative pronoun quī, quae, quod ('who, which, that') introduces a relative clause. It agrees with its antecedent in gender and number but takes its case from its own clause.", henleGrammarRef: "139", relatedLessonIds: [78], keywords: ["quī", "quae", "quod", "relative pronoun", "relative clause", "who", "which", "antecedent"] },
   { id: "interrogative-pronoun-and-adjective", topic: "Interrogative Pronoun and Adjective", category: "pronouns", definition: "The interrogative pronoun quis? quid? asks 'who? what?'; the interrogative adjective quī? quae? quod? asks 'which? what kind of?'. Both appear in direct and indirect questions.", henleGrammarRef: "140–141", relatedLessonIds: [84, 85], keywords: ["quis", "quid", "quī", "quae", "quod", "interrogative", "who", "which"] },
+  { id: "interrogative-adverbs", topic: "The Interrogative Adverbs", category: "pronouns", definition: "Interrogative adverbs ask for the missing piece of information and normally stand first in the sentence: ubi (where?), unde (from where?), quō (to where? — with a verb of motion), cūr (why?), and quandō (when?). After the question word the rest of the sentence keeps its normal Latin order — no English-style inversion.", henleGrammarRef: "503", relatedLessonIds: [82], keywords: ["ubi", "unde", "quō", "cūr", "quandō", "where", "why", "from where", "to where", "interrogative", "question words"] },
 
   // ── ADJECTIVES (7) ────────────────────────────────────────────
   { id: "two-one-two-adjectives", topic: "2-1-2 Adjectives", category: "adjectives", definition: "Adjectives like magnus, -a, -um ('great, large') use first- and second-declension endings: masculine forms of servus, feminine of terra, neuter of bellum. They agree with their nouns in gender, number, and case.", henleGrammarRef: "72", relatedLessonIds: [26], keywords: ["magnus", "magna", "magnum", "adjective", "2-1-2", "bonus", "agreement", "great"] },
