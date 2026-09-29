@@ -1,19 +1,20 @@
 import type { Language } from "~/data/languages";
 export const APP_NAME = "Eloqui";
 export const SETTINGS_DEFAULTS = { aiEnabled: true, devMode: false } as const;
-export const LESSONS_PER_UNIT = 166;
-export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 166, greek: 0, hebrew: 0, english: 10 };
-export const LATIN_LESSONS = 166;
+export const LESSONS_PER_UNIT = 167;
+export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 167, greek: 0, hebrew: 0, english: 10 };
+export const LATIN_LESSONS = 167;
 export const EXERCISES_PER_LESSON = 7;
 export const DRILL_KINDS = ["vocab-latin", "vocab-english", "conjugation", "declension", "mixed"] as const;
 export const DRILL_COUNTS = [10, 20, "all"] as const;
 export const DRILL_DEFAULT_COUNT = 10;
 export const PLACEMENT_QUESTIONS_PER_LEVEL = 2;
-// Placement unlocks the full Latin curriculum (157 lessons incl. the NLE
-// supplemental lessons 135–157). The engine clamps the seeded frontier
+// Placement unlocks the full Latin curriculum (167 lessons incl. the NLE
+// supplemental lessons 135–157 and the PLACE block 135‑38 + review 167,
+// tranche 20). The engine clamps the seeded frontier
 // (engine/lesson.ts createInitialState) to this cap — it must match
-// LATIN_LESSONS below (and latinLessons.ts length), never the stale 134,
-// or the array-appended NLE lessons never surface/unlock.
+// LATIN_LESSONS below (and latinLessons.ts length), never a stale count,
+// or the array-appended lessons never surface/unlock.
 export const PLACEMENT_TOTAL_LEVELS = LATIN_LESSONS;
 export const PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE: Record<Language, number> = { latin: LATIN_LESSONS, greek: 0, hebrew: 0, english: 10 };
 export const PRONUNCIATION_MODES = ["ecclesiastical", "classical"] as const;

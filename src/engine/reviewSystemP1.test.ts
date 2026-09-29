@@ -229,7 +229,12 @@ test("unit data: 14 units, VERIFIED boundaries, mastery anchors, focusTopicIds",
     "U3 = 34–52 + appended General Review chapters 158–166 (book 57)",
   );
   eq(unitToLessonIds[4], Array.from({ length: 6 }, (_, i) => i + 53), "U4 = 53–58");
-  eq(unitToLessonIds[5], [59, 60, 61, 62, 63, 64, 136, 65, 66, 67, 68, 69, 70], "U5 = 59–70 with 136 at its book-20 (H18) wired position");
+  eq(unitToLessonIds[5], Array.from({ length: 12 }, (_, i) => i + 59), "U5 = 59–70 (tranche 20 re-home: 136 left book 20 for the PLACE block on book 40)");
+  eq(
+    unitToLessonIds[11],
+    [110, 111, 112, 113, 114, 115, 116, 135, 136, 137, 138, 167, 117, 118],
+    "U11 = 110–116 + the PLACE block 135–138 & review 167 (book 40's final chapters) + 117–118",
+  );
   eq(unitToLessonIds[14], [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 134], "U14 = 131–133 + book-45 (H42) NLE ids + mastery anchor 134 last");
   const book57 = bookLessons.find((b) => b.id === 57);
   ok(book57 !== undefined, "book 57 (U3 General Review) exists");
