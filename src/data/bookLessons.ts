@@ -1,5 +1,5 @@
 // Verbum — Bookshelf v2: Henle book-lesson mapping (bookLessons.ts)
-// Data-only file. Maps the 142 flat sub-lessons of latinLessons.ts into 56
+// Data-only file. Maps the 168 flat sub-lessons of latinLessons.ts into 56
 // "books": 42 Henle book lessons (kind "lesson", henleNumber 1–42) + 4
 // mastery reviews (kind "mastery-review", henleNumber null; sub-lesson ids
 // 25/33/70/134) + 10 unit reviews (kind "unit-review", henleNumber null; ids
@@ -59,6 +59,9 @@ export interface BookLesson {
   kind: BookLessonKind;
 }
 
+// FY L46 (tranche 21, 2026-09-29): sub-lesson 168 (The Compounds of eō and ferō) appended at the
+// END of latinLessons.ts and assigned to book 45 (H42, U14, the irregular-verb book — it joins the
+// eō family 131–133 and ferō 140). See research/henle-owner-notes/design-eo-fero-46.md.
 const BASE_BOOKS: BookLesson[] = [
   // ── UNIT 1 · Henle 1–6 + Review of Unit 1 ─────────────────────
   { id: 1, henleNumber: 1, unitNumber: 1, title: "The Declension of Terra", subtitle: "IDs 1–5 · Terra → Genitive Case", subLessonIds: [1, 2, 3, 4, 5], kind: "lesson" },
@@ -136,7 +139,7 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130, 142, 153 · Deponent + semi-deponent verbs; periphrastics", subLessonIds: [127, 128, 129, 130, 142, 153], kind: "lesson" },
 
   // ── UNIT 14 · Henle 42 + Mastery Review No. 3 ─────────────────
-  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–149, 154 · eō + irregular verbs + subjunctive uses; fore & defective verbs", subLessonIds: [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154], kind: "lesson" },
+  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–149, 154, 168 · eō + irregular verbs + subjunctive uses; fore & defective verbs; the compounds of eō and ferō (FY L46)", subLessonIds: [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 168], kind: "lesson" },
   { id: 46, henleNumber: null, unitNumber: 14, title: "Mastery Review No. 3", subtitle: "ID 134 · Unit 14 checkpoint", subLessonIds: [134], kind: "mastery-review" },
 ];
 

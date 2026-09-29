@@ -1,17 +1,17 @@
 import type { Language } from "~/data/languages";
 export const APP_NAME = "Eloqui";
 export const SETTINGS_DEFAULTS = { aiEnabled: true, devMode: false } as const;
-export const LESSONS_PER_UNIT = 167;
-export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 167, greek: 0, hebrew: 0, english: 10 };
-export const LATIN_LESSONS = 167;
+export const LESSONS_PER_UNIT = 168;
+export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 168, greek: 0, hebrew: 0, english: 10 };
+export const LATIN_LESSONS = 168;
 export const EXERCISES_PER_LESSON = 7;
 export const DRILL_KINDS = ["vocab-latin", "vocab-english", "conjugation", "declension", "mixed"] as const;
 export const DRILL_COUNTS = [10, 20, "all"] as const;
 export const DRILL_DEFAULT_COUNT = 10;
 export const PLACEMENT_QUESTIONS_PER_LEVEL = 2;
-// Placement unlocks the full Latin curriculum (167 lessons incl. the NLE
-// supplemental lessons 135–157 and the PLACE block 135‑38 + review 167,
-// tranche 20). The engine clamps the seeded frontier
+// Placement unlocks the full Latin curriculum (168 lessons incl. the NLE
+// supplemental lessons 135–157, the PLACE block 135‑38 + review 167 (tranche 20),
+// and the compounds lesson 168 (FY L46, tranche 21)). The engine clamps the seeded frontier
 // (engine/lesson.ts createInitialState) to this cap — it must match
 // LATIN_LESSONS below (and latinLessons.ts length), never a stale count,
 // or the array-appended lessons never surface/unlock.
