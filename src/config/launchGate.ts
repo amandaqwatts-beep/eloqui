@@ -16,8 +16,8 @@
  * That is accepted for the beta phase.
  */
 
-// PLACEHOLDER — the owner supplies the real passcode before Sep 9.
-export const LAUNCH_GATE_PASSCODE = "ELOQUI2026";
+// Owner-supplied passcode (swapped in place of the placeholder 2026-10-04).
+export const LAUNCH_GATE_PASSCODE = "CAMDBENDOR";
 
 // One-line flip: false = gate removed everywhere, app fully public.
 export const LAUNCH_GATE_ENABLED = true;
