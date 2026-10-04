@@ -48,14 +48,14 @@ function HeroSection() {
     <section id="top" className="library-wall relative overflow-hidden px-4 py-20 sm:py-28">
       <div className="relative mx-auto max-w-3xl text-center">
         <span className="mb-4 inline-block rounded-full border border-burgundy-300 bg-cream-50/80 px-4 py-1.5 text-sm font-medium text-burgundy-700">
-          🏛️ Latin 101 is live — 138 lessons · 14 units
+          🏛️ Latin 101 is live — 169 lessons · 14 units
         </span>
         <h1 className="font-book mt-4 text-4xl font-extrabold tracking-tight text-burgundy-900 sm:text-5xl lg:text-6xl">
           Learn to <span className="text-gold-600">think</span> in Latin.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-700 sm:text-xl">
           Eloqui is a grammar-first Latin course built on Henle's First Year
-          Latin — 138 bite-sized lessons that take you from the first
+          Latin — 169 bite-sized lessons that take you from the first
           declension to reading real Latin. You won't just translate: you'll
           learn to think in the language.
         </p>
@@ -89,7 +89,7 @@ const features = [
     emoji: "🏛️",
     title: "Latin 101, complete",
     description:
-      "138 lessons across 14 units, following Henle's First Year Latin — from the first declension to indirect statement.",
+      "169 lessons across 14 units, following Henle's First Year Latin — from the first declension to indirect statement.",
   },
   {
     emoji: "✍️",
@@ -131,7 +131,7 @@ const features = [
     emoji: "📚",
     title: "A bookshelf, search & grammar",
     description:
-      "Your progress becomes a library of Henle volumes; search the course and a 67-topic grammar index in seconds.",
+      "Your progress becomes a library of Henle volumes; search the course and a 96-topic grammar index in seconds.",
   },
 ];
 
@@ -177,7 +177,7 @@ const tracks = [
     chipClass: "bg-gold-100 text-gold-800",
     href: "/lessons/latin",
     description:
-      "The full 138-lesson Latin 101 course, Units 1–14, following Henle.",
+      "The full 169-lesson Latin 101 course, Units 1–14, following Henle.",
   },
   {
     name: "English",
