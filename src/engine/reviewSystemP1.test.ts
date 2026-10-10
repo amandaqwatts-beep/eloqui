@@ -220,7 +220,7 @@ test("unit data: 14 units, VERIFIED boundaries, mastery anchors, focusTopicIds",
   // (158–166, mastery-review book 57) are appended at the latinLessons array
   // END (order is sacred, never reordered) but belong to U3's completion set
   // (unitForLesson[158–166] = 3). The expected arrays below are the verified
-  // shape as of tranche 25 (lesson 172, FY L50) — refreshed from master b140dd2 (PR #110).
+  // shape as of tranche 26 (lesson 173, FY L51) — refreshed from master a4c9353 (PR #111).
   eq(unitToLessonIds[1], Array.from({ length: 25 }, (_, i) => i + 1), "U1 = 1–25");
   eq(unitToLessonIds[2], Array.from({ length: 8 }, (_, i) => i + 26), "U2 = 26–33");
   eq(
@@ -235,7 +235,7 @@ test("unit data: 14 units, VERIFIED boundaries, mastery anchors, focusTopicIds",
     [110, 111, 112, 113, 114, 115, 116, 135, 136, 137, 138, 167, 117, 118],
     "U11 = 110–116 + the PLACE block 135–138 & review 167 (book 40's final chapters) + 117–118",
   );
-  eq(unitToLessonIds[14], [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 168, 169, 170, 171, 172, 134], "U14 = 131–133 + book-45 (H42) NLE ids + compounds chapter 168 (FY L46) + Review No. 6 (FY L47) + Accompaniment & Manner (FY L48) + Review No. 7 (FY L49) + Respect & Degree of Difference (FY L50) + mastery anchor 134 last");
+  eq(unitToLessonIds[14], [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 168, 169, 170, 171, 172, 173, 134], "U14 = 131–133 + book-45 (H42) NLE ids + compounds chapter 168 (FY L46) + Review No. 6 (FY L47) + Accompaniment & Manner (FY L48) + Review No. 7 (FY L49) + Respect & Degree of Difference (FY L50) + fīō & Ablative of Separation (FY L51) + mastery anchor 134 last");
   const book57 = bookLessons.find((b) => b.id === 57);
   ok(book57 !== undefined, "book 57 (U3 General Review) exists");
   eq(book57!.kind, "mastery-review", "book 57 is a mastery-review book");
@@ -258,7 +258,7 @@ test("review: unit 3 complete → 10 items across the 4 types; incomplete → []
   // A U3-complete student has finished the unit's FULL membership — which now
   // includes the appended General Review chapters 158–166 (book 57). Complete
   // U1–U3 membership from unitToLessonIds (the data production gates on) —
-  // NOT completedThrough(maxOrderLesson): 172 is the array's last lesson, so
+  // NOT completedThrough(maxOrderLesson): 173 is the array's last lesson, so
   // "through 166" would model whole-course completion, not a U3 student.
   const completed = [...unitToLessonIds[1], ...unitToLessonIds[2], ...unitToLessonIds[3]];
   const maxOrderLesson = [...u3.lessonIds].sort((a, b) => order.get(b)! - order.get(a)!)[0];

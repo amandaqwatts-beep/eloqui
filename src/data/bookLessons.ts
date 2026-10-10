@@ -1,5 +1,5 @@
 // Verbum — Bookshelf v2: Henle book-lesson mapping (bookLessons.ts)
-// Data-only file. Maps the 172 flat sub-lessons of latinLessons.ts into 56
+// Data-only file. Maps the 173 flat sub-lessons of latinLessons.ts into 56
 // "books": 42 Henle book lessons (kind "lesson", henleNumber 1–42) + 4
 // mastery reviews (kind "mastery-review", henleNumber null; sub-lesson ids
 // 25/33/70/134) + 10 unit reviews (kind "unit-review", henleNumber null; ids
@@ -66,6 +66,7 @@ export interface BookLesson {
 // FY L48 (tranche 23, 2026-10-01): sub-lesson 170 (Accompaniment and Manner — the Cum + Ablative Family) appended at the END of latinLessons.ts and assigned to book 45 (H42, U14) as its next chapter — the running-home pattern follows 168/169; NO new book minted because the owner has not dictated the next chapter (dictation equivalence unrecorded) and the book's own unit boundary at p.238 is unresolved (capture §1 flag 15). See research/henle-owner-notes/design-manner-48.md.
 // FY L49 (tranche 24, 2026-10-04): sub-lesson 171 (Review No. 7 — The Time System, the Cum Family and the Partitive Superlative) appended at the END of latinLessons.ts and assigned to book 45 (H42, U14) as its next chapter — the running-home pattern follows 168/169/170; the review family's first citation-less lesson (the zone prints blank, 19707–08) and the run's first review NOT adjacent to any RWL (RWL7 falls after L50 AND L51 — a mid-stretch consolidation sweep). See research/henle-owner-notes/design-review-49.md.
 // FY L50 (tranche 25, 2026-10-04): sub-lesson 172 (Respect and Degree of Difference — the Two Bare-Ablative Faces) appended at the END of latinLessons.ts and assigned to book 45 (H42, U14) as its next chapter — the running-home pattern follows 168/169/170/171; the citation `159; 162` resolves mapping-exact to §§770–771 (the two rows folded into the mapping file at design) and the teach→review alternation BREAKS here (L50 and L51 both teach; RWL7 + L52 follow as a pair). See research/henle-owner-notes/design-respect-50.md.
+// FY L51 (tranche 26, 2026-10-10): sub-lesson 173 (fīō and the Ablative of Separation — the Made-Passive Verb and the Two Freeing Rules) appended at the END of latinLessons.ts and assigned to book 45 (H42, U14) as its next chapter — the running-home pattern follows 168–172; the citation `61; 160` resolves mapping-exact to §§366–368/381–385 + §§766–768 (BOTH rows pre-existed — no folds, the first since L48); the T21 fīō reservation PAYS OFF as ATTACHMENT (verb-fio + ablative-of-separation cited at birth; lesson 141 is the app's own fīō lesson); the run's first L→E recognition set (E1 q1–q10 Latin-prompted). See research/henle-owner-notes/design-fio-51.md.
 const BASE_BOOKS: BookLesson[] = [
   // ── UNIT 1 · Henle 1–6 + Review of Unit 1 ─────────────────────
   { id: 1, henleNumber: 1, unitNumber: 1, title: "The Declension of Terra", subtitle: "IDs 1–5 · Terra → Genitive Case", subLessonIds: [1, 2, 3, 4, 5], kind: "lesson" },
@@ -143,7 +144,7 @@ const BASE_BOOKS: BookLesson[] = [
   { id: 44, henleNumber: 41, unitNumber: 13, title: "Indicative of Deponent Verbs", subtitle: "IDs 127–130, 142, 153 · Deponent + semi-deponent verbs; periphrastics", subLessonIds: [127, 128, 129, 130, 142, 153], kind: "lesson" },
 
   // ── UNIT 14 · Henle 42 + Mastery Review No. 3 ─────────────────
-  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–149, 154, 168–172 · eō + irregular verbs + subjunctive uses; fore & defective verbs; the compounds of eō and ferō (FY L46); Review No. 6 (FY L47); Accompaniment & Manner (FY L48); Review No. 7 (FY L49); Respect & Degree of Difference (FY L50)", subLessonIds: [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 168, 169, 170, 171, 172], kind: "lesson" },
+  { id: 45, henleNumber: 42, unitNumber: 14, title: "The Indicative of Eō", subtitle: "IDs 131–133, 139–149, 154, 168–173 · eō + irregular verbs + subjunctive uses; fore & defective verbs; the compounds of eō and ferō (FY L46); Review No. 6 (FY L47); Accompaniment & Manner (FY L48); Review No. 7 (FY L49); Respect & Degree of Difference (FY L50); fīō & Ablative of Separation (FY L51)", subLessonIds: [131, 132, 133, 139, 140, 141, 143, 144, 145, 146, 147, 148, 149, 154, 168, 169, 170, 171, 172, 173], kind: "lesson" },
   { id: 46, henleNumber: null, unitNumber: 14, title: "Mastery Review No. 3", subtitle: "ID 134 · Unit 14 checkpoint", subLessonIds: [134], kind: "mastery-review" },
 ];
 
