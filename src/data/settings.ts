@@ -1,17 +1,17 @@
 import type { Language } from "~/data/languages";
 export const APP_NAME = "Eloqui";
 export const SETTINGS_DEFAULTS = { aiEnabled: true, devMode: false } as const;
-export const LESSONS_PER_UNIT = 174;
-export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 174, greek: 0, hebrew: 0, english: 10 };
-export const LATIN_LESSONS = 174;
+export const LESSONS_PER_UNIT = 175;
+export const LESSONS_PER_UNIT_BY_LANGUAGE: Record<Language, number> = { latin: 175, greek: 0, hebrew: 0, english: 10 };
+export const LATIN_LESSONS = 175;
 export const EXERCISES_PER_LESSON = 7;
 export const DRILL_KINDS = ["vocab-latin", "vocab-english", "conjugation", "declension", "mixed"] as const;
 export const DRILL_COUNTS = [10, 20, "all"] as const;
 export const DRILL_DEFAULT_COUNT = 10;
 export const PLACEMENT_QUESTIONS_PER_LEVEL = 2;
-// Placement unlocks the full Latin curriculum (174 lessons incl. the NLE
+// Placement unlocks the full Latin curriculum (175 lessons incl. the NLE
 // supplemental lessons 135–157, the PLACE block 135‑38 + review 167 (tranche 20),
-// and the compounds lesson 168 (FY L46, tranche 21) + the Review No. 6 lesson 169 (FY L47, tranche 22) + the Accompaniment & Manner lesson 170 (FY L48, tranche 23) + the Review No. 7 lesson 171 (FY L49, tranche 24) + the Respect & Degree of Difference lesson 172 (FY L50, tranche 25) + the fīō & Ablative of Separation lesson 173 (FY L51, tranche 26) + the Review — Exercises in Imitation lesson 174 (FY L52, tranche 27)). The engine clamps the seeded frontier
+// and the compounds lesson 168 (FY L46, tranche 21) + the Review No. 6 lesson 169 (FY L47, tranche 22) + the Accompaniment & Manner lesson 170 (FY L48, tranche 23) + the Review No. 7 lesson 171 (FY L49, tranche 24) + the Respect & Degree of Difference lesson 172 (FY L50, tranche 25) + the fīō & Ablative of Separation lesson 173 (FY L51, tranche 26) + the Review — Exercises in Imitation lesson 174 (FY L52, tranche 27) + the Sequence of Tenses; Indirect Questions lesson 175 (FY L53, tranche 28)). The engine clamps the seeded frontier
 // (engine/lesson.ts createInitialState) to this cap — it must match
 // LATIN_LESSONS below (and latinLessons.ts length), never a stale count,
 // or the array-appended lessons never surface/unlock.
