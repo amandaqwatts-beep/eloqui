@@ -1,12 +1,21 @@
 import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 
 /**
- * Server-only handle to the team's database (Neon serverless Postgres over HTTP).
- * The connection string comes from `DATABASE_URL`, which the owner connects via
- * the database card and which is injected into the sandbox and passed to the live
- * host on publish. Resolved lazily (per call, not at module load) so the site
- * still builds and serves before a database is connected — the error only
- * surfaces if a query actually runs without `DATABASE_URL`.
+ * Server-only handle to the team's database. The connection string comes from
+ * `DATABASE_URL`, which the owner connects via the database card and which is
+ * injected into the sandbox and passed to the live host on publish. Resolved
+ * lazily (per call, not at module load) so the site still builds and serves
+ * before a database is connected — the error only surfaces if a query actually
+ * runs without `DATABASE_URL`.
+ *
+ * TWO DRIVERS (owner-connected Tiger Cloud = standard Postgres, 2026-10-13):
+ *  - Neon-style URLs (`*.neon.tech`) keep the @neondatabase/serverless HTTP
+ *    driver — that protocol only exists on Neon.
+ *  - Everything else (Tiger/Timescale Cloud, generic Postgres) uses postgres.js
+ *    over TCP+TLS. Confirmed working against Tiger Cloud 2026-10-13: DNS, TCP
+ *    and the Postgres wire protocol all answer (auth error 28P01 was the last
+ *    step before the owner re-saved the secret with the password).
  *
  * Use it only inside a `createServerFn()` handler or an `src/routes/api/*` route
  * (never client code):
@@ -18,14 +27,45 @@ import { neon } from "@neondatabase/serverless";
  *     return rows.map((r) => ({ ...r, created_at: String(r.created_at) }));
  *   });
  */
-export const sql = () => {
+
+/** Cached standard-Postgres client (postgres.js) — one pool per process. */
+let pgClient: postgres.Sql | null = null;
+
+export const sql = (): postgres.Sql => {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error(
       "DATABASE_URL is not set — connect a database (via the database card) before running queries.",
     );
   }
-  return neon(url);
+  if (/\.neon\.tech/.test(url)) return neon(url) as unknown as postgres.Sql;
+  if (!pgClient) {
+    const u = new URL(url);
+    pgClient = postgres({
+      host: u.hostname,
+      port: Number(u.port || 5432),
+      user: decodeURIComponent(u.username || "tsdbadmin"),
+      password: u.password ? decodeURIComponent(u.password) : undefined,
+      database: u.pathname.replace(/^\//, "") || "tsdb",
+      // sslmode=require in the URL → TLS with default (strict) verification.
+      ssl: u.searchParams.get("sslmode") === "disable" ? false : "require",
+      max: 5,
+      connect_timeout: 10,
+      idle_timeout: 20,
+      // Keep timestamptz values as raw strings (matching the Neon driver's
+      // behaviour) so the existing String()/new Date() coercions in the server
+      // functions see exactly what they saw before the driver swap.
+      types: {
+        date: {
+          to: 1184,
+          from: [1184],
+          serialize: (x: string) => x,
+          parse: (x: string) => x,
+        },
+      },
+    });
+  }
+  return pgClient;
 };
 
 /**
