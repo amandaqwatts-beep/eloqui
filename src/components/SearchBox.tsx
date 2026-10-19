@@ -12,6 +12,7 @@ import { searchIndex, type SearchResult } from "~/lib/searchIndex";
 
 const KIND_BADGE: Record<SearchResult["kind"], string> = {
   lesson: "📘",
+  foundations: "🌱",
   vocab: "🔤",
   table: "📊",
   grammar: "📖",
@@ -25,6 +26,9 @@ interface Props {
   onSelectLesson: (idx: number) => void;
   onOpenGrammar: (topicId: string) => void;
   onOpenExplore: (sideLessonId: number) => void;
+  /** Foundations search results open the Foundations module (ids 401–405 live
+   *  in grammarFoundations.ts — outside the main lesson array). */
+  onOpenFoundations?: (lessonId: number) => void;
   /** Extra classes merged onto the root (desk bar sizing, e.g. min-w). */
   className?: string;
 }
@@ -35,6 +39,7 @@ export default function SearchBox({
   onSelectLesson,
   onOpenGrammar,
   onOpenExplore,
+  onOpenFoundations,
   className,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -87,6 +92,9 @@ export default function SearchBox({
         return;
       case "explore":
         onOpenExplore(result.sideLessonId);
+        return;
+      case "foundations":
+        onOpenFoundations?.(result.lessonId);
         return;
     }
   };
@@ -158,9 +166,11 @@ export default function SearchBox({
                   ? "Grammar"
                   : result.kind === "explore"
                     ? "Explore"
-                    : "Lesson " + result.lessonId;
+                    : result.kind === "foundations"
+                      ? "Foundations"
+                      : "Lesson " + result.lessonId;
               const host =
-                result.kind !== "grammar" && result.kind !== "explore"
+                result.kind !== "grammar" && result.kind !== "explore" && result.kind !== "foundations"
                   ? hostTitle(result.lessonId)
                   : "";
               return (

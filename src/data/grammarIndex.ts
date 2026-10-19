@@ -1,10 +1,10 @@
 // Verbum — Grammar index (grammarIndex.ts)
-// Data-only file. 96 topics: the original 67 from the bookshelf-v2 grammar
+// Data-only file. 103 topics: the original 67 from the bookshelf-v2 grammar
 // skeleton (research/bookshelf-v2-content-mapping.md §B; lead-ratified
 // 2026-08-12) plus the NLE-supplement and Phase 3a–3c topic blocks.
 // `henleGrammarRef` citations are filled from the 1980-edition Henle Grammar
 // mapping table (research/henle-owner-notes/henle-grammar-section-mapping-1980.md):
-// 90 filled / 2 pending owner dictation — the placeholder remains ONLY on
+// 97 filled / 2 pending owner dictation — the placeholder remains ONLY on
 // special-plural-meanings and irregular-noun-iesus (SKIP list, worklist §3).
 // § strings are 1980-Grammar numbering, never FY-archive face value.
 // `relatedLessonIds` are sub-lesson ids verified against latinLessons.ts.
@@ -13,7 +13,8 @@
 export type GrammarCategory =
   | "declension" | "case-usage" | "prepositions" | "pronouns"
   | "adjectives" | "comparison" | "numerals" | "conjugation"
-  | "irregulars" | "voice" | "subjunctive" | "clauses" | "participles-infinitives";
+  | "irregulars" | "voice" | "subjunctive" | "clauses" | "participles-infinitives"
+  | "phonetics";
 
 export interface GrammarTopic {
   id: string;                 // kebab-case slug, e.g. "third-declension-i-stems"
@@ -26,6 +27,27 @@ export interface GrammarTopic {
 }
 
 export const GRAMMAR_INDEX: GrammarTopic[] = [
+  // ── PRONUNCIATION / PHONETICS (7) — §§1–13, the Grammar's INTRODUCTORY zone ──
+  // Source: 1980 archive body (research/henle-owner-notes/henle-latin-grammar-1980-archive.txt
+  // B 337–436) + back-index anchors pinning the zone ("Alphabet, 1"; "Vowels, pronunciation
+  // of, 2-3"; "Dipthongs, pronunciation of, 4"; "Consonants, pronunciation, 5"; "Syllables,
+  // 6-8, 11-13"; "Quantity of syllables, 11-13"; "Pronunciation, 2-13"; "Continental
+  // pronunciation, 2-13"): Alphabet §1 · Vowels §2–3 · Diphthongs §4 · Consonants §5 ·
+  // Division into Syllables §6–8 · Accent §9–10 · Quantity of Syllables §11–13.
+  // Same §-zone map the Foundations lessons were verified against (src/data/grammarFoundations.ts
+  // header). Definitions are REPHRASED instructional summaries, not OCR verbatim; example
+  // words come only from the Grammar's own §-zones (ma-ter/nau-ta/no-men, por-ta/exer-citus/
+  // pul-chra, la-crima/a-grum/pa-trem, vīa/béllum, vidērunt/agmine, regere/gloria,
+  // studēre/regendus). relatedLessonIds point at the Foundations lessons 401–405, which live
+  // in src/data/grammarFoundations.ts (NOT the main latinLessons array) — LessonMenu's
+  // openGrammarLesson resolves them onto the Foundations module route.
+  { id: "latin-alphabet", topic: "The Latin Alphabet", category: "phonetics", definition: "Latin is written with 23 letters — the same set as English minus w and y, in the same order. j is the consonant form of i (always sounded like English y) and v is the consonant form of u (always sounded like English w); every letter is sounded, since Latin has no silent letters.", henleGrammarRef: "1", relatedLessonIds: [401], keywords: ["alphabet", "23 letters", "letters", "j", "v", "k", "w", "y", "consonant i", "consonant u", "Iulius", "Kalendae", "silent letters"] },
+  { id: "vowel-pronunciation", topic: "Vowel Sounds: Long and Short", category: "phonetics", definition: "Each of the five vowels has a long and a short value: a (father / facility), e (they / get), i (machine / fit), o (no / obey), u (rule / put). Length can be the only difference between two words — līber 'free' next to liber 'book' — though in ordinary reading the distinction is often leveled, every vowel being given the long quality; in poetry the quantitative difference alone is kept.", henleGrammarRef: "2–3", relatedLessonIds: [402], keywords: ["vowels", "vowel", "long vowels", "short vowels", "vowel length", "macron", "father", "machine", "līber", "liber", "vēnit", "venit", "quantity", "long a", "long i", "short e"] },
+  { id: "diphthongs", topic: "Diphthongs", category: "phonetics", definition: "A diphthong is a pair of vowels written together but heard as one sound occupying one syllable: ae and oe both sound like the e in they, and au like the ou in out (eu and ui also appear in reading). Diphthongs count as a single vowel sound, so nauta has two syllables, not three — and qu is not a diphthong, because its u is really the consonant w.", henleGrammarRef: "4", relatedLessonIds: [402], keywords: ["diphthong", "diphthongs", "ae", "oe", "au", "eu", "ui", "nauta", "proelium", "seu", "cui", "qu not a diphthong", "one sound", "two vowels one sound", "like e in they", "ou in out"] },
+  { id: "consonant-pronunciation", topic: "Consonant Sounds", category: "phonetics", definition: "Most Latin consonants sound as in English. Two need care: c and g are soft before e, i, ae, or oe (the c of cell, the g of germ) and hard everywhere else (the c of cat, the g of gun), and j is always sounded like English y as in yet. These values belong to the traditional (Continental) system; the Roman and Italian systems are separate appendix schemes.", henleGrammarRef: "5; cf. 1018–1019", relatedLessonIds: [403], keywords: ["consonants", "consonant", "soft c", "hard c", "soft g", "hard g", "cell", "germ", "cat", "gun", "j like y", "iam", "maior", "Cicero", "cena", "gemma", "Continental", "traditional system", "pronunciation system"] },
+  { id: "syllable-division", topic: "Division into Syllables", category: "phonetics", definition: "Every syllable is built around one vowel sound — a vowel or a diphthong — so count the vowel sounds first. A single consonant between vowels goes with the following vowel (ma-ter, nau-ta, no-men); two or more consonants divide after the first (por-ta, exer-citus, pul-chra) — except a mute (c, g, p, b, t, d) or f followed by r or l, which keeps both consonants with the following vowel (la-crima, a-grum, pa-trem).", henleGrammarRef: "6–8", relatedLessonIds: [404], keywords: ["syllables", "syllable", "syllable division", "division into syllables", "ma-ter", "nau-ta", "no-men", "por-ta", "exer-citus", "pul-chra", "la-crima", "a-grum", "pa-trem", "mute", "liquid", "divide words", "count vowels"] },
+  { id: "accent-rules", topic: "Accent", category: "phonetics", definition: "The accent law decides where the stress falls. Words of two syllables accent the first (vīa, béllum); in words of more than two syllables the second-last syllable takes the accent if it is long, otherwise the accent falls on the third-last (vidērunt accents its second-last because dē is long, agmine retreats to the third-last because mi is short).", henleGrammarRef: "9–10", relatedLessonIds: [405], keywords: ["accent", "accent law", "stress", "penult", "antepenult", "second-last", "third-last", "vīa", "béllum", "vidērunt", "agmine", "where the stress falls", "accented syllable"] },
+  { id: "syllable-quantity", topic: "Quantity of Syllables", category: "phonetics", definition: "A syllable is short if its vowel is short by nature or followed by another vowel or diphthong (re-ge-re, glo-ri-a); it is long if its vowel is long by nature or followed by two consonants — with the exception of a mute or f followed by a liquid (studēre, regendus). Counting notes: x and z each count as two consonants, while h and the u of qu do not count as consonants at all.", henleGrammarRef: "11–13", relatedLessonIds: [405], keywords: ["quantity", "syllable quantity", "quantity of syllables", "long syllable", "short syllable", "regere", "gloria", "studēre", "regendus", "dīxī", "vehiculum", "x counts as two consonants", "h does not count", "u of qu", "long by nature"] },
   // ── DECLENSION (12) ───────────────────────────────────────────
   { id: "first-declension", topic: "First Declension", category: "declension", definition: "Most first-declension nouns are feminine and end in -a in the nominative singular; the model noun is terra (earth, land). Singular endings: -a, -ae, -ae, -am, -ā; plural: -ae, -ārum, -īs, -ās, -īs.", henleGrammarRef: "31–33", relatedLessonIds: [1, 2, 4, 5, 25], keywords: ["terra", "first declension", "1st declension", "-a", "-ae", "nominative", "genitive", "feminine"] },
   { id: "second-declension", topic: "Second Declension", category: "declension", definition: "Second-declension nouns are masculine or neuter; servus (slave) and bellum (war) are the model nouns. Masculines end in -us/-ī/-ō/-um/-ō and neuters in -um/-ī/-ō/-um/-ō; the plural endings are -ī, -ōrum, -īs, -ōs/-a, -īs.", henleGrammarRef: "34–44", relatedLessonIds: [6, 7, 8, 25], keywords: ["servus", "bellum", "second declension", "2nd declension", "-us", "-um", "-ī", "neuter"] },

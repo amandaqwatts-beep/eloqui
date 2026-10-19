@@ -14,6 +14,7 @@ import { useEffect, useRef } from "react";
 import type { GrammarCategory, GrammarTopic } from "~/data/grammarIndex";
 
 const CATEGORY_LABELS: Record<GrammarCategory, string> = {
+  phonetics: "Pronunciation",
   declension: "Declension",
   "case-usage": "Case Usage",
   prepositions: "Prepositions",
@@ -30,6 +31,7 @@ const CATEGORY_LABELS: Record<GrammarCategory, string> = {
 };
 
 const CATEGORY_ORDER: GrammarCategory[] = [
+  "phonetics",
   "declension",
   "case-usage",
   "prepositions",
