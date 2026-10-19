@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { Lesson, CultureQuestionExercise } from "~/data/latinLessons";
 import type { BookLesson } from "~/data/bookLessons";
 import type { SideLesson } from "~/data/latinSideLessons";
@@ -12,6 +12,7 @@ import RecommendedButton from "~/components/RecommendedButton";
 import SearchBox from "~/components/SearchBox";
 import GrammarDrawer from "~/components/GrammarDrawer";
 import { buildSearchIndex } from "~/lib/searchIndex";
+import { grammarFoundationsLessons } from "~/data/grammarFoundations";
 import type { Recommendation } from "~/engine/recommendation";
 
 interface Props {
@@ -85,6 +86,15 @@ export default function LessonMenu({
     () => buildSearchIndex(lessons, sideLessons ?? [], grammarTopics ?? []),
     [lessons, sideLessons, grammarTopics],
   );
+  const navigate = useNavigate();
+  /** Route hook (Foundations polish, item 1(M)): grammar-index topics may cite
+   *  Foundations lessons 401–405, which live in grammarFoundations.ts — NOT in
+   *  the main lessons array this component scans. openGrammarLesson resolves
+   *  them onto the Foundations module route (which owns that 5-lesson flow and
+   *  its own verbum-foundations storage); the main-array lookup below stays
+   *  untouched for Latin 1 lessons. */
+  const isFoundationsLesson = (lessonId: number) =>
+    grammarFoundationsLessons.some((l) => l.id === lessonId);
 
   // ── Menu-local UI state (search → grammar drawer / explore focus) ──
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -112,6 +122,16 @@ export default function LessonMenu({
   };
 
   const openGrammarLesson = (lessonId: number) => {
+    // Foundations topics cite ids 401–405; the main-array findIndex below would
+    // return -1 and silently no-op (the findIndexes gotcha). Send the student
+    // to the Foundations module — the only flow that owns those lessons —
+    // instead of launching the main four-phase engine (its storage-isolation
+    // gate keeps Foundations progress out of the Latin course's frontier).
+    if (isFoundationsLesson(lessonId)) {
+      setDrawerOpen(false);
+      void navigate({ to: "/lessons/latin/foundations" });
+      return;
+    }
     const idx = lessons.findIndex((l) => l.id === lessonId);
     setDrawerOpen(false);
     if (idx < 0) return;
