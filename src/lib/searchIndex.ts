@@ -20,6 +20,18 @@ export type SearchResult =
       match: string;
     }
   | {
+      // Foundations lessons (grammarFoundations.ts, ids 401–405) index under
+      // their own kind: SearchBox routes clicks to the Foundations module
+      // (which owns the flow + its own storage), never into the main track's
+      // array-index navigation. idx = position in the foundations array.
+      kind: "foundations";
+      lessonId: number;
+      idx: number;
+      title: string;
+      match: string;
+      exerciseId?: string;
+    }
+  | {
       kind: "vocab";
       lessonId: number;
       idx: number;
@@ -91,6 +103,7 @@ let buildCache: {
   lessons: Lesson[];
   sideLessons: SideLesson[];
   grammar: GrammarTopic[];
+  foundationsLessons: Lesson[];
   entries: SearchEntry[];
 } | null = null;
 
@@ -98,12 +111,14 @@ export function buildSearchIndex(
   lessons: Lesson[],
   sideLessons: SideLesson[],
   grammar: GrammarTopic[],
+  foundationsLessons: Lesson[] = [],
 ): SearchEntry[] {
   if (
     buildCache &&
     buildCache.lessons === lessons &&
     buildCache.sideLessons === sideLessons &&
-    buildCache.grammar === grammar
+    buildCache.grammar === grammar &&
+    buildCache.foundationsLessons === foundationsLessons
   ) {
     return buildCache.entries;
   }
@@ -187,6 +202,78 @@ export function buildSearchIndex(
     }
   }
 
+  // Foundations lessons (Foundations polish, item 1(M)): same lesson/vocab/
+  // table/culture haystacks as the main track, but every entry carries the
+  // "foundations" kind so consumers route to the Foundations module. Display
+  // numbering is the module's own 1–5, not the global lesson count.
+  for (const [idx, l] of foundationsLessons.entries()) {
+    const title = `Foundations ${idx + 1}: ${l.title}`;
+    const concept = stripHtml(l.conceptHtml ?? l.concept);
+    add(
+      { kind: "foundations", lessonId: l.id, idx, title, match: concept },
+      [l.title, l.subtitle ?? "", concept],
+      0,
+    );
+
+    for (const v of l.vocabulary ?? []) {
+      add(
+        { kind: "foundations", lessonId: l.id, idx, title, match: `${v.latin} — ${v.english}` },
+        [v.latin, v.english, v.pronunciation ?? "", v.type ?? ""],
+        1,
+      );
+    }
+
+    const gfTableRows: (string | string[] | { person: string; singular: string; plural: string })[][] = [];
+    if (l.referenceTable) gfTableRows.push(l.referenceTable.rows);
+    if (l.vocabularyTable) gfTableRows.push(l.vocabularyTable.rows);
+    if (l.conjugationTable) gfTableRows.push(l.conjugationTable.rows);
+    for (const rows of gfTableRows) {
+      const name =
+        rows === l.referenceTable?.rows
+          ? l.referenceTable.title
+          : rows === l.vocabularyTable?.rows
+            ? l.vocabularyTable.title
+            : l.conjugationTable?.title ?? "Conjugation";
+      const cells = rows
+        .flatMap((r) => (typeof r === "string" ? [r] : Array.isArray(r) ? r : [r.person, r.singular, r.plural]))
+        .join(" ");
+      add(
+        { kind: "foundations", lessonId: l.id, idx, title, match: `${name} ${cells}` },
+        [name, cells],
+        2,
+      );
+    }
+
+    for (const ex of l.exercises) {
+      if (ex.type === "culture-question") {
+        add(
+          {
+            kind: "foundations",
+            lessonId: l.id,
+            idx,
+            title: `Culture · Foundations ${idx + 1}`,
+            match: ex.prompt,
+            exerciseId: ex.id,
+          },
+          [
+            ex.prompt,
+            ex.domain,
+            ex.explanation,
+            ...(CULTURE_TEACHING[ex.id]?.steps.flatMap((st) => [
+              st.title,
+              st.explanation,
+              st.exampleLatin,
+              st.exampleEnglish,
+              st.tip ?? "",
+            ]) ?? []),
+            ...(CULTURE_TEACHING[ex.id]?.sources ?? []),
+          ],
+          3,
+        );
+      }
+    }
+  }
+
   for (const sl of sideLessons) {
     const concept = stripHtml(sl.concept);
     const vocab = sl.vocabulary.map((v) => `${v.latin} ${v.english}`).join(" ");
@@ -208,7 +295,7 @@ export function buildSearchIndex(
   // Keep the haystack on the returned entries so searchIndex() can match
   // against the full indexed text — not just title + match.
   const resultEntries = entries.map((e) => ({ ...e.result, haystack: e.haystack }));
-  buildCache = { lessons, sideLessons, grammar, entries: resultEntries };
+  buildCache = { lessons, sideLessons, grammar, foundationsLessons, entries: resultEntries };
   return resultEntries;
 }
 

@@ -133,6 +133,25 @@ test("diacritics still stripped in haystack search", () => {
   ok(results[0].kind === "vocab", `expected vocab entry, got ${results[0].kind}`);
 });
 
+// ── Foundations search (item 1(M)) ─────────────────────────────
+const gfLesson: Lesson = {
+  id: 405,
+  title: "Quantity & Accent",
+  concept: "Syllable length and the accent law.",
+  exercises: [],
+  vocabulary: [{ latin: "vehiculum", english: "carriage, vehicle", pronunciation: "veh-EE-koo-loom" }],
+};
+test("foundations lessons index under the foundations kind (route to the module)", () => {
+  const index = buildSearchIndex([], [], [], [gfLesson]);
+  const results = searchIndex(index, "vehiculum");
+  ok(results.length >= 1, `expected at least 1 result, got ${results.length}`);
+  ok(results[0].kind === "foundations", `expected foundations kind, got ${results[0].kind}`);
+  ok(results[0].kind === "foundations" && results[0].lessonId === 405, "expected lesson 405");
+  // Display number is the foundations-array position + 1 (like the main track's
+  // "Lesson {idx+1}") — the synthetic lesson is the only/first one in its array.
+  ok(results[0].title.startsWith("Foundations 1:"), `expected "Foundations 1:" title, got ${results[0].title}`);
+});
+
 if (failed > 0) {
   console.error(`${failed} failed, ${passed} passed`);
   process.exit(1);

@@ -83,8 +83,8 @@ export default function LessonMenu({
     lessons[Math.min(Math.max(unlockedLessons, 1), lessons.length) - 1]?.id ?? 1;
 
   const searchIndex = useMemo(
-    () => buildSearchIndex(lessons, sideLessons ?? [], grammarTopics ?? []),
-    [lessons, sideLessons, grammarTopics],
+    () => buildSearchIndex(lessons, sideLessons ?? [], grammarTopics ?? [], grammarFoundationsLessons),
+    [lessons, sideLessons, grammarTopics, grammarFoundationsLessons],
   );
   const navigate = useNavigate();
   /** Route hook (Foundations polish, item 1(M)): grammar-index topics may cite
@@ -107,6 +107,11 @@ export default function LessonMenu({
   };
   const openExploreBook = (sideLessonId: number) => {
     setFocusRequest((s) => ({ bookKey: `explore-${sideLessonId}`, nonce: (s?.nonce ?? 0) + 1 }));
+  };
+  // Search results for Foundations lessons route to the module that owns them
+  // (same resolution as openGrammarLesson's Foundations branch above).
+  const openFoundationsModule = () => {
+    void navigate({ to: "/lessons/latin/foundations" });
   };
 
   /** Book key for the shelf book that contains a sub-lesson id (henle/review
@@ -184,6 +189,7 @@ export default function LessonMenu({
                 onSelectLesson={onSelectLesson}
                 onOpenGrammar={openGrammarTopic}
                 onOpenExplore={openExploreBook}
+                onOpenFoundations={openFoundationsModule}
                 className="min-w-[180px]"
               />
               {grammarTopics && grammarTopics.length > 0 && (
