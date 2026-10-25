@@ -8,6 +8,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import type { Language } from "~/data/languages";
 import { shelfForLanguage } from "~/data/shelves";
 import ShelfView from "~/components/ShelfView";
+import Book2Shell from "~/components/Book2Shell";
 
 export const Route = createFileRoute("/shelf/$language")({
   // Optional key (`book?: number`) keeps the search prop optional on Links.
@@ -42,24 +43,9 @@ function ShelfRoute() {
   }
 
   if (search.book === 2) {
-    // Commit 2 scaffold: an honest minimal shell. The full Book 2 study room
-    // (structure skeleton + two-path selector) composes here next.
-    return (
-      <main className="min-h-screen bg-cream-50 px-6 py-16">
-        <div className="mx-auto max-w-2xl">
-          <Link to="/shelf/$language" params={{ language: params.language }} className="text-sm font-semibold text-burgundy-800">
-            ← Shelf
-          </Link>
-          <h1 className="font-book mt-8 text-3xl font-bold text-burgundy-900">
-            {shelf.books.find((b) => b.number === 2)?.title}
-          </h1>
-          <p className="mt-3 text-gray-600">
-            The study room is being wired — the book's structure arrives with
-            the capture pipeline.
-          </p>
-        </div>
-      </main>
-    );
+    // Book 2's study room: structural skeleton now; the two-path selector
+    // and per-path progress compose inside the shell.
+    return <Book2Shell shelf={shelf} />;
   }
 
   return <ShelfView shelf={shelf} />;
