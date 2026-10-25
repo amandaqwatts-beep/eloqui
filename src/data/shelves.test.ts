@@ -38,6 +38,12 @@ import {
   BOOK2_PROGRESS_KEY,
   type StorageLike,
 } from "~/lib/book2Progress";
+import {
+  GALLIC_WAR_META,
+  GALLIC_WAR_STRUCTURE,
+  gallicWarSection,
+  gallicWarSectionIds,
+} from "./gallicWar";
 
 let passed = 0;
 let failed = 0;
@@ -231,6 +237,52 @@ test("corrupt or hostile storage never throws and never fabricates", () => {
     [BOOK2_PROGRESS_KEY]: JSON.stringify({ path: "book", completedSectionIds: ["ok", 5, null] }),
   }));
   eq(mixed.completedSectionIds, ["ok"], "string ids pass through; the rest are dropped");
+});
+
+// ── 6. The first original — Caesar's Gallic War (Book 3, plan rev 75) ────
+
+test("the Gallic War skeleton is EXACTLY the received 8 books, in order", () => {
+  eq(GALLIC_WAR_STRUCTURE.length, 8);
+  eq(GALLIC_WAR_STRUCTURE.map((p) => p.id), [
+    "gw-book-1",
+    "gw-book-2",
+    "gw-book-3",
+    "gw-book-4",
+    "gw-book-5",
+    "gw-book-6",
+    "gw-book-7",
+    "gw-book-8",
+  ]);
+  eq(GALLIC_WAR_STRUCTURE.map((p) => p.book), [1, 2, 3, 4, 5, 6, 7, 8]);
+  // The standard chapter enumeration of the received text (wayfinding; the
+  // capture pipeline verifies against the PD source before content lands).
+  eq(GALLIC_WAR_STRUCTURE.map((p) => p.chapters), [54, 35, 29, 38, 58, 44, 90, 55]);
+  ok(GALLIC_WAR_STRUCTURE[7].subtitle.includes("Hirtius"), "Book VIII must be honestly framed as Hirtius' supplement");
+});
+
+test("the Gallic War skeleton is structure, NOT content — zero content keys", () => {
+  const ids = gallicWarSectionIds();
+  ok(ids.length === new Set(ids).size, "section id collision inside the Gallic War skeleton");
+  for (const part of GALLIC_WAR_STRUCTURE) {
+    ok(part.sections.length >= 2, `part ${part.id} has no section anchors to hang content on`);
+    for (const section of part.sections) {
+      eq(section.status, "awaiting-capture");
+    }
+  }
+  // Pure wayfinding: no node carries exercises, lesson arrays, or Latin text —
+  // not even a sample translation. A JSON walk proves the shape stays lean.
+  const raw = JSON.stringify(GALLIC_WAR_STRUCTURE);
+  for (const banned of ["exercises", "teachingSteps", "vocabulary", "latinText", "translation"]) {
+    ok(!raw.includes(`"${banned}"`), `skeleton carries a "${banned}" key — content leaked into the original`);
+  }
+});
+
+test("the Gallic War content seam resolves; the meta names the shelf book", () => {
+  const found = gallicWarSection("gw-b7-alesia");
+  ok(found !== undefined, "gw-b7-alesia does not resolve");
+  eq((found as NonNullable<typeof found>).part.id, "gw-book-7");
+  eq(gallicWarSection("gw-b9-ghost"), undefined, "invented sections must not resolve");
+  eq(GALLIC_WAR_META.bookKey, "latin-gallic-war");
 });
 
 if (failed > 0) {
