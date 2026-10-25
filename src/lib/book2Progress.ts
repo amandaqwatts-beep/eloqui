@@ -82,7 +82,7 @@ export function saveBook2PathChoice(
 ): Latin2PathProgress {
   const store = storage ?? defaultStorage();
   const next: Latin2PathProgress = {
-    ...loadBook2Progress(store),
+    ...loadBook2Progress(store ?? undefined),
     path,
     updatedAt: new Date().toISOString(),
   };
