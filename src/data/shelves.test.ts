@@ -109,6 +109,9 @@ test("the Latin shelf has exactly two sibling books — Henle FY = Book 1, Henle
   eq(b2.title, "Henle Second Year Latin");
   eq(b2.status, "scaffold");
   eq(b2.entryPath, "/shelf/latin?book=2");
+  // Book kinds (plan rev 75): the Henle volumes are courses — textbooks.
+  eq(b1.kind, "textbook");
+  eq(b2.kind, "textbook");
 });
 
 test("Book 2 is a real book on the shelf — present and openable, not dusted or locked", () => {

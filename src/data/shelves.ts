@@ -17,9 +17,17 @@
 
 export type ShelfBookStatus = "live" | "scaffold";
 
+/**
+ * What kind of book this is (plan rev 75, owner 2026-10-25): textbooks are
+ * courses (Henle First/Second Year); originals are the works themselves —
+ * raw or adapted, read in their own book (Caesar's Gallic War first).
+ * Data only; the shelf may quietly label the kind on a caption, nothing more.
+ */
+export type ShelfBookKind = "textbook" | "original";
+
 /** One physical book standing on a language shelf. */
 export interface ShelfBook {
-  /** Stable book key — e.g. "latin-1", "latin-2". Unique across all shelves. */
+  /** Stable book key — e.g. "latin-1", "latin-2", "latin-gallic-war". Unique across all shelves. */
   bookKey: string;
   /** Position on the shelf (1-based). Book 1 = Henle FY, Book 2 = Henle SY. */
   number: number;
@@ -29,6 +37,8 @@ export interface ShelfBook {
   source: string;
   /** "live" = the book opens its existing course; "scaffold" = structure only. */
   status: ShelfBookStatus;
+  /** Course or original (plan rev 75): the shelf marks the difference in its captions. */
+  kind: ShelfBookKind;
   /**
    * Where the book opens. Book 1 points at the EXISTING Latin 1 route (the
    * full lesson menu); Book 2 points at the two-path shell on the shelf page.
@@ -67,6 +77,7 @@ export const SHELVES: LanguageShelf[] = [
         subtitle: "The complete first-year course — 42 Henle lessons, 179 chapters live",
         source: "Henle First Year Latin (1943)",
         status: "live",
+        kind: "textbook",
         // The EXISTING Latin 1 entry — untouched by the shelf layer.
         entryPath: "/lessons/latin",
       },
@@ -77,6 +88,7 @@ export const SHELVES: LanguageShelf[] = [
         subtitle: "Structure in place — content lands with the capture pipeline",
         source: "Henle Second Year Latin (1943)",
         status: "scaffold",
+        kind: "textbook",
         entryPath: "/shelf/latin?book=2",
       },
     ],
