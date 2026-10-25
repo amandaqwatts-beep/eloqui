@@ -9,12 +9,19 @@ import type { Language } from "~/data/languages";
 import { shelfForLanguage } from "~/data/shelves";
 import ShelfView from "~/components/ShelfView";
 import Book2Shell from "~/components/Book2Shell";
+import Book3Shell from "~/components/Book3Shell";
 
 export const Route = createFileRoute("/shelf/$language")({
   // Optional key (`book?: number`) keeps the search prop optional on Links.
-  validateSearch: (search: Record<string, unknown>): { book?: number } => ({
-    book: search.book === 2 || search.book === "2" ? 2 : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { book?: number } => {
+    const n =
+      typeof search.book === "number"
+        ? search.book
+        : typeof search.book === "string" && search.book !== ""
+          ? Number(search.book)
+          : NaN;
+    return { book: n === 2 || n === 3 ? n : undefined };
+  },
   component: ShelfRoute,
 });
 
@@ -46,6 +53,12 @@ function ShelfRoute() {
     // Book 2's study room: structural skeleton now; the two-path selector
     // and per-path progress compose inside the shell.
     return <Book2Shell shelf={shelf} />;
+  }
+
+  if (search.book === 3) {
+    // Book 3's study room: the Gallic War original — structure only until
+    // the capture pipeline lands the adapted text.
+    return <Book3Shell shelf={shelf} />;
   }
 
   return <ShelfView shelf={shelf} />;

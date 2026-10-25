@@ -2,15 +2,18 @@
  * ShelfView.tsx — the language SHELF (shelf-book architecture, plan rev 73).
  *
  * A shelf = a language; the books standing on it are its first-class books.
- * The Latin shelf holds two siblings: Book 1 (Henle First Year — the live
- * course, opening its existing /lessons/latin route untouched) and Book 2
- * (Henle Second Year — present as a real book, opening the scaffold shell).
+ * The Latin shelf holds three siblings: Book 1 (Henle First Year — the live
+ * course, opening its existing /lessons/latin route untouched), Book 2
+ * (Henle Second Year — present as a real book, opening the scaffold shell),
+ * and Book 3 (Caesar's Gallic War — the first ORIGINAL, plan rev 75, opening
+ * its own honest-empty study room).
  *
  * Theme: the Bookshelf v2.1 patterns exactly — .library-wall wall, .spine
  * cloth + .shelf-board board, serif (.font-book) labels, gold-ribbon
  * progress (owner doctrine: "progress marked by ribbons") computed ONLY from
  * real progress data. No badges, no artifice (Minimalist Scholarly, rev 72):
- * Book 2 carries NO ribbon and NO progress strip — it has no progress yet.
+ * scaffold books carry NO ribbon and NO progress strip — they have no
+ * progress yet.
  */
 import { Link } from "@tanstack/react-router";
 import { useMemo, type CSSProperties } from "react";
@@ -45,8 +48,8 @@ export default function ShelfView({ shelf }: ShelfViewProps) {
             {shelf.label}
           </h1>
           <p className="mt-2 max-w-xl text-sm text-gray-600">
-            One shelf, one language. Each book standing here is a complete
-            course; open one to begin where you left off.
+            One shelf, one language. Each book standing here opens its own
+            study — open one to begin where you left off.
           </p>
         </header>
 
@@ -75,6 +78,7 @@ export default function ShelfView({ shelf }: ShelfViewProps) {
               <div key={book.bookKey} className="max-w-xs">
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-wood-700">
                   Book {romanize(book.number)}
+                  {book.kind === "original" ? " · Original" : ""}
                 </span>
                 <span className="font-book mt-0.5 block text-sm font-bold text-burgundy-900">
                   {book.title}
@@ -93,12 +97,23 @@ export default function ShelfView({ shelf }: ShelfViewProps) {
 }
 
 /** A whole book standing on the shelf — same cloth as the unit spines,
-    scaled up to book size. No locked state: every book here is openable. */
+    scaled up to book size. No locked state: every book here is openable.
+    Live books carry real ribbon progress; scaffold books stand bare (no
+    ribbon, no progress) — honest empties until their content arrives. */
 function ShelfBookSpine({ book, ribbon }: { book: ShelfBook; ribbon: RibbonTone }) {
-  const spineStyle: Record<string, string> = {
-    width: book.number === 1 ? "64px" : "52px",
-    height: book.number === 1 ? "176px" : "156px",
+  // Slight per-tome sizing variance — three volumes should not look die-cut.
+  const sizes: Record<number, { width: string; height: string }> = {
+    1: { width: "64px", height: "176px" },
+    2: { width: "52px", height: "156px" },
+    3: { width: "56px", height: "160px" },
   };
+  const { width, height } = sizes[book.number] ?? { width: "52px", height: "156px" };
+  const spineStyle: Record<string, string> = { width, height };
+  const common =
+    "spine spine-henle relative flex flex-col items-center pb-2 pt-3 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2";
+  const label = (
+    <span className="spine-label font-book text-xl leading-none">{romanize(book.number)}</span>
+  );
   if (book.status === "live") {
     // Book 1 — the burgundy cloth of the live Henle course (tone A of the
     // house rotation), gold serif numeral.
@@ -110,7 +125,7 @@ function ShelfBookSpine({ book, ribbon }: { book: ShelfBook; ribbon: RibbonTone 
         to={book.entryPath as "/lessons/latin"}
         aria-label={`Book ${romanize(book.number)} · ${book.title} — ${book.subtitle}`}
         style={spineStyle as CSSProperties}
-        className="spine spine-henle relative flex flex-col items-center pb-2 pt-3 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+        className={common}
       >
         {ribbon && (
           // Ribbon bookmark hanging from the head of the book (owner
@@ -122,16 +137,25 @@ function ShelfBookSpine({ book, ribbon }: { book: ShelfBook; ribbon: RibbonTone 
             }`}
           />
         )}
-        <span className="spine-label font-book text-xl leading-none">{romanize(book.number)}</span>
+        {label}
       </Link>
     );
   }
-  // Book 2 (scaffold) — a distinct, scholarly wood-cloth volume (same
-  // pattern, inline custom props). No dust, no lock, no progress: it is a
-  // real book whose content is arriving. Opens the shell on this shelf page.
-  spineStyle["--spine-a"] = "var(--color-wood-400)";
-  spineStyle["--spine-b"] = "var(--color-wood-700)";
-  spineStyle["--spine-label"] = "var(--color-cream-50)";
+  // Scaffold volumes — real books whose content is arriving, each in its own
+  // distinct scholarly cloth. No dust, no lock, no progress. They open their
+  // study rooms on this shelf page (?book=N).
+  if (book.kind === "original") {
+    // The original — deep green cloth, distinct from both Henle tomes (the
+    // emerald tones the explore spines already use), gold serif numeral.
+    spineStyle["--spine-a"] = "var(--color-emerald-800)";
+    spineStyle["--spine-b"] = "var(--color-emerald-900)";
+    spineStyle["--spine-label"] = "var(--color-gold-300)";
+  } else {
+    // Book 2 (textbook scaffold) — a scholarly wood-cloth volume.
+    spineStyle["--spine-a"] = "var(--color-wood-400)";
+    spineStyle["--spine-b"] = "var(--color-wood-700)";
+    spineStyle["--spine-label"] = "var(--color-cream-50)";
+  }
   return (
     <Link
       to="/shelf/$language"
@@ -139,9 +163,9 @@ function ShelfBookSpine({ book, ribbon }: { book: ShelfBook; ribbon: RibbonTone 
       search={{ book: book.number }}
       aria-label={`Book ${romanize(book.number)} · ${book.title} — ${book.subtitle}`}
       style={spineStyle as CSSProperties}
-      className="spine spine-henle relative flex flex-col items-center pb-2 pt-3 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+      className={common}
     >
-      <span className="spine-label font-book text-xl leading-none">{romanize(book.number)}</span>
+      {label}
     </Link>
   );
 }

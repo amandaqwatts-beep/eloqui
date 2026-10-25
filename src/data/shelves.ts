@@ -1,9 +1,11 @@
 // Verbum — shelf-book architecture: the SHELVES REGISTRY (shelves.ts)
-// Owner directive (plan rev 73/74, 2026-10-20/21): a SHELF = a LANGUAGE.
+// Owner directive (plan rev 73/74/75, 2026-10-20/21/25): a SHELF = a LANGUAGE.
 // Shelves are first-class; books are first-class beneath them. The Latin
 // shelf is ONE shelf holding sibling books — Henle First Year = Book 1 (the
-// live course), Henle Second Year = Book 2 (the incoming shell). Each new
-// language (Japanese, Biblical Hebrew, Biblical Greek…) gets its own shelf.
+// live course), Henle Second Year = Book 2 (the incoming shell), Caesar's
+// Gallic War = Book 3 (the first ORIGINAL — a work standing beside the
+// textbooks). Each new language (Japanese, Biblical Hebrew, Biblical
+// Greek…) gets its own shelf.
 //
 // This file is PURE DATA + pure helpers — no React, no storage, no lesson
 // content. The existing Latin 1 course (latinLessons.ts + bookLessons.ts +
@@ -17,9 +19,17 @@
 
 export type ShelfBookStatus = "live" | "scaffold";
 
+/**
+ * What kind of book this is (plan rev 75, owner 2026-10-25): textbooks are
+ * courses (Henle First/Second Year); originals are the works themselves —
+ * raw or adapted, read in their own book (Caesar's Gallic War first).
+ * Data only; the shelf may quietly label the kind on a caption, nothing more.
+ */
+export type ShelfBookKind = "textbook" | "original";
+
 /** One physical book standing on a language shelf. */
 export interface ShelfBook {
-  /** Stable book key — e.g. "latin-1", "latin-2". Unique across all shelves. */
+  /** Stable book key — e.g. "latin-1", "latin-2", "latin-gallic-war". Unique across all shelves. */
   bookKey: string;
   /** Position on the shelf (1-based). Book 1 = Henle FY, Book 2 = Henle SY. */
   number: number;
@@ -29,6 +39,8 @@ export interface ShelfBook {
   source: string;
   /** "live" = the book opens its existing course; "scaffold" = structure only. */
   status: ShelfBookStatus;
+  /** Course or original (plan rev 75): the shelf marks the difference in its captions. */
+  kind: ShelfBookKind;
   /**
    * Where the book opens. Book 1 points at the EXISTING Latin 1 route (the
    * full lesson menu); Book 2 points at the two-path shell on the shelf page.
@@ -50,9 +62,10 @@ export interface LanguageShelf {
 }
 
 /**
- * The shelf registry. Today: one shelf (Latin) with two sibling books.
- * Add a language's shelf here when its track opens (Japanese next in the
- * flowplan); the languages hub re-points automatically via shelfForLanguage.
+ * The shelf registry. Today: one shelf (Latin) with three sibling books —
+ * two Henle textbooks and the first original. Add a language's shelf here
+ * when its track opens (Japanese next in the flowplan); the languages hub
+ * re-points automatically via shelfForLanguage.
  */
 export const SHELVES: LanguageShelf[] = [
   {
@@ -67,6 +80,7 @@ export const SHELVES: LanguageShelf[] = [
         subtitle: "The complete first-year course — 42 Henle lessons, 179 chapters live",
         source: "Henle First Year Latin (1943)",
         status: "live",
+        kind: "textbook",
         // The EXISTING Latin 1 entry — untouched by the shelf layer.
         entryPath: "/lessons/latin",
       },
@@ -77,7 +91,22 @@ export const SHELVES: LanguageShelf[] = [
         subtitle: "Structure in place — content lands with the capture pipeline",
         source: "Henle Second Year Latin (1943)",
         status: "scaffold",
+        kind: "textbook",
         entryPath: "/shelf/latin?book=2",
+      },
+      {
+        // The FIRST ORIGINAL (plan rev 75): originals are separate books on
+        // the shelf, not views inside a textbook. Structure only — the
+        // skeleton lives in gallicWar.ts; the PD text lands with the capture
+        // pipeline, adapted for readability as part of the book itself.
+        bookKey: "latin-gallic-war",
+        number: 3,
+        title: "Caesar's Gallic War",
+        subtitle: "The first original — structure in place; the campaign text lands with the capture pipeline",
+        source: "Bellum Gallicum — C. Iulius Caesar (public domain)",
+        status: "scaffold",
+        kind: "original",
+        entryPath: "/shelf/latin?book=3",
       },
     ],
   },

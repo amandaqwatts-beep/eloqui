@@ -13,9 +13,10 @@
 //     one — pure First Year review while the reading ramps up. Both reading
 //     paths share this spine.
 //   • TWO READING PATHS: Path 1 = the book's own adapted Caesar stories
-//     (Part II) as designed. Path 2 = all the Caesar in order — the raw
-//     account, adapted for readability, harder because LONGER. Students pick
-//     their difficulty; both paths share the Exercises 1–16 spine.
+//     (Part II) as designed. Path 2 = all the Caesar in order — read in the
+//     ORIGINAL'S OWN BOOK (Caesar's Gallic War, Book 3 on this shelf) as
+//     companion reading, harder because LONGER. Students pick their
+//     difficulty; both paths share the Exercises 1–16 spine.
 //   • Provenance: the owner's copy is a post-1952 printing; the PD-1943 text
 //     stays the structural spine. Folio numbers below are the book's own.
 
@@ -204,6 +205,13 @@ export interface Latin2Path {
   difficulty: string;
   /** What the path opens with, once content lands. */
   opensWith: string;
+  /**
+   * The companion-reading bridge (plan rev 75, owner 2026-10-25): Path 2
+   * reads the full campaign in the ORIGINAL'S OWN BOOK on this shelf, not
+   * inside this textbook. Points at the shelf book by bookKey. Path 1 stays
+   * inside Book 2 — no bridge.
+   */
+  bridgesTo?: { bookKey: string; label: string };
 }
 
 export const LATIN2_PATHS: Latin2Path[] = [
@@ -219,9 +227,10 @@ export const LATIN2_PATHS: Latin2Path[] = [
     id: "caesar",
     title: "All the Caesar, in Order",
     description:
-      "Caesar's own account read in sequence, adapted for readability — the same ground as the book's stories, but the full campaign rather than the book's selection.",
-    difficulty: "Harder — not denser, just longer: the whole Caesar in order.",
-    opensWith: "The Gallic War from the beginning (capture pending)",
+      "Caesar's own account read in sequence, as companion reading to the exercises. The full campaign is read in the original's own book on this shelf — Caesar's Gallic War (Book III) — adapted for readability as part of that book.",
+    difficulty: "Harder — not denser, just longer: the whole campaign, in order.",
+    opensWith: "The Gallic War from the beginning — in Caesar's Gallic War (Book III), capture pending",
+    bridgesTo: { bookKey: "latin-gallic-war", label: "Caesar's Gallic War — Book III on this shelf" },
   },
 ];
 

@@ -8,7 +8,8 @@
  *
  * Guards:
  *   1. The shelf registry is enumerable and well-formed (shelf = language).
- *   2. The Latin shelf holds EXACTLY Books 1+2 as siblings (plan rev 73).
+ *   2. The Latin shelf holds EXACTLY Books 1+2+3 as siblings (plan rev
+ *      73/75) — two Henle textbooks and the first original.
  *   3. Book 1's wiring is unchanged — the registry re-parents ABOVE the
  *      existing course without touching its internals (latinLessons array
  *      order, bookLessons mapping, book 45/H42, subLessonToBook).
@@ -16,6 +17,9 @@
  *      folio map, all awaiting-capture, no lesson/exercise data anywhere).
  *   5. The per-path progress seam stores a choice honestly and never
  *      fabricates progress.
+ *   6. The first original — the Gallic War skeleton is structure-not-content
+ *      (8 books, section anchors only, zero content keys), and the shelf's
+ *      original bookKey resolves to it.
  */
 import {
   SHELVES,
@@ -38,6 +42,12 @@ import {
   BOOK2_PROGRESS_KEY,
   type StorageLike,
 } from "~/lib/book2Progress";
+import {
+  GALLIC_WAR_META,
+  GALLIC_WAR_STRUCTURE,
+  gallicWarSection,
+  gallicWarSectionIds,
+} from "./gallicWar";
 
 let passed = 0;
 let failed = 0;
@@ -92,15 +102,15 @@ test("every shelf maps to a real language; book keys are globally unique", () =>
   }
 });
 
-// ── 2. The Latin shelf: exactly Books 1+2 as siblings (plan rev 73) ──────
+// ── 2. The Latin shelf: exactly Books 1+2+3 as siblings (plan rev 73/75) ─
 
-test("the Latin shelf has exactly two sibling books — Henle FY = Book 1, Henle SY = Book 2", () => {
+test("the Latin shelf has exactly three sibling books — Henle FY, Henle SY, and the first original", () => {
   const latin = shelfForLanguage("latin");
   ok(latin !== undefined, "no Latin shelf");
   const shelf = latin as LanguageShelf;
   eq(shelf.shelfKey, "latin");
-  eq(shelf.books.length, 2, "the Latin shelf holds exactly Book 1 and Book 2");
-  const [b1, b2] = shelf.books;
+  eq(shelf.books.length, 3, "the Latin shelf holds exactly Books 1, 2, and 3");
+  const [b1, b2, b3] = shelf.books;
   eq(b1.number, 1);
   eq(b1.title, "Henle First Year Latin");
   eq(b1.status, "live");
@@ -109,6 +119,17 @@ test("the Latin shelf has exactly two sibling books — Henle FY = Book 1, Henle
   eq(b2.title, "Henle Second Year Latin");
   eq(b2.status, "scaffold");
   eq(b2.entryPath, "/shelf/latin?book=2");
+  // Book kinds (plan rev 75): the Henle volumes are courses — textbooks;
+  // the Gallic War is the shelf's first ORIGINAL.
+  eq(b1.kind, "textbook");
+  eq(b2.kind, "textbook");
+  eq(b3.number, 3);
+  eq(b3.title, "Caesar's Gallic War");
+  eq(b3.kind, "original");
+  eq(b3.status, "scaffold", "the original is scaffold until the capture pipeline lands its text");
+  eq(b3.entryPath, "/shelf/latin?book=3");
+  ok(b3.source.includes("Bellum Gallicum"), "the original must cite the Bellum Gallicum (provenance, not marketing)");
+  ok(!b3.source.includes("1943"), "the original is not a Henle volume — its source line must not claim one");
 });
 
 test("Book 2 is a real book on the shelf — present and openable, not dusted or locked", () => {
@@ -205,6 +226,29 @@ test("both reading paths are defined and honestly framed (plan rev 74)", () => {
   }
 });
 
+test("Path 2 is the companion-reading bridge to the original (plan rev 75)", () => {
+  const book = LATIN2_PATHS.find((p) => p.id === "book");
+  const caesar = LATIN2_PATHS.find((p) => p.id === "caesar");
+  ok(book !== undefined && caesar !== undefined, "both paths must exist");
+  // Path 1 stays inside Book 2 — no bridge.
+  eq((book as NonNullable<typeof book>).bridgesTo, undefined, "Path 1 must not carry a bridge");
+  // Path 2 points at the original's own book on the Latin shelf.
+  const bridge = (caesar as NonNullable<typeof caesar>).bridgesTo;
+  ok(bridge !== undefined, "Path 2 must carry the companion-reading bridge");
+  const br = bridge as NonNullable<typeof bridge>;
+  eq(br.bookKey, "latin-gallic-war");
+  const bridgeBook = shelfForLanguage("latin")?.books.find((b) => b.bookKey === br.bookKey);
+  ok(bridgeBook !== undefined, "the bridge's book must stand on the Latin shelf");
+  eq((bridgeBook as NonNullable<typeof bridgeBook>).kind, "original");
+  eq((bridgeBook as NonNullable<typeof bridgeBook>).number, 3);
+  ok(br.label.length > 0, "the bridge must carry a label for the shelf line");
+  // The bridge is a preference, not a gate: the path remains switchable and
+  // the shared spine framing is untouched.
+  const caesarPath = caesar as NonNullable<typeof caesar>;
+  ok(caesarPath.description.includes("companion"), "Path 2's copy must frame the reading as companion reading");
+  ok(caesarPath.description.includes("own book"), "Path 2's copy must say the campaign is read in the original's own book");
+});
+
 // ── 5. The per-path progress seam: honest, storage-injectable ────────────
 
 test("path choice persists to storage and loads back", () => {
@@ -228,6 +272,57 @@ test("corrupt or hostile storage never throws and never fabricates", () => {
     [BOOK2_PROGRESS_KEY]: JSON.stringify({ path: "book", completedSectionIds: ["ok", 5, null] }),
   }));
   eq(mixed.completedSectionIds, ["ok"], "string ids pass through; the rest are dropped");
+});
+
+// ── 6. The first original — Caesar's Gallic War (Book 3, plan rev 75) ────
+
+test("the Gallic War skeleton is EXACTLY the received 8 books, in order", () => {
+  eq(GALLIC_WAR_STRUCTURE.length, 8);
+  eq(GALLIC_WAR_STRUCTURE.map((p) => p.id), [
+    "gw-book-1",
+    "gw-book-2",
+    "gw-book-3",
+    "gw-book-4",
+    "gw-book-5",
+    "gw-book-6",
+    "gw-book-7",
+    "gw-book-8",
+  ]);
+  eq(GALLIC_WAR_STRUCTURE.map((p) => p.book), [1, 2, 3, 4, 5, 6, 7, 8]);
+  // The standard chapter enumeration of the received text (wayfinding; the
+  // capture pipeline verifies against the PD source before content lands).
+  eq(GALLIC_WAR_STRUCTURE.map((p) => p.chapters), [54, 35, 29, 38, 58, 44, 90, 55]);
+  ok(GALLIC_WAR_STRUCTURE[7].subtitle.includes("Hirtius"), "Book VIII must be honestly framed as Hirtius' supplement");
+});
+
+test("the Gallic War skeleton is structure, NOT content — zero content keys", () => {
+  const ids = gallicWarSectionIds();
+  ok(ids.length === new Set(ids).size, "section id collision inside the Gallic War skeleton");
+  for (const part of GALLIC_WAR_STRUCTURE) {
+    ok(part.sections.length >= 2, `part ${part.id} has no section anchors to hang content on`);
+    for (const section of part.sections) {
+      eq(section.status, "awaiting-capture");
+    }
+  }
+  // Pure wayfinding: no node carries exercises, lesson arrays, or Latin text —
+  // not even a sample translation. A JSON walk proves the shape stays lean.
+  const raw = JSON.stringify(GALLIC_WAR_STRUCTURE);
+  for (const banned of ["exercises", "teachingSteps", "vocabulary", "latinText", "translation"]) {
+    ok(!raw.includes(`"${banned}"`), `skeleton carries a "${banned}" key — content leaked into the original`);
+  }
+});
+
+test("the Gallic War content seam resolves; the meta names the shelf book", () => {
+  const found = gallicWarSection("gw-b7-alesia");
+  ok(found !== undefined, "gw-b7-alesia does not resolve");
+  eq((found as NonNullable<typeof found>).part.id, "gw-book-7");
+  eq(gallicWarSection("gw-b9-ghost"), undefined, "invented sections must not resolve");
+  eq(GALLIC_WAR_META.bookKey, "latin-gallic-war");
+  eq(
+    shelfForLanguage("latin")?.books.find((b) => b.kind === "original")?.bookKey,
+    GALLIC_WAR_META.bookKey,
+    "the shelf's original must be exactly the book the Gallic War meta names",
+  );
 });
 
 if (failed > 0) {
