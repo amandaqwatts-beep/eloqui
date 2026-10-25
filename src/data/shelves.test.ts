@@ -8,7 +8,8 @@
  *
  * Guards:
  *   1. The shelf registry is enumerable and well-formed (shelf = language).
- *   2. The Latin shelf holds EXACTLY Books 1+2 as siblings (plan rev 73).
+ *   2. The Latin shelf holds EXACTLY Books 1+2+3 as siblings (plan rev
+ *      73/75) — two Henle textbooks and the first original.
  *   3. Book 1's wiring is unchanged — the registry re-parents ABOVE the
  *      existing course without touching its internals (latinLessons array
  *      order, bookLessons mapping, book 45/H42, subLessonToBook).
@@ -16,6 +17,9 @@
  *      folio map, all awaiting-capture, no lesson/exercise data anywhere).
  *   5. The per-path progress seam stores a choice honestly and never
  *      fabricates progress.
+ *   6. The first original — the Gallic War skeleton is structure-not-content
+ *      (8 books, section anchors only, zero content keys), and the shelf's
+ *      original bookKey resolves to it.
  */
 import {
   SHELVES,
@@ -98,15 +102,15 @@ test("every shelf maps to a real language; book keys are globally unique", () =>
   }
 });
 
-// ── 2. The Latin shelf: exactly Books 1+2 as siblings (plan rev 73) ──────
+// ── 2. The Latin shelf: exactly Books 1+2+3 as siblings (plan rev 73/75) ─
 
-test("the Latin shelf has exactly two sibling books — Henle FY = Book 1, Henle SY = Book 2", () => {
+test("the Latin shelf has exactly three sibling books — Henle FY, Henle SY, and the first original", () => {
   const latin = shelfForLanguage("latin");
   ok(latin !== undefined, "no Latin shelf");
   const shelf = latin as LanguageShelf;
   eq(shelf.shelfKey, "latin");
-  eq(shelf.books.length, 2, "the Latin shelf holds exactly Book 1 and Book 2");
-  const [b1, b2] = shelf.books;
+  eq(shelf.books.length, 3, "the Latin shelf holds exactly Books 1, 2, and 3");
+  const [b1, b2, b3] = shelf.books;
   eq(b1.number, 1);
   eq(b1.title, "Henle First Year Latin");
   eq(b1.status, "live");
@@ -115,9 +119,17 @@ test("the Latin shelf has exactly two sibling books — Henle FY = Book 1, Henle
   eq(b2.title, "Henle Second Year Latin");
   eq(b2.status, "scaffold");
   eq(b2.entryPath, "/shelf/latin?book=2");
-  // Book kinds (plan rev 75): the Henle volumes are courses — textbooks.
+  // Book kinds (plan rev 75): the Henle volumes are courses — textbooks;
+  // the Gallic War is the shelf's first ORIGINAL.
   eq(b1.kind, "textbook");
   eq(b2.kind, "textbook");
+  eq(b3.number, 3);
+  eq(b3.title, "Caesar's Gallic War");
+  eq(b3.kind, "original");
+  eq(b3.status, "scaffold", "the original is scaffold until the capture pipeline lands its text");
+  eq(b3.entryPath, "/shelf/latin?book=3");
+  ok(b3.source.includes("Bellum Gallicum"), "the original must cite the Bellum Gallicum (provenance, not marketing)");
+  ok(!b3.source.includes("1943"), "the original is not a Henle volume — its source line must not claim one");
 });
 
 test("Book 2 is a real book on the shelf — present and openable, not dusted or locked", () => {
@@ -283,6 +295,11 @@ test("the Gallic War content seam resolves; the meta names the shelf book", () =
   eq((found as NonNullable<typeof found>).part.id, "gw-book-7");
   eq(gallicWarSection("gw-b9-ghost"), undefined, "invented sections must not resolve");
   eq(GALLIC_WAR_META.bookKey, "latin-gallic-war");
+  eq(
+    shelfForLanguage("latin")?.books.find((b) => b.kind === "original")?.bookKey,
+    GALLIC_WAR_META.bookKey,
+    "the shelf's original must be exactly the book the Gallic War meta names",
+  );
 });
 
 if (failed > 0) {

@@ -1,9 +1,11 @@
 // Verbum — shelf-book architecture: the SHELVES REGISTRY (shelves.ts)
-// Owner directive (plan rev 73/74, 2026-10-20/21): a SHELF = a LANGUAGE.
+// Owner directive (plan rev 73/74/75, 2026-10-20/21/25): a SHELF = a LANGUAGE.
 // Shelves are first-class; books are first-class beneath them. The Latin
 // shelf is ONE shelf holding sibling books — Henle First Year = Book 1 (the
-// live course), Henle Second Year = Book 2 (the incoming shell). Each new
-// language (Japanese, Biblical Hebrew, Biblical Greek…) gets its own shelf.
+// live course), Henle Second Year = Book 2 (the incoming shell), Caesar's
+// Gallic War = Book 3 (the first ORIGINAL — a work standing beside the
+// textbooks). Each new language (Japanese, Biblical Hebrew, Biblical
+// Greek…) gets its own shelf.
 //
 // This file is PURE DATA + pure helpers — no React, no storage, no lesson
 // content. The existing Latin 1 course (latinLessons.ts + bookLessons.ts +
@@ -60,9 +62,10 @@ export interface LanguageShelf {
 }
 
 /**
- * The shelf registry. Today: one shelf (Latin) with two sibling books.
- * Add a language's shelf here when its track opens (Japanese next in the
- * flowplan); the languages hub re-points automatically via shelfForLanguage.
+ * The shelf registry. Today: one shelf (Latin) with three sibling books —
+ * two Henle textbooks and the first original. Add a language's shelf here
+ * when its track opens (Japanese next in the flowplan); the languages hub
+ * re-points automatically via shelfForLanguage.
  */
 export const SHELVES: LanguageShelf[] = [
   {
@@ -90,6 +93,20 @@ export const SHELVES: LanguageShelf[] = [
         status: "scaffold",
         kind: "textbook",
         entryPath: "/shelf/latin?book=2",
+      },
+      {
+        // The FIRST ORIGINAL (plan rev 75): originals are separate books on
+        // the shelf, not views inside a textbook. Structure only — the
+        // skeleton lives in gallicWar.ts; the PD text lands with the capture
+        // pipeline, adapted for readability as part of the book itself.
+        bookKey: "latin-gallic-war",
+        number: 3,
+        title: "Caesar's Gallic War",
+        subtitle: "The first original — structure in place; the campaign text lands with the capture pipeline",
+        source: "Bellum Gallicum — C. Iulius Caesar (public domain)",
+        status: "scaffold",
+        kind: "original",
+        entryPath: "/shelf/latin?book=3",
       },
     ],
   },
