@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { LANGUAGES } from "~/data/languages";
 import { crossLanguageLessons } from "~/data/crossLanguageLessons";
 import { loadProgress } from "~/engine/progress";
+import { shelfForLanguage } from "~/data/shelves";
 
 export const Route = createFileRoute("/languages/")({ component: LanguagesPage });
 
@@ -14,10 +15,20 @@ function LanguagesPage() {
         <p className="mt-3 max-w-xl text-lg text-gray-600">Learn formal and academic languages through focused, interactive practice.</p>
 
         <div className="mt-10 grid gap-5 sm:grid-cols-2">
-          {Object.values(LANGUAGES).map((language) => (
+          {Object.values(LANGUAGES).map((language) => {
+            // Shelf-book architecture (plan rev 73): a language WITH a shelf
+            // enters through its shelf (books beneath it); languages without
+            // one keep their direct course entry, unchanged.
+            const shelf = shelfForLanguage(language.id);
+            return (
             <Link
               key={language.id}
-              to={language.hasPlacement ? `/lessons/${language.id}` as "/lessons/latin" | "/lessons/english" : "/languages"}
+              to={shelf
+                ? "/shelf/$language"
+                : language.hasPlacement
+                  ? `/lessons/${language.id}` as "/lessons/latin" | "/lessons/english"
+                  : "/languages"}
+              {...(shelf ? { params: { language: language.id } } : {})}
               className="rounded-2xl border border-cream-300 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
             >
               <div className="flex items-center justify-between">
@@ -34,7 +45,8 @@ function LanguagesPage() {
                 </span>
               )}
             </Link>
-          ))}
+            );
+          })}
 
           {/* 🔗 Cross-Language Connections hub card (cross lessons 1007/1008) */}
           <Link
