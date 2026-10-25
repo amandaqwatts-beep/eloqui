@@ -226,6 +226,29 @@ test("both reading paths are defined and honestly framed (plan rev 74)", () => {
   }
 });
 
+test("Path 2 is the companion-reading bridge to the original (plan rev 75)", () => {
+  const book = LATIN2_PATHS.find((p) => p.id === "book");
+  const caesar = LATIN2_PATHS.find((p) => p.id === "caesar");
+  ok(book !== undefined && caesar !== undefined, "both paths must exist");
+  // Path 1 stays inside Book 2 — no bridge.
+  eq((book as NonNullable<typeof book>).bridgesTo, undefined, "Path 1 must not carry a bridge");
+  // Path 2 points at the original's own book on the Latin shelf.
+  const bridge = (caesar as NonNullable<typeof caesar>).bridgesTo;
+  ok(bridge !== undefined, "Path 2 must carry the companion-reading bridge");
+  const br = bridge as NonNullable<typeof bridge>;
+  eq(br.bookKey, "latin-gallic-war");
+  const bridgeBook = shelfForLanguage("latin")?.books.find((b) => b.bookKey === br.bookKey);
+  ok(bridgeBook !== undefined, "the bridge's book must stand on the Latin shelf");
+  eq((bridgeBook as NonNullable<typeof bridgeBook>).kind, "original");
+  eq((bridgeBook as NonNullable<typeof bridgeBook>).number, 3);
+  ok(br.label.length > 0, "the bridge must carry a label for the shelf line");
+  // The bridge is a preference, not a gate: the path remains switchable and
+  // the shared spine framing is untouched.
+  const caesarPath = caesar as NonNullable<typeof caesar>;
+  ok(caesarPath.description.includes("companion"), "Path 2's copy must frame the reading as companion reading");
+  ok(caesarPath.description.includes("own book"), "Path 2's copy must say the campaign is read in the original's own book");
+});
+
 // ── 5. The per-path progress seam: honest, storage-injectable ────────────
 
 test("path choice persists to storage and loads back", () => {

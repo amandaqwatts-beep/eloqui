@@ -4,9 +4,16 @@
  * Owner directive (plan rev 74): TWO READING PATHS. When a student opens
  * Book 2 they choose — Path 1 "Follow the Book" (the book's own adapted
  * Caesar stories, Part II) or Path 2 "All the Caesar, in order" (the full
- * account read in sequence, adapted for readability; harder because LONGER,
- * not denser). Both paths share the Exercises 1–16 review spine, which runs
- * simultaneous with the reading from day one.
+ * account read in sequence; harder because LONGER, not denser). Both paths
+ * share the Exercises 1–16 review spine, which runs simultaneous with the
+ * reading from day one.
+ *
+ * Plan rev 75 (owner 2026-10-25): Path 2 is the COMPANION-READING BRIDGE to
+ * the Caesar's Gallic War original book (Book 3 on this shelf) — the full
+ * campaign is read in the original's own book, adapted for readability as
+ * part of that book. The bridge is data (LATIN2_PATHS[].bridgesTo → shelf
+ * bookKey); the path remains a preference, not a gate, and the E1–16 spine
+ * framing is unchanged.
  *
  * The selector routes to honest empty path views — the reading and exercises
  * land with the capture pipeline, and nothing here pretends otherwise
@@ -62,6 +69,14 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
       .filter((s) => s !== undefined);
   }, []);
 
+  // The companion-reading bridge (plan rev 75): Path 2 reads the campaign in
+  // the original's own book on this shelf. Resolved from the path data by
+  // bookKey — the bridge is data, not a hard-coded link.
+  const bridge = LATIN2_PATHS.find((p) => p.bridgesTo)?.bridgesTo;
+  const bridgeBook = bridge
+    ? shelf.books.find((b) => b.bookKey === bridge.bookKey)
+    : undefined;
+
   return (
     <main className="library-wall min-h-screen px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl">
@@ -99,37 +114,56 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
             </p>
 
             {showSelector ? (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {LATIN2_PATHS.map((path, i) => (
-                  <button
-                    key={path.id}
-                    type="button"
-                    onClick={() => choose(path.id)}
-                    aria-label={`Choose Path ${i + 1}: ${path.title}`}
-                    className="book-panel p-4 text-left transition hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
-                  >
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-wood-700">
-                      Path {i + 1}
-                    </p>
-                    <h3 className="paper-title mt-1 text-base">{path.title}</h3>
-                    <p className="mt-2 text-xs leading-relaxed text-gray-700">
-                      {path.description}
-                    </p>
-                    <p className="font-book mt-2 text-[11px] italic text-gray-500">
-                      {path.difficulty}
-                    </p>
-                    <p className="mt-3 text-xs font-bold text-burgundy-700">
-                      Choose this path →
-                    </p>
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {LATIN2_PATHS.map((path, i) => (
+                    <button
+                      key={path.id}
+                      type="button"
+                      onClick={() => choose(path.id)}
+                      aria-label={`Choose Path ${i + 1}: ${path.title}`}
+                      className="book-panel p-4 text-left transition hover:brightness-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2"
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-wood-700">
+                        Path {i + 1}
+                      </p>
+                      <h3 className="paper-title mt-1 text-base">{path.title}</h3>
+                      <p className="mt-2 text-xs leading-relaxed text-gray-700">
+                        {path.description}
+                      </p>
+                      <p className="font-book mt-2 text-[11px] italic text-gray-500">
+                        {path.difficulty}
+                      </p>
+                      <p className="mt-3 text-xs font-bold text-burgundy-700">
+                        Choose this path →
+                      </p>
+                    </button>
+                  ))}
+                </div>
+                {bridge && bridgeBook && (
+                  // The companion-reading bridge (plan rev 75) — Path 2's
+                  // campaign lives in the original's own book, on this shelf.
+                  <p className="font-book mt-3 text-xs italic text-gray-500">
+                    Path 2 reads the campaign in its own book:{" "}
+                    <Link
+                      to="/shelf/$language"
+                      params={{ language: shelf.languageId }}
+                      search={{ book: bridgeBook.number }}
+                      className="font-semibold not-italic text-burgundy-700 transition hover:text-burgundy-600"
+                    >
+                      {bridgeBook.title} — Book {romanBook(bridgeBook.number)} on
+                      this shelf →
+                    </Link>
+                  </p>
+                )}
+              </>
             ) : activePath ? (
               <PathView
                 pathId={activePath.id}
                 title={activePath.title}
                 description={activePath.description}
                 opensWith={activePath.opensWith}
+                bridgeBook={activePath.bridgesTo ? bridgeBook : undefined}
                 spineRows={spineRows}
                 progress={progress}
                 onChangePath={() => setChoosing(true)}
@@ -172,13 +206,15 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
 }
 
 /** The honest per-path view: the path's reading outline (Path 1 lists the
-    book's own stories; Path 2 names its course), the shared exercises spine,
-    and a truthful progress line. Everything is awaiting-capture. */
+    book's own stories; Path 2 bridges to the original's own book), the
+    shared exercises spine, and a truthful progress line. Everything is
+    awaiting-capture. */
 function PathView({
   pathId,
   title,
   description,
   opensWith,
+  bridgeBook,
   spineRows,
   progress,
   onChangePath,
@@ -187,14 +223,16 @@ function PathView({
   title: string;
   description: string;
   opensWith: string;
+  /** The companion-reading target (Path 2 only) — the original on this shelf. */
+  bridgeBook?: LanguageShelf["books"][number];
   spineRows: { id: string; title: string; folio: number | null }[];
   progress: Latin2PathProgress;
   onChangePath: () => void;
 }) {
   const pathNo = pathId === "book" ? 1 : 2;
   // Path 1's reading outline IS Part II — the book's eleven stories. Path 2
-  // has no section rows until the raw-Caesar sourcing lands; it names its
-  // course honestly instead.
+  // reads the campaign in the original's own book (its bridge target); its
+  // chapters land here once the text is sourced, adapted, and captured.
   const part2 = LATIN2_STRUCTURE.find((p) => p.id === "part-2");
   const storyRows =
     pathId === "book" ? (part2?.sections ?? []) : [];
@@ -253,12 +291,28 @@ function PathView({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-xs leading-relaxed text-gray-600">
-            The longer road: the Gallic War read forward from the beginning,
-            adapted for readability, continuing toward the Civil War arc.
-            Harder not because it is denser — because it is longer. Its
-            chapters land here once the text is sourced and adapted.
-          </p>
+          <div className="mt-2 text-xs leading-relaxed text-gray-600">
+            <p>
+              The longer road: the Gallic War read forward from the beginning —
+              harder not because it is denser, but because it is longer. The
+              full campaign is read in the original's own book on this shelf,
+              adapted for readability as part of that book.
+            </p>
+            {bridgeBook && (
+              <Link
+                to="/shelf/$language"
+                params={{ language: "latin" }}
+                search={{ book: bridgeBook.number }}
+                className="font-book mt-3 inline-block text-xs font-semibold not-italic text-burgundy-700 transition hover:text-burgundy-600"
+              >
+                Read {bridgeBook.title} — Book {romanBook(bridgeBook.number)} on the shelf →
+              </Link>
+            )}
+            <p className="mt-1 text-gray-500">
+              Its chapters land with the capture pipeline; the path choice here
+              stays a preference, not a gate.
+            </p>
+          </div>
         )}
       </div>
 
@@ -330,4 +384,9 @@ function PartBlock({
       </p>
     </div>
   );
+}
+
+/** Roman numeral for a shelf book number (spine/caption style). */
+function romanBook(n: number): string {
+  return ["I", "II", "III", "IV", "V"][n - 1] ?? String(n);
 }
