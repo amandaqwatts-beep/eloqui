@@ -34,6 +34,8 @@ import {
   LATIN2_STRUCTURE,
   LATIN2_PATHS,
   LATIN2_EXERCISES_SPINE,
+  LATIN2_SECTION_EXERCISES,
+  LATIN2_SECTION_GRAMMAR_REFS,
   latin2ReadingLadder,
 } from "./latin2";
 import {
@@ -203,10 +205,21 @@ test("Part IV's spine is Exercises 1–16 (pp. 305–394), the ladder follows", 
   eq(latin2ReadingLadder()[0].folio, 395, "the Caesar-reading ladder starts at Lesson 17, p. 395");
 });
 
-test("every structural node is awaiting-capture — no fabricated content", () => {
+test("every structural node is honest — captured sections carry real captured exercises", () => {
+  const capturedIds = Object.keys(LATIN2_SECTION_EXERCISES);
   for (const part of LATIN2_STRUCTURE) {
     for (const section of part.sections) {
-      eq(section.status, "awaiting-capture");
+      if (section.status === "awaiting-capture") {
+        ok(!capturedIds.includes(section.id), `section ${section.id} is awaiting-capture but has exercise content`);
+      } else {
+        eq(section.status, "captured");
+        const items = LATIN2_SECTION_EXERCISES[section.id];
+        ok(Array.isArray(items) && items.length > 0, `captured section ${section.id} has no exercises attached`);
+        ok((LATIN2_SECTION_GRAMMAR_REFS[section.id]?.length ?? 0) > 0, `captured section ${section.id} missing grammarRefs at birth`);
+        for (const item of items) {
+          ok(String(item.id).startsWith("sy-"), `exercise ${item.id} is not namespaced sy-`);
+        }
+      }
     }
   }
   // The skeleton is pure wayfinding: no node carries exercises, lesson
