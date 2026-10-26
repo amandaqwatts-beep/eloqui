@@ -75,6 +75,34 @@ export function loadBook2Progress(storage?: StorageLike): Latin2PathProgress {
   }
 }
 
+/** Record a completed SECTION (idempotent upsert by section id — the capture
+ *  pipeline's content modules own the semantics; StrictMode-safe like the
+ *  other record* helpers). No-op without storage; load-modify-save so it never
+ *  clobbers a concurrent path choice. */
+export function saveBook2SectionCompletion(
+  sectionId: string,
+  storage?: StorageLike,
+): Latin2PathProgress {
+  const store = storage ?? defaultStorage();
+  const prev = loadBook2Progress(store ?? undefined);
+  const completedSectionIds = prev.completedSectionIds.includes(sectionId)
+    ? prev.completedSectionIds
+    : [...prev.completedSectionIds, sectionId];
+  const next: Latin2PathProgress = {
+    ...prev,
+    completedSectionIds,
+    updatedAt: new Date().toISOString(),
+  };
+  if (store) {
+    try {
+      store.setItem(BOOK2_PROGRESS_KEY, JSON.stringify(next));
+    } catch {
+      /* storage unavailable — the completion stays in-session */
+    }
+  }
+  return next;
+}
+
 /** Persist the student's path choice (idempotent). No-op without storage. */
 export function saveBook2PathChoice(
   path: Latin2PathId,

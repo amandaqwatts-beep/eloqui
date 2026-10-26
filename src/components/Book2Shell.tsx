@@ -15,33 +15,60 @@
  * bookKey); the path remains a preference, not a gate, and the E1–16 spine
  * framing is unchanged.
  *
- * The selector routes to honest empty path views — the reading and exercises
- * land with the capture pipeline, and nothing here pretends otherwise
- * (Minimalist Scholarly, rev 72: no badges, no artifice, no fake progress).
- * The path CHOICE persists via book2Progress.ts; the per-path progress record
- * is the seam the content pipeline fills later.
- *
- * Below the selector, the book's STRUCTURAL skeleton renders from
- * latin2-folio-map.md — Parts I–IV + end matter with folio anchors, every
- * node awaiting-capture. STRUCTURE, NOT CONTENT.
+ * Captured sections open (screens dept, 2026-10-25): a section the capture
+ * pipeline has marked "captured" (with exercises in LATIN2_SECTION_EXERCISES)
+ * is openable — the row reads "Captured — open to begin" and opens the
+ * section's exercises through the EXISTING lesson/exercise flow
+ * (Book2SectionSession → ExerciseScreen, the same renderer Book 1's route
+ * uses). Awaiting-capture rows stay honest-empty ("Awaiting capture"). Every
+ * section's grammar links (LATIN2_SECTION_GRAMMAR_REFS) surface on the
+ * section opener and resolve into the same GrammarDrawer Book 1's menu hosts.
+ * The four-phase mastery loop is NOT forced onto these sections: it generates
+ * drills from teaching steps/vocabulary, which a captured exercise-only
+ * section deliberately does not carry — running it there dead-ends at
+ * "nothing to drill". The single-pass exercise flow over the book's own
+ * exercises is the honest run; completion records into the Book 2 progress
+ * seam (book2Progress.completedSectionIds). No streaks, no hearts, no
+ * fabricated progress (Minimalist Scholarly, rev 72).
  */
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { LanguageShelf } from "~/data/shelves";
 import {
   LATIN2_EXERCISES_SPINE,
   LATIN2_PATHS,
   LATIN2_STRUCTURE,
   type Latin2PathId,
+  type Latin2Section,
 } from "~/data/latin2";
+import { GRAMMAR_INDEX } from "~/data/grammarIndex";
+import { useSettings } from "~/engine/settings";
 import {
   loadBook2Progress,
   saveBook2PathChoice,
+  saveBook2SectionCompletion,
   type Latin2PathProgress,
 } from "~/lib/book2Progress";
+import {
+  buildLatin2SectionLesson,
+  latin2SectionContext,
+  latin2SectionGrammarTopics,
+  latin2SectionLessonNumber,
+} from "~/lib/latin2Sections";
+import GrammarDrawer from "~/components/GrammarDrawer";
+import Book2SectionSession, {
+  type Book2SessionPhase,
+} from "~/components/Book2SectionSession";
 
 interface Book2ShellProps {
   shelf: LanguageShelf;
+}
+
+/** One open section: its exercises run through Book2SectionSession. */
+interface Book2Session {
+  sectionId: string;
+  results: boolean[];
+  phase: Book2SessionPhase;
 }
 
 export default function Book2Shell({ shelf }: Book2ShellProps) {
@@ -55,6 +82,51 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
   const showSelector = choosing ?? progress.path == null;
   const activePath = LATIN2_PATHS.find((p) => p.id === progress.path) ?? null;
 
+  // Pronunciation mode (shared student setting — the same key Book 1 uses).
+  const settingsEngine = useSettings("latin");
+
+  // The open section (null = the book page). The shell owns the state; the
+  // session screens are presentational.
+  const [session, setSession] = useState<Book2Session | null>(null);
+
+  // The grammar index drawer — the same drawer Book 1's menu hosts.
+  const [grammarOpen, setGrammarOpen] = useState(false);
+  const [grammarScroll, setGrammarScroll] = useState<{
+    topicId: string;
+    nonce: number;
+  } | null>(null);
+  const navigate = useNavigate();
+
+  const openSection = (sectionId: string) => {
+    // Only genuinely captured, content-bearing sections may open.
+    if (!buildLatin2SectionLesson(sectionId)) return;
+    setSession({ sectionId, results: [], phase: "opener" });
+  };
+
+  const openGrammarTopic = (topicId: string) => {
+    setGrammarScroll({ topicId, nonce: Date.now() });
+    setGrammarOpen(true);
+  };
+
+  const handleExerciseComplete = (correct: boolean) => {
+    if (!session || session.phase !== "running") return;
+    const lesson = buildLatin2SectionLesson(session.sectionId);
+    if (!lesson) {
+      setSession(null);
+      return;
+    }
+    const results = [...session.results, correct];
+    if (results.length >= lesson.exercises.length) {
+      // Honest completion record — the Book 2 progress seam (per-path
+      // record), never a fabricated streak or score.
+      saveBook2SectionCompletion(session.sectionId);
+      setProgress(loadBook2Progress());
+      setSession({ ...session, results, phase: "complete" });
+    } else {
+      setSession({ ...session, results });
+    }
+  };
+
   const choose = (id: Latin2PathId) => {
     setProgress(saveBook2PathChoice(id));
     setChoosing(false);
@@ -66,7 +138,7 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
     if (!part4) return [];
     return LATIN2_EXERCISES_SPINE.sectionIds
       .map((id) => part4.sections.find((s) => s.id === id))
-      .filter((s) => s !== undefined);
+      .filter((s): s is Latin2Section => s !== undefined);
   }, []);
 
   // The companion-reading bridge (plan rev 75): Path 2 reads the campaign in
@@ -76,6 +148,56 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
   const bridgeBook = bridge
     ? shelf.books.find((b) => b.bookKey === bridge.bookKey)
     : undefined;
+
+  // ── An open section replaces the book page until the student backs out ──
+  if (session) {
+    const ctx = latin2SectionContext(session.sectionId);
+    const lesson = buildLatin2SectionLesson(session.sectionId);
+    const lessonNumber = latin2SectionLessonNumber(session.sectionId);
+    if (ctx && lesson && lessonNumber !== null) {
+      return (
+        <>
+          <Book2SectionSession
+            phase={session.phase}
+            section={ctx.section}
+            part={ctx.part}
+            lesson={lesson}
+            lessonNumber={lessonNumber}
+            grammarTopics={latin2SectionGrammarTopics(session.sectionId)}
+            onOpenGrammarTopic={openGrammarTopic}
+            pronMode={settingsEngine.settings.pronMode}
+            results={session.results}
+            onBegin={() =>
+              setSession((prev) =>
+                prev ? { ...prev, phase: "running", results: [] } : prev,
+              )
+            }
+            onExerciseComplete={handleExerciseComplete}
+            onExit={() => setSession(null)}
+            onRestart={() =>
+              setSession((prev) =>
+                prev ? { ...prev, results: [], phase: "running" } : prev,
+              )
+            }
+          />
+          <GrammarDrawer
+            open={grammarOpen}
+            onClose={() => setGrammarOpen(false)}
+            topics={GRAMMAR_INDEX}
+            onOpenLesson={() => {
+              // A topic's related lessons are Book 1 chapters — hand off to
+              // the Latin 1 course menu.
+              setGrammarOpen(false);
+              void navigate({ to: "/lessons/latin" });
+            }}
+            scrollTo={grammarScroll}
+          />
+        </>
+      );
+    }
+    // Defensive: a session whose data vanished falls back to the book page.
+    setSession(null);
+  }
 
   return (
     <main className="library-wall min-h-screen px-4 py-10 sm:px-6">
@@ -167,6 +289,7 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
                 spineRows={spineRows}
                 progress={progress}
                 onChangePath={() => setChoosing(true)}
+                onOpenSection={openSection}
               />
             ) : null}
           </section>
@@ -186,16 +309,17 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
             </section>
           )}
 
-          {/* ── The structural skeleton — structure, not content ── */}
+          {/* ── The structural skeleton — structure, with captured sections open ── */}
           <section className="mt-8" aria-label="The book's structure">
             <h2 className="paper-title text-lg">The Book's Structure</h2>
             <p className="mt-1 text-xs text-gray-500">
-              Parts and sections exactly as the book lays them out — the
-              capture pipeline fills them in book order.
+              Parts and sections exactly as the book lays them out — captured
+              sections open their exercises; the capture pipeline fills the
+              rest in book order.
             </p>
             <div className="mt-4 space-y-4">
               {LATIN2_STRUCTURE.map((part) => (
-                <PartBlock key={part.id} part={part} />
+                <PartBlock key={part.id} part={part} onOpenSection={openSection} />
               ))}
             </div>
           </section>
@@ -207,8 +331,8 @@ export default function Book2Shell({ shelf }: Book2ShellProps) {
 
 /** The honest per-path view: the path's reading outline (Path 1 lists the
     book's own stories; Path 2 bridges to the original's own book), the
-    shared exercises spine, and a truthful progress line. Everything is
-    awaiting-capture. */
+    shared exercises spine, and a truthful progress line. The spine's
+    captured rows are openable — identically on both paths. */
 function PathView({
   pathId,
   title,
@@ -218,6 +342,7 @@ function PathView({
   spineRows,
   progress,
   onChangePath,
+  onOpenSection,
 }: {
   pathId: Latin2PathId;
   title: string;
@@ -225,9 +350,10 @@ function PathView({
   opensWith: string;
   /** The companion-reading target (Path 2 only) — the original on this shelf. */
   bridgeBook?: LanguageShelf["books"][number];
-  spineRows: { id: string; title: string; folio: number | null }[];
+  spineRows: Latin2Section[];
   progress: Latin2PathProgress;
   onChangePath: () => void;
+  onOpenSection: (sectionId: string) => void;
 }) {
   const pathNo = pathId === "book" ? 1 : 2;
   // Path 1's reading outline IS Part II — the book's eleven stories. Path 2
@@ -261,7 +387,7 @@ function PathView({
           order; this view will carry the reading and its exercises as they
           land.
         </p>
-        {/* Per-path progress seam — truthful: nothing recorded yet. */}
+        {/* Per-path progress seam — truthful: only real completions count. */}
         <p className="mt-2 text-xs text-gray-500">
           {progress.completedSectionIds.length > 0
             ? `${progress.completedSectionIds.length} section${progress.completedSectionIds.length === 1 ? "" : "s"} recorded on this path.`
@@ -327,15 +453,11 @@ function PathView({
         </p>
         <ul className="mt-3 space-y-1.5">
           {spineRows.map((section) => (
-            <li
+            <SectionRow
               key={section.id}
-              className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 odd:bg-cream-50/70"
-            >
-              <span className="min-w-0 text-xs text-gray-800">{section.title}</span>
-              <span className="font-book shrink-0 text-[11px] italic text-gray-400">
-                {section.folio != null ? `p. ${section.folio}` : "—"}
-              </span>
-            </li>
+              section={section}
+              onOpen={onOpenSection}
+            />
           ))}
         </ul>
       </div>
@@ -343,14 +465,78 @@ function PathView({
   );
 }
 
+/** One section row. Captured sections are buttons that open their exercises
+    ("Captured — open to begin"); awaiting-capture rows stay honest-empty
+    ("Awaiting capture"). Status reads from LATIN2_STRUCTURE, never a blanket
+    label. */
+function SectionRow({
+  section,
+  onOpen,
+}: {
+  section: Latin2Section;
+  onOpen: (sectionId: string) => void;
+}) {
+  const captured = section.status === "captured";
+  const rowClasses =
+    "flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 odd:bg-cream-50/70";
+  const body = (
+    <>
+      <span className="min-w-0 text-xs text-gray-800">{section.title}</span>
+      <span className="shrink-0 text-right">
+        <span className="font-book block text-[11px] italic text-gray-400">
+          {section.folio != null ? `p. ${section.folio}` : "—"}
+        </span>
+        <span
+          className={`block text-[10px] font-bold uppercase tracking-wider ${
+            captured ? "text-burgundy-600" : "text-gray-400"
+          }`}
+        >
+          {captured ? "Captured — open to begin" : "Awaiting capture"}
+        </span>
+      </span>
+    </>
+  );
+  if (captured) {
+    return (
+      <li className={rowClasses}>
+        <button
+          type="button"
+          onClick={() => onOpen(section.id)}
+          aria-label={`Open ${section.title}`}
+          className="flex w-full items-baseline justify-between gap-3 text-left transition hover:text-burgundy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+        >
+          {body}
+        </button>
+      </li>
+    );
+  }
+  return <li className={rowClasses}>{body}</li>;
+}
+
 /** One part of the book: serif heading, folio span, its sections as quiet
-    rows. Every row is awaiting-capture — stated once per part, not per row. */
+    rows. The footer reads its status from the data — captured counts, not a
+    blanket "all awaiting capture". */
 function PartBlock({
   part,
+  onOpenSection,
 }: {
   part: (typeof LATIN2_STRUCTURE)[number];
+  onOpenSection: (sectionId: string) => void;
 }) {
   const [, end] = part.folioRange;
+  const capturedCount = part.sections.filter(
+    (s) => s.status === "captured",
+  ).length;
+  const awaitingCount = part.sections.length - capturedCount;
+  const statusSummary =
+    capturedCount === 0
+      ? "all awaiting capture"
+      : [
+          `${capturedCount} captured — open to begin`,
+          awaitingCount > 0 ? `${awaitingCount} awaiting capture` : null,
+        ]
+          .filter((s): s is string => s !== null)
+          .join(" · ");
   return (
     <div className="rounded-xl border border-burgundy-100 bg-white/70 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -367,20 +553,16 @@ function PartBlock({
       )}
       <ul className="mt-3 space-y-1.5">
         {part.sections.map((section) => (
-          <li
+          <SectionRow
             key={section.id}
-            className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 odd:bg-cream-50/70"
-          >
-            <span className="min-w-0 text-xs text-gray-800">{section.title}</span>
-            <span className="font-book shrink-0 text-[11px] italic text-gray-400">
-              {section.folio != null ? `p. ${section.folio}` : "—"}
-            </span>
-          </li>
+            section={section}
+            onOpen={onOpenSection}
+          />
         ))}
       </ul>
       <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-        {part.sections.length} section{part.sections.length === 1 ? "" : "s"} ·
-        all awaiting capture
+        {part.sections.length} section{part.sections.length === 1 ? "" : "s"} ·{" "}
+        {statusSummary}
       </p>
     </div>
   );
