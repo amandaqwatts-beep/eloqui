@@ -98,3 +98,56 @@ export function flushBugReports(): void {
   const pending = loadBugReports().filter((r) => r.status !== "sent");
   for (const r of pending) void deliver(r);
 }
+
+// ── Email fallback (FIX-4, owner directive 2026-11-07: "can't users mail
+// you bugs?" — YES). The report pipeline is outage-tolerant (local queue →
+// retry), but while the database host is unreachable nothing leaves the
+// device. The team inbox below is live and swept by the lead every cycle,
+// so every surface that files a report also offers a DB-independent email
+// path. Copy discipline: plain and quiet, no urgency language.
+
+export const BUG_REPORT_EMAIL = "eloqui-fd4501fc@ctomail.io";
+
+/** Client mailto URL limit guard (browser caps vary; keep well under). */
+const MAILTO_MAX_CHARS = 1800;
+
+/**
+ * Build a mailto: URL carrying the report — subject `[Eloqui bug] <screen>`,
+ * body with the description (truncated gracefully if needed) plus the full
+ * captured context (route, screen, lesson, phase, exercise, filed-at).
+ * Pure; the dialog, Settings, and tests share it.
+ */
+export function buildBugMailto(
+  report: Pick<
+    BugReport,
+    "screen" | "lessonId" | "lessonNumber" | "phase" | "exerciseId" | "route" | "description" | "createdAt"
+  > & { appVersion?: string | null },
+): string {
+  const subject = `[Eloqui bug] ${report.screen ?? report.route ?? "report"}`;
+  const contextLines = [
+    `Route: ${report.route ?? "?"}`,
+    `Screen: ${report.screen ?? "?"}`,
+    report.lessonNumber != null ? `Lesson: ${report.lessonNumber}` : null,
+    report.lessonId != null ? `Lesson id: ${report.lessonId}` : null,
+    report.phase ? `Phase: ${report.phase}` : null,
+    report.exerciseId ? `Exercise: ${report.exerciseId}` : null,
+    report.createdAt ? `Filed: ${report.createdAt}` : null,
+    report.appVersion ? `App version: ${report.appVersion}` : null,
+  ].filter((l): l is string => l !== null);
+  const fixedBody = contextLines.join("\n");
+
+  let description = (report.description ?? "").trim();
+  const assemble = (desc: string): string => {
+    const body = (desc ? `Description: ${desc}\n\n` : "") + fixedBody;
+    return `mailto:${BUG_REPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+  let url = assemble(description);
+  // Shrink the description until the whole mailto fits (context lines last).
+  while (url.length > MAILTO_MAX_CHARS && description.length > 0) {
+    description = description.slice(0, Math.max(0, Math.ceil(description.length * 0.8) - 1));
+    if (description.length > 0) url = assemble(description);
+    else url = assemble("");
+  }
+  if (url.length > MAILTO_MAX_CHARS) url = assemble("");
+  return url;
+}
