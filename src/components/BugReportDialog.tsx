@@ -14,10 +14,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   submitBugReport,
-  loadBugReports,
   buildBugMailto,
   BUG_REPORT_EMAIL,
 } from "~/lib/bugReport";
+import { loadBugReports } from "~/engine/storage";
 import type { BugReport } from "~/engine/types";
 import type { BugContext } from "~/engine/types";
 import type { Language } from "~/data/languages";

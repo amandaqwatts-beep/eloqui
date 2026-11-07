@@ -54,3 +54,16 @@ q(14,1,"The present of eō: eō, īs, it, īmus, ītis, ___",["eunt","eant","īb
 q(14,2,"Rēx eōs in Italiam dūcī iussit means…",["The king ordered them to be led into Italy","The king led them into Italy","They ordered the king to be led into Italy","The king ordered them to lead into Italy"],0),
 ];
 export default placementQuestions;
+
+// ── Adaptive bisection probes (FIX-2, owner directive 2026-11-07) ──
+// Per unit: the HARDER of the unit's 2 bank questions — grammar/forms over
+// vocabulary, the discriminating item for a binary search over units. Every
+// unit already had one; no new questions needed. Unit count derives from
+// this list (never hardcoded), so future tracks inherit the engine.
+export const PLACEMENT_PROBE_INDEX: Record<number, 1 | 2> = {
+  1: 2, 2: 2, 3: 2, 4: 1, 5: 1, 6: 1, 7: 2, 8: 1, 9: 1, 10: 2, 11: 1, 12: 1, 13: 1, 14: 1,
+};
+export const placementProbes:PlacementQuestion[] = Object.keys(PLACEMENT_PROBE_INDEX)
+  .map(Number).sort((a,b)=>a-b)
+  .map((u) => placementQuestions.find((q) => q.id === `p${u}-${PLACEMENT_PROBE_INDEX[u]}`))
+  .filter((q): q is PlacementQuestion => q !== undefined);

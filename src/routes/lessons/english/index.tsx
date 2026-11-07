@@ -13,13 +13,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
 import englishLessons from "~/data/englishLessons";
-import englishPlacementQuestions from "~/data/englishPlacementTest";
-import { PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
+import { DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
+import { englishPlacementProbes } from "~/data/englishPlacementTest";
 import { LANGUAGES } from "~/data/languages";
 import { getDailyWorstLesson } from "~/engine/dailyLesson";
 import { getImprovementStreak, claimBonusDrill, buildBonusDrillDeck, recordStreakDay } from "~/engine/improvementStreak";
 import { useLessonEngine } from "~/engine/lesson";
-import { usePlacementEngine } from "~/engine/placement";
+import { usePlacementSearch } from "~/engine/placementSearch";
 import { useSettings } from "~/engine/settings";
 import {
   buildDrillCards,
@@ -78,9 +78,8 @@ function EnglishLessons() {
   useEffect(() => {
     flushBugReports();
   }, []);
-  const totalLevels = PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE.english;
   const lesson = useLessonEngine(englishLessons, language.id);
-  const placement = usePlacementEngine(englishPlacementQuestions, totalLevels, language.id);
+  const placement = usePlacementSearch(englishPlacementProbes, language.id);
   const settingsEngine = useSettings(language.id);
   // English has a single pronunciation mode; pronMode stays type-correct for
   // the screen props but is never consumed (data carries respellings).
@@ -390,19 +389,9 @@ function EnglishLessons() {
     case "placement":
       return (
         <PlacementTest
-          idx={placement.state.idx}
-          passed={placement.state.passed}
-          totalLevels={totalLevels}
-          complete={placement.state.complete}
-          startLevel={placement.state.startLevel}
-          questions={englishPlacementQuestions}
-          onStart={placement.start}
-          onAnswer={placement.answer}
-          onQuit={placement.quit}
-          onRetake={placement.retake}
-          onChooseStart={placement.chooseStart}
-          introBlurb="Answer questions about formal English vocabulary and usage. We'll figure out where you should start."
-          resultBlurb="Here's how your placement levels went:"
+          engine={placement}
+          introBlurb="A few well-chosen questions about formal English vocabulary and usage find your key point to review."
+          resultBlurb="Everything before the boundary level held up under hard probing."
         />
       );
 

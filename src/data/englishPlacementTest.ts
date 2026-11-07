@@ -38,3 +38,12 @@ q(10,1,"Which transition introduces a contrast?",["however","furthermore","conse
 q(10,2,"With a small sample, a careful writer says the data…",["suggests","proves","demonstrates","always"],0,"Small samples support hedged claims: suggests, not proves."),
 ];
 export default englishPlacementQuestions;
+
+// ── Adaptive bisection probes (FIX-2): the harder of each level's 2 questions.
+export const PLACEMENT_PROBE_INDEX: Record<number, 1 | 2> = {
+  1: 1, 2: 1, 3: 2, 4: 2, 5: 2, 6: 2, 7: 1, 8: 2, 9: 1, 10: 2,
+};
+export const englishPlacementProbes:PlacementQuestion[] = Object.keys(PLACEMENT_PROBE_INDEX)
+  .map(Number).sort((a,b)=>a-b)
+  .map((u) => englishPlacementQuestions.find((q) => q.id === `pe${u}-${PLACEMENT_PROBE_INDEX[u]}`))
+  .filter((q): q is PlacementQuestion => q !== undefined);

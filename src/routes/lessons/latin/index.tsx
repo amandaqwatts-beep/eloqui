@@ -18,18 +18,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import latinLessons from "~/data/latinLessons";
-import placementQuestions from "~/data/placementTest";
+import { placementProbes } from "~/data/placementTest";
 import { bookLessons } from "~/data/bookLessons";
 import { latinSideLessons } from "~/data/latinSideLessons";
 import { GRAMMAR_INDEX } from "~/data/grammarIndex";
-import { UNIT_REVIEWS, unitToLessonIds, unitToFirstLessonCount, type UnitReview } from "~/data/unitReviews";
+import { UNIT_REVIEWS, unitToFirstLessonCount, type UnitReview } from "~/data/unitReviews";
 import { DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
 import { LANGUAGES } from "~/data/languages";
 import { getDailyWorstLesson } from "~/engine/dailyLesson";
 import { getRecommendation } from "~/engine/recommendation";
 import { getImprovementStreak, claimBonusDrill, buildBonusDrillDeck, recordStreakDay } from "~/engine/improvementStreak";
 import { useLessonEngine } from "~/engine/lesson";
-import { usePlacementEngine } from "~/engine/placement";
+import { usePlacementSearch } from "~/engine/placementSearch";
 import { useSettings } from "~/engine/settings";
 import { buildLearnedUniverse } from "~/engine/learnedUniverse";
 import {
@@ -121,12 +121,11 @@ function LatinLessons() {
   // UNIT number 1–14; the mapper converts it to a LESSON COUNT (this unit's
   // first lesson) before persistence so createInitialState (engine/lesson.ts)
   // can clamp the stored value as a lesson count in 1..134.
-  const totalUnits = Object.keys(unitToLessonIds).length;
   const lesson = useLessonEngine(latinLessons, language.id);
-  const placement = usePlacementEngine(
-    placementQuestions,
-    totalUnits,
+  const placement = usePlacementSearch(
+    placementProbes,
     language.id,
+    // Latin: unit → lesson count for storage (same mapStartLevel seam as before).
     (unit) => unitToFirstLessonCount[unit] ?? unit,
     // Urgent fix (2026-08-19): seeding the placed-out lessons into
     // verbum-progress-latin at the persistence seam — the learned universe /
@@ -951,22 +950,8 @@ function LatinLessons() {
     case "placement":
       return (
         <PlacementTest
-          idx={placement.state.idx}
-          passed={placement.state.passed}
-          totalLevels={totalUnits}
-          complete={placement.state.complete}
-          startLevel={
-            placement.state.complete
-              ? (unitToFirstLessonCount[placement.state.startLevel ?? 1] ?? placement.state.startLevel)
-              : placement.state.startLevel
-          }
-          questions={placementQuestions}
+          engine={placement}
           unitBased
-          onStart={placement.start}
-          onAnswer={placement.answer}
-          onQuit={placement.quit}
-          onRetake={placement.retake}
-          onChooseStart={placement.chooseStart}
         />
       );
 
