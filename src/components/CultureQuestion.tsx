@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CultureQuestionExercise } from "~/data/latinLessons";
 import type { ExerciseResultDetail } from "~/engine/types";
 import { CULTURE_TEACHING } from "~/data/cultureTeaching";
@@ -95,15 +95,29 @@ export default function CultureQuestion({
     setSelected(idx);
   };
 
+  // Answer-integrity (2026-11-07 owner bug: prompt switches post-answer):
+  // onComplete (parent advance) fires ONLY on the explicit Continue click,
+  // never during the submit tick, so the prompt on screen while feedback
+  // shows is always the exact prompt answered. State resets when the parent
+  // swaps exercises without a React key.
+  useEffect(() => {
+    setSelected(null);
+    setSubmitted(false);
+  }, [exercise]);
+
   const handleSubmit = () => {
     if (selected === null || submitted) return;
     setSubmitted(true);
-    onComplete(isCorrect);
     onResult?.({
       correct: isCorrect,
       wrong: exercise.options[selected],
       expected: exercise.options[exercise.correctIndex],
     });
+  };
+
+  const handleContinue = () => {
+    if (!submitted) return;
+    onComplete(isCorrect);
   };
 
   const banner = (chip: string) => (
@@ -319,6 +333,12 @@ export default function CultureQuestion({
               📖 Review the culture card
             </button>
           )}
+          <button
+            onClick={handleContinue}
+            className="mt-3 w-full rounded-xl bg-burgundy-700 py-3 text-base font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
+          >
+            Continue
+          </button>
         </div>
       )}
     </div>

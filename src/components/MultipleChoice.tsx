@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MultipleChoiceExercise } from "~/data/latinLessons";
 import type { ExerciseResultDetail } from "~/engine/types";
 
@@ -6,15 +6,30 @@ interface Props {
   exercise: MultipleChoiceExercise;
   onComplete: (correct: boolean) => void;
   /**
-   * Optional additive detail hook (diagnostics): forwards the selected option
+   * Optional additive detail hook (diagnostics): forwards the chosen option
    * and the canonical answer so the route can record wrong/expected.
    */
   onResult?: (detail: ExerciseResultDetail) => void;
 }
 
+/**
+ * Answer-integrity (2026-11-07 owner bug: "sometimes it switches the prompt
+ * post-answer"): the component OWNS the full answer → feedback → Continue
+ * cycle. `onComplete` (which tells the parent to advance) fires ONLY on the
+ * explicit Continue click — never during the submit tick — so the prompt
+ * rendered while feedback is on screen is always the exact prompt answered.
+ * Internal state also resets whenever the exercise object changes, so a
+ * parent that swaps exercises without a React key gets a clean slate instead
+ * of stale selected/submitted state bleeding into the next prompt.
+ */
 export default function MultipleChoice({ exercise, onComplete, onResult }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    setSelected(null);
+    setSubmitted(false);
+  }, [exercise]);
 
   const isCorrect = selected === exercise.correctIndex;
 
@@ -26,12 +41,16 @@ export default function MultipleChoice({ exercise, onComplete, onResult }: Props
   const handleSubmit = () => {
     if (selected === null || submitted) return;
     setSubmitted(true);
-    onComplete(isCorrect);
     onResult?.({
       correct: isCorrect,
       wrong: exercise.options[selected],
       expected: exercise.options[exercise.correctIndex],
     });
+  };
+
+  const handleContinue = () => {
+    if (!submitted) return;
+    onComplete(isCorrect);
   };
 
   return (
@@ -102,6 +121,15 @@ export default function MultipleChoice({ exercise, onComplete, onResult }: Props
           {isCorrect ? "✅ Correct! " : "❌ Not quite. "}
           {exercise.explanation}
         </div>
+      )}
+
+      {submitted && (
+        <button
+          onClick={handleContinue}
+          className="w-full rounded-xl bg-burgundy-700 py-3 text-base font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
+        >
+          Continue
+        </button>
       )}
     </div>
   );
