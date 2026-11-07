@@ -13,7 +13,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
 import englishLessons from "~/data/englishLessons";
-import { DIAGNOSTICS_WINDOW_DAYS, MIN_MISTAKE_EVIDENCE, BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
+import { BONUS_DRILL_DEFAULT_COUNT, IMPROVEMENT_ACTIVE_DAYS } from "~/data/settings";
 import { englishPlacementProbes } from "~/data/englishPlacementTest";
 import { LANGUAGES } from "~/data/languages";
 import { getDailyWorstLesson } from "~/engine/dailyLesson";
