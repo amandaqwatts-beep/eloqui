@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import type { VerbumSettings } from "~/engine/types";
 import { ensureUserIdentity } from "~/engine/storage";
+import { BUG_REPORT_EMAIL } from "~/lib/bugReport";
 import WindowFrame from "~/components/WindowFrame";
 
 interface Props {
@@ -190,6 +191,9 @@ export default function SettingsScreen({
                     <p className="mt-0.5 text-sm text-gray-500">
                       Spotted a bug? Tell us what happened — your report
                       includes what screen you were on.
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Prefer email? Send bugs to {BUG_REPORT_EMAIL}.
                     </p>
                   </div>
                   <button

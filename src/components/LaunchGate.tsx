@@ -24,6 +24,11 @@ export function LaunchGate({ onUnlock }: { onUnlock: () => void }) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    // FIX-0 (2026-11-07): only a REAL failed submission may show the error.
+    // Pressing Enter in the input submits the form even when the Unlock
+    // button is disabled — an empty value here previously marked the gate
+    // "Incorrect passcode" without any actual wrong entry. Empty → no-op.
+    if (value.trim().length === 0) return;
     if (value.trim() === LAUNCH_GATE_PASSCODE) {
       markGateUnlocked();
       onUnlock();

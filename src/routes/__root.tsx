@@ -4,7 +4,7 @@ import {
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { LaunchGate } from "~/components/LaunchGate";
 import {
@@ -12,6 +12,14 @@ import {
   isGateUnlocked,
 } from "~/config/launchGate";
 import appCss from "~/styles/app.css?url";
+
+/**
+ * useLayoutEffect on the client (runs before paint), useEffect on the server
+ * (where layout effects don't run — avoids React's SSR warning).
+ */
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -41,7 +49,16 @@ function RootComponent() {
     LAUNCH_GATE_ENABLED ? "locked" : "open",
   );
 
-  useEffect(() => {
+  // Gate open check (FIX-0, 2026-11-07): isomorphic layout effect so the
+  // unlock flip happens BEFORE the browser paints. On a remembered device
+  // the locked gate must never become visible — not on a full page load
+  // (the pre-paint flip erases the SSR gate before first paint) and never
+  // on a route transition (this root component stays mounted across client
+  // navigation, so the open state persists; verified live 2026-11-07). If
+  // hydration fails and React falls back to client rendering, this effect
+  // still runs and the gate still opens — a failure cannot leave the gate
+  // stuck on screen.
+  useIsoLayoutEffect(() => {
     if (LAUNCH_GATE_ENABLED && isGateUnlocked()) {
       setGateState("open");
     }

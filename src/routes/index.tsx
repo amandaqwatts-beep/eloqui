@@ -107,7 +107,7 @@ const features = [
     emoji: "🗡️",
     title: "Drills, placement & progress",
     description:
-      "Find your level with a 268-question placement test, drill words and forms at speed, and track every weak spot.",
+      "Find your level with an adaptive placement test — a handful of well-chosen questions — drill words and forms at speed, and track every weak spot.",
   },
   {
     emoji: "🔉",
@@ -409,6 +409,14 @@ function Footer() {
               Latin 101
             </a>
           </nav>
+          <p>
+            <a
+              href={`mailto:eloqui-fd4501fc@ctomail.io`}
+              className="transition hover:text-burgundy-800"
+            >
+              Found a problem? Email eloqui-fd4501fc@ctomail.io
+            </a>
+          </p>
           <p>
             &copy; 2026 Eloqui &middot; Latin 101 &amp; English 101 live &middot; Biblical Greek &amp; Hebrew in development
           </p>

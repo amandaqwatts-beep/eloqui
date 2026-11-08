@@ -1,4 +1,4 @@
-import { useState, useRef, type KeyboardEvent } from "react";
+import { useEffect, useState, useRef, type KeyboardEvent } from "react";
 import type { FillInBlankExercise } from "~/data/latinLessons";
 import type { ExerciseResultDetail } from "~/engine/types";
 
@@ -16,6 +16,15 @@ export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
   const [value, setValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Answer-integrity (2026-11-07 owner bug: prompt switches post-answer):
+  // reset internal state whenever the exercise object changes, so a parent
+  // that swaps exercises without a React key gets a clean slate instead of
+  // stale submitted state rendering feedback against the wrong prompt.
+  useEffect(() => {
+    setValue("");
+    setSubmitted(false);
+  }, [exercise]);
 
   const normalize = (s: string) =>
     s
@@ -37,11 +46,19 @@ export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
 
   const isCorrect = checkAnswer(value);
 
+  // Answer-integrity: the component owns answer → feedback → Continue.
+  // onComplete (which tells the parent to advance) fires ONLY on the explicit
+  // Continue click, never during the submit tick, so the prompt on screen
+  // while feedback shows is always the exact prompt answered.
   const handleSubmit = () => {
     if (!value.trim() || submitted) return;
     setSubmitted(true);
-    onComplete(isCorrect);
     onResult?.({ correct: isCorrect, wrong: value, expected: exercise.answer });
+  };
+
+  const handleContinue = () => {
+    if (!submitted) return;
+    onComplete(isCorrect);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -113,6 +130,15 @@ export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
           )}
           {exercise.explanation}
         </div>
+      )}
+
+      {submitted && (
+        <button
+          onClick={handleContinue}
+          className="w-full rounded-xl bg-burgundy-700 py-3 text-base font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
+        >
+          Continue
+        </button>
       )}
     </div>
   );

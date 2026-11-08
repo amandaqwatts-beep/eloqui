@@ -12,7 +12,13 @@
  * about local persistence either way (delivery retries in the background).
  */
 import { useEffect, useRef, useState } from "react";
-import { submitBugReport } from "~/lib/bugReport";
+import {
+  submitBugReport,
+  buildBugMailto,
+  BUG_REPORT_EMAIL,
+} from "~/lib/bugReport";
+import { loadBugReports } from "~/engine/storage";
+import type { BugReport } from "~/engine/types";
 import type { BugContext } from "~/engine/types";
 import type { Language } from "~/data/languages";
 import WindowFrame from "~/components/WindowFrame";
@@ -36,6 +42,12 @@ function contextLabel(ctx: Required<BugContext>): string {
 export default function BugReportDialog({ context, language, onBack }: Props) {
   const [description, setDescription] = useState("");
   const [done, setDone] = useState(false);
+  // FIX-4 (owner directive 2026-11-07): DB-independent email path. delivery
+  // status of the just-filed report — "sent" hides the fallback; "failed"
+  // (the current DB-outage case) or still-unsent after the poll window shows
+  // it. The queued report itself is unaffected and still retries on its own.
+  const [delivery, setDelivery] = useState<"unknown" | "sent" | "failed">("unknown");
+  const [filed, setFiled] = useState<BugReport | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
 
   const captured: Required<BugContext> = {
@@ -53,9 +65,34 @@ export default function BugReportDialog({ context, language, onBack }: Props) {
   const handleSubmit = () => {
     // Queues locally first; server POST is fire-and-forget with retries —
     // the dialog never blocks on ( or lies about ) the network.
-    submitBugReport(captured, description, language);
+    const report = submitBugReport(captured, description, language);
+    setFiled(report);
     setDone(true);
   };
+
+  // Watch the filed report's delivery status for a short window. The server
+  // attempt fails fast when the DB is unreachable (the current outage), so
+  // the email fallback appears quickly; a slow-but-working network has the
+  // full window to confirm "sent" before the fallback is offered.
+  useEffect(() => {
+    if (!done || !filed) return;
+    const startedAt = Date.now();
+    const POLL_MS = 1000;
+    const WINDOW_MS = 8000;
+    const timer = setInterval(() => {
+      const status = loadBugReports().find((r) => r.id === filed.id)?.status;
+      if (status === "sent") {
+        setDelivery("sent");
+        clearInterval(timer);
+      } else if (status === "failed" || Date.now() - startedAt >= WINDOW_MS) {
+        setDelivery("failed");
+        clearInterval(timer);
+      }
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [done, filed]);
+
+  const mailtoHref = filed ? buildBugMailto(filed) : "";
 
   return (
     <WindowFrame title="Report a problem" onBack={onBack} variant="overlay">
@@ -70,6 +107,30 @@ export default function BugReportDialog({ context, language, onBack }: Props) {
               <p className="mt-2 text-sm text-gray-500">
                 Saved on this device and queued for delivery automatically.
               </p>
+              {/* FIX-4 email fallback: when the server delivery failed (the
+                  current database outage) or hasn't confirmed within the
+                  watch window, offer the DB-independent path. The queued
+                  report still retries on its own — this is an addition,
+                  never a replacement. */}
+              {delivery === "failed" && (
+                <div className="mt-6 rounded-2xl border border-wood-200 bg-cream-50 p-5 text-left">
+                  <p className="text-sm font-semibold text-burgundy-900">
+                    Automatic delivery isn't getting through right now.
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    You can send this same report by email instead.
+                  </p>
+                  <a
+                    href={mailtoHref}
+                    className="mt-3 block w-full rounded-xl bg-burgundy-700 px-6 py-2.5 text-center text-sm font-bold text-cream-50 shadow transition hover:bg-burgundy-800"
+                  >
+                    Email this report instead
+                  </a>
+                  <p className="mt-2 text-center text-xs text-gray-500">
+                    Prefer email anytime? Write to {BUG_REPORT_EMAIL}.
+                  </p>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={onBack}
