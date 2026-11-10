@@ -383,6 +383,7 @@ function EnglishLessons() {
           onBack={lesson.backToMenu}
           kinds={ENGLISH_DRILL_KINDS}
           showPronToggle={false}
+          onReportBug={() => openBugReport({ screen: "drill-setup" })}
         />
       );
 
@@ -392,6 +393,7 @@ function EnglishLessons() {
           engine={placement}
           introBlurb="A few well-chosen questions about formal English vocabulary and usage find your key point to review."
           resultBlurb="Everything before the boundary level held up under hard probing."
+          onReportBug={() => openBugReport({ screen: "placement" })}
         />
       );
 

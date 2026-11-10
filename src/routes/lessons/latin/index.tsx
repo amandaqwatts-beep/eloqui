@@ -14,7 +14,7 @@
  * from the free drill engine and enter the existing drill screen with
  * optional DrillView meta (title/reference/exitLabel).
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import latinLessons from "~/data/latinLessons";
@@ -215,6 +215,29 @@ function LatinLessons() {
   const unitReviewUnlocked = new Set(
     UNIT_REVIEWS.filter((u) => isUnitComplete(u, progressAll)).map((u) => u.unitNumber),
   );
+  // FIX-D (QA-R3): the recommendation card must agree with the stored
+  // placement result — ONE source of truth. A student placed into unit N
+  // tested out of the units before it: the placement seeding marks those
+  // spines complete, which made the card recommend "Unit 1 Review" against
+  // the placement banner ("course now starts at Unit 14"). The review rung of
+  // the ladder therefore only considers units at/after the stored start unit.
+  // The stored startLevel is the mapped LESSON COUNT (unitToFirstLessonCount);
+  // invert it to the start unit (0 = no stored result → nothing filtered).
+  // The review spines themselves stay openable — this scopes the RECOMMENDATION
+  // only, never the shelf's review unlock gate (design edges #4/#12).
+  const storedPlacement = loadJSON<{ startLevel?: number } | null>(
+    STORAGE_KEYS.PLACEMENT_RESULT,
+    null,
+    language.id,
+  );
+  const placementStartLevel = storedPlacement?.startLevel ?? 0;
+  const placedStartUnit = Object.entries(unitToFirstLessonCount)
+    .map(([u, first]) => [Number(u), first] as const)
+    .filter(([, first]) => first <= placementStartLevel)
+    .reduce((acc, [u]) => Math.max(acc, u), 0);
+  const recommendableReviewUnits = [...unitReviewUnlocked]
+    .filter((u) => u >= placedStartUnit)
+    .sort((a, b) => a - b);
   const dailyLesson = getDailyWorstLesson({
     events: diagnosticsEvents,
     lessons: latinLessons,
@@ -235,7 +258,8 @@ function LatinLessons() {
     lessons: latinLessons,
     unlockedLessons: lesson.unlockedLessons,
     completedLessonIds,
-    unitReviewUnlocked: [...unitReviewUnlocked].sort((a, b) => a - b),
+    // FIX-D: placement-filtered — see the placedStartUnit derivation above.
+    unitReviewUnlocked: recommendableReviewUnits,
     unitReviewsCompleted,
     bonusClaimable,
     streakDays: streak.streakDays,
@@ -713,6 +737,20 @@ function LatinLessons() {
             onDoRecommended={() => doRecommended()}
             resumeLesson={resumeLesson}
             onResumeLesson={onResumeLesson}
+            // FIX-A (QA-R4): the shelf's sibling books were reachable only via
+            // the landing hub (Languages → Latin); the bookshelf menu itself
+            // had no entry. A quiet route-owned link exposes Book 2 / Book 3.
+            shelfEntry={
+              <div className="mb-4 text-center">
+                <Link
+                  to="/shelf/$language"
+                  params={{ language: "latin" }}
+                  className="text-sm font-semibold text-burgundy-700 transition hover:text-burgundy-600"
+                >
+                  📚 The Latin shelf — Book II: Henle Second Year Latin (Latin 2) →
+                </Link>
+              </div>
+            }
             noticeBanner={
               placementNotice ? (
                 <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">
@@ -833,6 +871,8 @@ function LatinLessons() {
               title={`Unit ${unitReview.unit.unitNumber} Review`}
               onBack={() => setUnitReview(null)}
               variant="overlay"
+              // FIX-B: the unit-review quiz surface can file a report in place.
+              onReportBug={() => openBugReport({ screen: "unit-review" })}
             >
               <UnitReviewScreen
                 unit={unitReview.unit}
@@ -1028,6 +1068,8 @@ function LatinLessons() {
             glossB={conceptGloss(pendingPair.b, latinLessons)}
             onStart={() => startPairDrill(pendingPair)}
             onBack={exitDiagnosticsDrill}
+            // FIX-B: the pair-drill intro can file a report in place.
+            onReportBug={() => openBugReport({ screen: "pair-drill" })}
           />
         );
       }
@@ -1062,6 +1104,8 @@ function LatinLessons() {
           onBack={lesson.backToMenu}
           recommendation={recommendation}
           onDoRecommended={() => doRecommended()}
+          // FIX-B: the drill-setup surface can file a report in place.
+          onReportBug={() => openBugReport({ screen: "drill-setup" })}
         />
       );
 
@@ -1070,6 +1114,8 @@ function LatinLessons() {
         <PlacementTest
           engine={placement}
           unitBased
+          // FIX-B: the placement surface can file a report in place.
+          onReportBug={() => openBugReport({ screen: "placement" })}
         />
       );
 

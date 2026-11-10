@@ -68,6 +68,11 @@ interface Props {
   /** Bugfix batch 2 (QA-8): route-owned confirmation strip (e.g. placement
    *  applied) rendered directly under the desk bar. Optional. */
   noticeBanner?: ReactNode;
+  /** Bugfix batch 3 (FIX-A, QA-R4): route-owned link to the language SHELF —
+   *  the bookshelf menu previously had no reachable entry to the shelf's
+   *  sibling books (Book 2 / Latin 2). Rendered directly under the desk bar.
+   *  Optional — absent → byte-identical rendering (English keeps nothing). */
+  shelfEntry?: ReactNode;
 }
 
 /** Base class for the desk bar's 44px icon tiles (📖 ⚙ 🎧 🌙 📊 🎯). */
@@ -83,7 +88,7 @@ export default function LessonMenu({
   languageId="latin",suppressFrontierScroll=false,
   onOpenUnitReview,unitReviewUnlocked,foundationsEntry,
   recommendation,onDoRecommended,
-  resumeLesson,onResumeLesson,noticeBanner,
+  resumeLesson,onResumeLesson,noticeBanner,shelfEntry,
 }: Props) {
   const hasShelf = (bookLessons?.length ?? 0) > 0;
 
@@ -293,6 +298,9 @@ export default function LessonMenu({
             </div>
           </div>
 
+          {/* FIX-A (QA-R4): the shelf entry — quiet route-owned link under
+              the desk bar, before any notice. */}
+          {shelfEntry}
           {/* QA-8 confirmation strip (route-owned) + QA-3 quiet resume —
               both directly under the desk bar, above the recommendation. */}
           {noticeBanner}

@@ -17,6 +17,9 @@ interface Props {
   /** Free-zone "do the recommended" (optional — absent → byte-identical). */
   recommendation?: Recommendation | null;
   onDoRecommended?: () => void;
+  /** Bugfix batch 3 (FIX-B): 🪲 in the frame chrome — the route renders the
+   *  one dialog; the drill-setup surface previously had no report entry. */
+  onReportBug?: () => void;
 }
 
 const DEFAULT_KINDS: readonly (readonly [string, string])[] = [
@@ -39,9 +42,10 @@ export default function DrillSetup({
   showPronToggle = true,
   recommendation,
   onDoRecommended,
+  onReportBug,
 }: Props) {
   return (
-    <WindowFrame title="Drill" onBack={onBack}>
+    <WindowFrame title="Drill" onBack={onBack} onReportBug={onReportBug}>
       <main className="flex-1 px-4 py-8">
         <div className="mx-auto max-w-xl">
           <div className="mt-2 rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg">

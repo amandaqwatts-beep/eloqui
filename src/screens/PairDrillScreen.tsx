@@ -13,9 +13,12 @@ interface Props {
   glossB?: string;
   onStart: () => void;
   onBack: () => void;
+  /** Bugfix batch 3 (FIX-B): quiet 🪲 beside Back — the route renders the
+   *  one dialog; the pair-drill intro previously had no report entry. */
+  onReportBug?: () => void;
 }
 
-export default function PairDrillScreen({ pair, glossA, glossB, onStart, onBack }: Props) {
+export default function PairDrillScreen({ pair, glossA, glossB, onStart, onBack, onReportBug }: Props) {
   const cheatLine = [
     glossA ? `${pair.labelA} = ${glossA}` : pair.labelA,
     glossB ? `${pair.labelB} = ${glossB}` : pair.labelB,
@@ -27,10 +30,19 @@ export default function PairDrillScreen({ pair, glossA, glossB, onStart, onBack 
         <button
           type="button"
           onClick={onBack}
-          className="mb-6 text-sm font-bold text-burgundy-700 hover:underline"
+          className="mb-6 mr-4 text-sm font-bold text-burgundy-700 hover:underline"
         >
           ← Back
         </button>
+        {onReportBug && (
+          <button
+            type="button"
+            onClick={onReportBug}
+            className="mb-6 text-sm font-semibold text-wood-800 transition hover:text-burgundy-700"
+          >
+            🪲 Report a problem
+          </button>
+        )}
         <div className="rounded-3xl border-2 border-burgundy-200 bg-white p-6 shadow-lg">
           <h1 className="text-2xl font-black text-burgundy-900">
             ⚔️ Confusion Drill: {pair.labelA} vs {pair.labelB}

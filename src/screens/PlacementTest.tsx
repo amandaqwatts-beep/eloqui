@@ -10,6 +10,9 @@ interface Props {
   unitBased?: boolean;
   introBlurb?: string;
   resultBlurb?: string;
+  /** Bugfix batch 3 (FIX-B): 🪲 in the frame chrome — every WindowFrame this
+   *  screen renders carries it; the route renders the one dialog. */
+  onReportBug?: () => void;
 }
 
 const noun = (unitBased: boolean) => (unitBased ? "Unit" : "Level");
@@ -28,6 +31,7 @@ export default function PlacementTest({
   unitBased = false,
   introBlurb,
   resultBlurb,
+  onReportBug,
 }: Props) {
   const N = noun(unitBased);
   const blurb =
@@ -37,7 +41,7 @@ export default function PlacementTest({
   // ── Idle: intro ────────────────────────────────────────────────────────
   if (engine.phase === "idle")
     return (
-      <WindowFrame title="Placement" onBack={engine.quit}>
+      <WindowFrame title="Placement" onBack={engine.quit} onReportBug={onReportBug}>
         <main className="flex flex-1 items-center px-4 py-8 sm:py-12">
           <div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-7 text-center shadow-lg sm:p-10">
             <div className="text-5xl">📋</div>
@@ -62,7 +66,7 @@ export default function PlacementTest({
     const unit = Math.min(engine.resultUnit ?? 1, engine.totalUnits);
     const startLessonMapped = engine.allMastered ? null : unit;
     return (
-      <WindowFrame title="Placement" onBack={engine.quit}>
+      <WindowFrame title="Placement" onBack={engine.quit} onReportBug={onReportBug}>
         <main className="flex-1 px-4 py-8 sm:py-12">
           <div className="mx-auto w-full max-w-xl rounded-3xl border border-burgundy-200 bg-white p-6 shadow-lg sm:p-10">
             <div className="text-center">
@@ -134,7 +138,7 @@ export default function PlacementTest({
   if (!q) return null;
   const isConfirm = engine.phase === "confirm";
   return (
-    <WindowFrame title="Placement" onBack={engine.quit}>
+    <WindowFrame title="Placement" onBack={engine.quit} onReportBug={onReportBug}>
       <main className="flex-1 px-4 py-6 sm:py-10">
         <div className="mx-auto w-full max-w-2xl">
           <div className="mb-6 flex items-center justify-between text-sm font-semibold text-burgundy-700">

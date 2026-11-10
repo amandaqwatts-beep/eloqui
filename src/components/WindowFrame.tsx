@@ -26,6 +26,11 @@ export interface WindowFrameProps {
    *  launched from Review exits back there (§1.3 back contract). */
   backLabel?: string;
   variant?: "page" | "overlay";
+  /** Bugfix batch 3 (FIX-B, QA-9): optional 🪲 affordance in the frame's own
+   *  chrome — placement, drill setup, and unit-review windows are lesson
+   *  surfaces that previously had no way to report a problem without backing
+   *  out. The route still renders the ONE BugReportDialog above everything. */
+  onReportBug?: () => void;
   children: ReactNode;
 }
 
@@ -44,6 +49,7 @@ export default function WindowFrame({
   onBack,
   backLabel = "Bookshelf",
   variant = "page",
+  onReportBug,
   children,
 }: WindowFrameProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -103,6 +109,20 @@ export default function WindowFrame({
     </button>
   );
 
+  // FIX-B — the quiet 🪲 affordance (presentational; the route renders the
+  // ONE dialog above everything, so this button only captures the context).
+  const reportButton = onReportBug ? (
+    <button
+      type="button"
+      onClick={onReportBug}
+      title="Report a problem"
+      aria-label="Report a problem"
+      className="flex h-9 shrink-0 items-center justify-center rounded-xl border border-burgundy-200 bg-white px-3 text-base text-wood-800 transition hover:border-burgundy-400 hover:text-burgundy-700"
+    >
+      🪲
+    </button>
+  ) : null;
+
   if (isOverlay) {
     return (
       <div
@@ -115,14 +135,17 @@ export default function WindowFrame({
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-burgundy-200/70 bg-cream-50/95 px-4 py-2.5 backdrop-blur-sm sm:px-6">
           {breadcrumb}
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label={`Close ${title}`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-burgundy-200 bg-white text-gray-500 transition hover:border-burgundy-400 hover:text-burgundy-700"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            {reportButton}
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label={`Close ${title}`}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-burgundy-200 bg-white text-gray-500 transition hover:border-burgundy-400 hover:text-burgundy-700"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         {children}
       </div>
@@ -133,8 +156,9 @@ export default function WindowFrame({
     <div ref={rootRef} className="window-in flex min-h-dvh flex-col">
       <NavBar />
       <div className="border-b border-burgundy-200/60 bg-cream-50/95">
-        <div className="mx-auto flex max-w-6xl items-center px-4 py-2 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
           {breadcrumb}
+          {reportButton}
         </div>
       </div>
       {children}

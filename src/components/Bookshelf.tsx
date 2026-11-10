@@ -336,32 +336,51 @@ function BookshelfV2({
   const packedRef = useRef(packed);
   packedRef.current = packed;
 
-  // Auto-open on mount / unlockedLessons change: scroll the packed shelf
-  // containing the frontier unit into view (instant — reduced-motion safe),
-  // expand the frontier book, then bring the frontier chapter ROW into view
-  // (spec §2.2 / audit F2-retargeted: with the "current" marker gone the row
-  // itself is where the student actually is; block:"nearest" keeps it inside
-  // the fold without yanking the page). The timeout lets the panel commit
-  // after setExpandedBookKey. `capacity` is a dependency (F15) so the
-  // capacity-8 → measured re-pack re-scrolls instead of orphaning the target.
+  // Auto-open on mount / unlockedLessons change: expand the frontier book so
+  // its chapter rows are open when the student arrives (spec §2.2), and
+  // position the page (see FIX-C below). `capacity` is a dependency (F15) so
+  // the capacity-8 → measured re-pack re-runs the positioning.
   //
   // F13 gate (design §1.3): the route sets suppressFrontierScroll when the
   // menu remounts from a mode (drill / placement / AI) with the frontier
   // unchanged since the last visit — the scroll is the "yank" users felt;
-  // mode returns keep the expansion but skip both scrolls. Fresh mounts and
-  // frontier moves scroll as before. The route persists the last viewed
-  // frontier in sessionStorage (keyed by language) to make that call.
+  // mode returns keep the expansion but skip the scroll. The route persists
+  // the last viewed frontier in sessionStorage (keyed by language).
+  // FIX-C (QA-R1, reopened QA-4): the mount auto-scroll was the bug. On every
+  // fresh menu mount it scrollIntoView'd the frontier shelf — pushing the
+  // free-zone recommendation card ABOVE the viewport (rect y ≈ −123 with the
+  // frontier on the first shelf, −868 once placement seeds a deep frontier),
+  // so the card could not be seen or clicked without scrolling up first.
+  // Root cause confirmed live (elementFromPoint at the card's off-screen
+  // click point returns the wrapper div — pure geometry, no pointer-events
+  // guard). Fix, per the work order: fresh mounts and frontier moves scroll
+  // to TOP instead; the frontier book still EXPANDS (auto-open survives),
+  // the recommendation card is in view and clickable on load, and browser
+  // scroll restoration on reload is overridden by the same scrollTo. Mode
+  // returns with the frontier unchanged keep the F13 no-scroll behavior.
   const frontierStorageKey = `eloqui:frontier:${languageId}`;
   useEffect(() => {
     if (!currentBook) return;
     let t = 0;
     if (!suppressFrontierScroll) {
-      const shelf = packedRef.current.find((p) => p.units.some((u) => u.unit === currentBook!.unit));
-      const el = shelf ? shelfRefs.current.get(shelf.shelfIndex) : null;
-      if (el) el.scrollIntoView({ block: "start" });
+      const toTop = () => {
+        try {
+          window.scrollTo(0, 0);
+        } catch {
+          /* no window — nothing to reset */
+        }
+      };
+      toTop();
+      // Re-assert once the expansion panel has committed — this also defeats
+      // any scroll restoration that lands after the first paint. On viewports
+      // shorter than the header+desk-bar stack, a minimum nudge keeps the
+      // recommendation card's click target inside the fold (block:"nearest"
+      // scrolls 0px whenever the card already fits — desktop heights).
       t = window.setTimeout(() => {
-        const frontierRow = document.querySelector<HTMLElement>("[data-frontier]");
-        frontierRow?.scrollIntoView({ block: "nearest" });
+        toTop();
+        document
+          .querySelector<HTMLElement>('button[aria-label^="Do the recommended"]')
+          ?.scrollIntoView({ block: "nearest" });
       }, 0);
       try {
         sessionStorage.setItem(frontierStorageKey, String(unlockedLessons));
