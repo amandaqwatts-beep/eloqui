@@ -163,6 +163,11 @@ export function lessonReducer(
     }
     case "PHASE_RESET":
       return { ...state, screen: "menu", fourPhase: null };
+    case "SET_UNLOCKED":
+      // Placement applied mid-session (QA-8 fix): re-point the unlock frontier
+      // at the persisted startLevel the hook just wrote — same invariant as
+      // createInitialState (startLevel is a clamped lesson count).
+      return { ...state, unlockedLessons: action.value };
     default:
       return state;
   }
@@ -248,6 +253,10 @@ export interface LessonEngine {
   ) => void;
   // Abandon the four-phase run and return to the menu.
   resetPhase: () => void;
+  // Placement applied mid-session (QA-8 fix): re-point the unlock frontier at
+  // the persisted placement startLevel (a clamped lesson count) without a
+  // reload — the menu then reflects "where the student now starts".
+  applyPlacementResult: (startLevel: number) => void;
 }
 
 /** Persist an overall four-phase lesson completion: write verbum-progress via
@@ -442,6 +451,18 @@ export function useLessonEngine(lessons: Lesson[], language: Language = "latin")
     [state, totalLessons, language],
   );
   const resetPhase = useCallback(() => dispatch({ type: "PHASE_RESET" }), []);
+  // Clamp exactly like createInitialState (PLACEMENT_TOTAL_LEVELS ceiling, 1
+  // floor) so the in-memory frontier can never exceed the course or drop to 0.
+  const applyPlacementResult = useCallback(
+    (startLevel: number) => {
+      const clamped = Math.min(
+        PLACEMENT_TOTAL_LEVELS_BY_LANGUAGE[language],
+        Math.max(1, Math.floor(startLevel)),
+      );
+      dispatch({ type: "SET_UNLOCKED", value: clamped });
+    },
+    [language],
+  );
 
   return {
     screen: state.screen,
@@ -471,5 +492,6 @@ export function useLessonEngine(lessons: Lesson[], language: Language = "latin")
     completePhaseTeaching,
     recordPhaseAttempt,
     resetPhase,
+    applyPlacementResult,
   };
 }

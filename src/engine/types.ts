@@ -459,4 +459,9 @@ export type LessonEngineAction =
   // incorporatedConcepts when the attempt is correct.
   | { type: "PHASE_ATTEMPT"; correct: boolean; passingConcepts?: string[]; reTeachStepIndex?: number | null }
   // PHASE_RESET abandons the run and returns to the menu.
-  | { type: "PHASE_RESET" };
+  | { type: "PHASE_RESET" }
+  // SET_UNLOCKED applies a persisted placement result's startLevel (a lesson
+  // count, clamped by the hook) to the in-memory unlock frontier — used when
+  // a placement run completes mid-session so the menu reflects the applied
+  // result without a reload (bugfix batch 2, QA-8).
+  | { type: "SET_UNLOCKED"; value: number };
