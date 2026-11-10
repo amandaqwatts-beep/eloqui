@@ -59,6 +59,10 @@ export const STORAGE_KEYS = {
   // clearAllData's sweep wipes it too (a student clearing data clears their
   // unsent reports as well).
   BUG_REPORT: "verbum-bug-reports",
+  // Last-open lesson id (bugfix batch 2, QA-3): per-language device-local
+  // convenience pointer feeding the menu's "Resume: Lesson N" affordance.
+  // Not synced (device-local); clearAllData wipes it with the rest.
+  LAST_LESSON: "verbum-last-lesson",
 } as const;
 
 export const DIAGNOSTICS_SCHEMA_VERSION = 1;

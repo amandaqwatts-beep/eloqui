@@ -59,6 +59,15 @@ interface Props {
    *  desk-bar and menuCards (optional — absent → byte-identical rendering). */
   recommendation?: Recommendation | null;
   onDoRecommended?: () => void;
+
+  /** Bugfix batch 2 (QA-3): quiet resume affordance — route passes the last
+   *  open lesson (display number + title) + the open callback. Optional —
+   *  absent → byte-identical rendering. */
+  resumeLesson?: { lessonNumber: number; title?: string } | null;
+  onResumeLesson?: () => void;
+  /** Bugfix batch 2 (QA-8): route-owned confirmation strip (e.g. placement
+   *  applied) rendered directly under the desk bar. Optional. */
+  noticeBanner?: ReactNode;
 }
 
 /** Base class for the desk bar's 44px icon tiles (📖 ⚙ 🎧 🌙 📊 🎯). */
@@ -74,6 +83,7 @@ export default function LessonMenu({
   languageId="latin",suppressFrontierScroll=false,
   onOpenUnitReview,unitReviewUnlocked,foundationsEntry,
   recommendation,onDoRecommended,
+  resumeLesson,onResumeLesson,noticeBanner,
 }: Props) {
   const hasShelf = (bookLessons?.length ?? 0) > 0;
 
@@ -282,6 +292,22 @@ export default function LessonMenu({
               )}
             </div>
           </div>
+
+          {/* QA-8 confirmation strip (route-owned) + QA-3 quiet resume —
+              both directly under the desk bar, above the recommendation. */}
+          {noticeBanner}
+          {resumeLesson && onResumeLesson && (
+            <div className="mb-4 text-center">
+              <button
+                type="button"
+                onClick={onResumeLesson}
+                className="text-sm font-semibold text-wood-800 hover:text-burgundy-700 transition"
+              >
+                🔖 Resume: Lesson {resumeLesson.lessonNumber}
+                {resumeLesson.title ? ` — ${resumeLesson.title}` : ""}
+              </button>
+            </div>
+          )}
 
           {/* Free-zone "do the recommended" — canonical banner slot (v1: a
               single menu-level banner, no per-ExpansionPanel buttons). */}

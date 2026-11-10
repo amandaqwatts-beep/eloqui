@@ -150,6 +150,9 @@ export function usePlacementSearch(
   language: Language = "latin",
   mapStartLevel?: (unit: number) => number,
   placedLessons?: Lesson[],
+  /** QA-8 fix: fired after chooseStart persists a student-chosen start — the
+   *  route dismisses to the menu + refreshes the unlock frontier there. */
+  onApply?: (unit: number) => void,
 ): PlacementSearchEngine {
   const probes: PlacementProbe[] = probeQuestions.map((question, i) => ({ unit: i + 1, question }));
   const totalUnits = probes.length;
@@ -218,13 +221,18 @@ export function usePlacementSearch(
       const clamped = Math.max(1, Math.min(totalUnits, unit));
       const mapped = mapStartLevel ? mapStartLevel(clamped) : clamped;
       saveJSON(STORAGE_KEYS.PLACEMENT_RESULT, {
-        passed: [],
+        // QA-8(b) fix: store the search's actual per-unit pass set, not [] —
+        // the stored payload must round-trip what the result screen displays.
+        passed: state ? passedByUnit(state) : [],
         startLevel: mapped,
         completedAt: new Date().toISOString(),
       }, language);
       if (placedLessons) persistPlacementProgressSeeding(placedLessons, mapped, language);
+      // QA-8(a) fix: applying the result dismisses — the route (onApply)
+      // returns to the menu with the new unlock frontier applied.
+      onApply?.(unit);
     },
-    [language, mapStartLevel, placedLessons, totalUnits],
+    [language, mapStartLevel, placedLessons, totalUnits, state, onApply],
   );
 
   const retake = useCallback(() => {
@@ -251,7 +259,10 @@ export function usePlacementSearch(
   return {
     phase,
     probe,
-    questionNumber: state ? state.asked.length + (phase === "confirm" ? 1 : 0) : 0,
+    // QA-7 fix: the counter names the question ON SCREEN (asked + 1), so the
+    // first probe reads "Question 1" and the progress bar reads a neutral
+    // 0/5 0% — never "Question 0" / "-1 / 5 -20%".
+    questionNumber: state ? state.asked.length + 1 : 0,
     maxQuestions: maxSearchQuestions(totalUnits),
     totalUnits,
     resultUnit: result,

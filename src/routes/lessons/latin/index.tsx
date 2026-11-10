@@ -15,7 +15,7 @@
  * optional DrillView meta (title/reference/exitLabel).
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import latinLessons from "~/data/latinLessons";
 import { placementProbes } from "~/data/placementTest";
@@ -51,7 +51,7 @@ import {
   getConfusionPairs,
   recordLessonAttempt,
 } from "~/engine/diagnostics";
-import { loadDiagnostics, recordAttempt, recordUnitReviewCompletion, loadUnitReviews } from "~/engine/storage";
+import { loadDiagnostics, recordAttempt, recordUnitReviewCompletion, loadUnitReviews, loadJSON, saveJSON, STORAGE_KEYS } from "~/engine/storage";
 import type { BugContext, ConceptKind, ConfusionPair, ExerciseResultDetail } from "~/engine/types";
 import { flushBugReports } from "~/lib/bugReport";
 import BugReportDialog from "~/components/BugReportDialog";
@@ -122,6 +122,9 @@ function LatinLessons() {
   // first lesson) before persistence so createInitialState (engine/lesson.ts)
   // can clamp the stored value as a lesson count in 1..134.
   const lesson = useLessonEngine(latinLessons, language.id);
+  // QA-8 fix: route-owned confirmation for an applied placement result —
+  // rendered on the menu until dismissed (visible "where the student starts").
+  const [placementNotice, setPlacementNotice] = useState<string | null>(null);
   const placement = usePlacementSearch(
     placementProbes,
     language.id,
@@ -133,6 +136,17 @@ function LatinLessons() {
     // placement otherwise never touches (owner: "placement test does not
     // update the vocab list").
     latinLessons,
+    // QA-8 fix: applying the result (Keep the result / Start from Unit N /
+    // Start from the beginning) now DISMISSES — refresh the unlock frontier
+    // in place, return to the menu, and confirm where the student now starts.
+    (unit) => {
+      const mapped = unitToFirstLessonCount[unit] ?? unit;
+      lesson.applyPlacementResult(mapped);
+      lesson.backToMenu();
+      setPlacementNotice(
+        `Placement applied — your course now starts at Unit ${unit}.`,
+      );
+    },
   );
   const settingsEngine = useSettings(language.id);
   const pronMode = settingsEngine.settings.pronMode;
@@ -241,6 +255,99 @@ function LatinLessons() {
     },
     [lesson],
   );
+
+  // ── QA-3 fix: deep-link (?lesson=N) + per-language resume ─────────────
+  // (a) Deep-link: a /lessons/latin?lesson=N load opens that lesson directly
+  // (mount-only; invalid/locked ids fall through to the menu). The URL is
+  // synced with replaceState while a lesson is open and cleared on menu
+  // return, so a mid-lesson hard reload lands back IN the lesson.
+  // (b) Resume: the last open lesson id persists per language
+  // (verbum-last-lesson-<lang>); the menu shows a quiet "Resume: Lesson N"
+  // button when no param is in play. PHASE-LEVEL resume (restoring the
+  // in-phase question position) is out of scope — the per-lesson four-phase
+  // run already resumes at its first not-yet-passed phase.
+  const LESSON_VIEW_SCREENS = useMemo(
+    () =>
+      new Set<string>([
+        "teaching",
+        "intro",
+        "exercise",
+        "complete",
+        "memorized",
+        "quizzed",
+        "incorporated",
+      ]),
+    [],
+  );
+  const deepLinkAppliedRef = useRef(false);
+  const syncedUrlLessonRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (deepLinkAppliedRef.current) return;
+    deepLinkAppliedRef.current = true;
+    try {
+      const raw = new URLSearchParams(window.location.search).get("lesson");
+      if (!raw) return;
+      const id = Number(raw);
+      const idx = latinLessons.findIndex((l) => l.id === id);
+      if (idx >= 0 && idx < lesson.unlockedLessons) {
+        lesson.startPhaseLesson(idx, latinLessons[idx].id);
+      } else {
+        // Unopenable param (unknown/locked id) — strip it so the menu renders
+        // clean and the resume affordance stays available.
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    } catch {
+      // No window / no storage — menu as usual.
+    }
+    // Mount-only: the fresh-load URL decides. Lesson state below is the
+    // hydrated-at-mount snapshot, which is exactly what the param opens into.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    try {
+      if (LESSON_VIEW_SCREENS.has(lesson.screen)) {
+        const id = lesson.currentLesson.id;
+        if (syncedUrlLessonRef.current !== id) {
+          syncedUrlLessonRef.current = id;
+          saveJSON(STORAGE_KEYS.LAST_LESSON, id, language.id);
+          window.history.replaceState(
+            null,
+            "",
+            `${window.location.pathname}?lesson=${id}`,
+          );
+        }
+        return;
+      }
+      if (lesson.screen === "menu" && syncedUrlLessonRef.current !== null) {
+        syncedUrlLessonRef.current = null;
+        if (window.location.search) {
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+      }
+    } catch {
+      // replaceState unavailable (SSR/privacy mode) — in-app state still works.
+    }
+  }, [lesson.screen, lesson.currentLesson.id, language.id, LESSON_VIEW_SCREENS]);
+
+  // Resume derivation: last open lesson, only while still unlocked. Recomputed
+  // per menu render (storage reads in the render body are this route's pattern).
+  const lastLessonId = loadJSON<number | null>(STORAGE_KEYS.LAST_LESSON, null, language.id);
+  const lastLessonIdx = lastLessonId
+    ? latinLessons.findIndex((l) => l.id === lastLessonId)
+    : -1;
+  const resumeLesson =
+    lastLessonIdx >= 0 && lastLessonIdx < lesson.unlockedLessons
+      ? {
+          lessonNumber: lastLessonIdx + 1,
+          title: latinLessons[lastLessonIdx]?.title,
+          idx: lastLessonIdx,
+        }
+      : null;
+  const onResumeLesson = useCallback(() => {
+    if (!resumeLesson) return;
+    setPlacementNotice(null);
+    selectPhaseLesson(resumeLesson.idx);
+  }, [resumeLesson, selectPhaseLesson]);
 
   // Navigation wrappers: keep engine screen transitions in sync with
   // route-local state the screens don't own.
@@ -570,7 +677,8 @@ function LatinLessons() {
     }
   }
 
-  switch (lesson.screen) {
+  const screenView = (() => {
+    switch (lesson.screen) {
     case "menu":
       // Overlay stack (design §1.1/§1.2): the shelf NEVER unmounts while a
       // window is open. LessonMenu renders always; utility windows mount as
@@ -603,6 +711,23 @@ function LatinLessons() {
             unitReviewUnlocked={unitReviewUnlocked}
             recommendation={recommendation}
             onDoRecommended={() => doRecommended()}
+            resumeLesson={resumeLesson}
+            onResumeLesson={onResumeLesson}
+            noticeBanner={
+              placementNotice ? (
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">
+                  <span>✅ {placementNotice}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPlacementNotice(null)}
+                    aria-label="Dismiss"
+                    className="text-lg leading-none text-green-700 hover:text-green-900"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null
+            }
             foundationsEntry={<FoundationsEntry />}
             menuCards={
               <>
@@ -702,13 +827,6 @@ function LatinLessons() {
                 onBack={() => setShowSleepAudio(false)}
               />
             </WindowFrame>
-          )}
-          {showBugReportOpen && (
-            <BugReportDialog
-              context={bugContext ?? { screen: "menu" }}
-              language={language.id}
-              onBack={() => setBugContext(null)}
-            />
           )}
           {unitReview && (
             <WindowFrame
@@ -969,5 +1087,23 @@ function LatinLessons() {
 
     default:
       return null;
-  }
+    }
+  })();
+
+  // QA-9 fix (bugfix batch 2): the ONE BugReportDialog hoisted above the
+  // screen switch — in-lesson 🪲 buttons set bugContext from teaching / drill /
+  // intro / exercise / complete, but the dialog previously mounted only in the
+  // menu branch, so those clicks did nothing. Overlay variant covers any screen.
+  return (
+    <>
+      {screenView}
+      {showBugReportOpen && (
+        <BugReportDialog
+          context={bugContext ?? { screen: "menu" }}
+          language={language.id}
+          onBack={() => setBugContext(null)}
+        />
+      )}
+    </>
+  );
 }
