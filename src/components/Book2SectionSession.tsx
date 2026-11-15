@@ -50,6 +50,10 @@ interface Props {
   onExit: () => void;
   /** Restart the same section from exercise 1. */
   onRestart: () => void;
+  /** Beta bug-report affordance (uniform-menu step 2): 🪲 on every session
+   *  surface — the shell renders the one BugReportDialog. Optional; absent →
+   *  no affordance (historical rendering). */
+  onReportBug?: () => void;
 }
 
 export default function Book2SectionSession({
@@ -66,6 +70,7 @@ export default function Book2SectionSession({
   onExerciseComplete,
   onExit,
   onRestart,
+  onReportBug,
 }: Props) {
   if (phase === "running") {
     // Belt-and-suspenders: the shell flips the phase in the same state commit
@@ -79,6 +84,7 @@ export default function Book2SectionSession({
         pronMode={pronMode}
         onComplete={(detail) => onExerciseComplete(detail.correct)}
         onQuit={onExit}
+        onReportBug={onReportBug}
       />
     );
   }
@@ -125,6 +131,15 @@ export default function Book2SectionSession({
                 Back to the book
               </button>
             </div>
+            {onReportBug && (
+              <button
+                type="button"
+                onClick={onReportBug}
+                className="mt-4 text-xs text-wood-800 transition hover:text-burgundy-700"
+              >
+                🪲 Report a problem
+              </button>
+            )}
           </div>
         </main>
       </div>
@@ -137,13 +152,24 @@ export default function Book2SectionSession({
       <NavBar />
       <main className="paper-desk flex-1 px-4 py-10 sm:px-6 sm:py-16">
         <div className="paper-page mx-auto max-w-2xl p-6 sm:p-10">
-          <button
-            type="button"
-            onClick={onExit}
-            className="text-sm font-semibold text-burgundy-800 transition hover:text-burgundy-600"
-          >
-            ← Back to the book
-          </button>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={onExit}
+              className="text-sm font-semibold text-burgundy-800 transition hover:text-burgundy-600"
+            >
+              ← Back to the book
+            </button>
+            {onReportBug && (
+              <button
+                type="button"
+                onClick={onReportBug}
+                className="text-sm text-wood-800 transition hover:text-burgundy-700"
+              >
+                🪲 Report
+              </button>
+            )}
+          </div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-wood-700 mt-6">
             {part.title}
             {section.folio != null ? ` · p. ${section.folio}` : ""}
