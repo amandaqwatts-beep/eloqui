@@ -239,6 +239,12 @@ export default function BookStructure({ model, focusRequest }: BookStructureProp
                 onCultureResult={model.onCultureResult}
                 openUnitReview={model.openUnitReview}
                 unitReviewUnlocked={model.unitReviewUnlocked}
+                openSection={model.openSection}
+                sectionCompleted={
+                  shelfExpandedSection.kind === "capture-section"
+                    ? model.getSectionCompletion?.(shelfExpandedSection.id)
+                    : undefined
+                }
               />
             )}
             {/* Shelf board */}
@@ -414,9 +420,18 @@ function Spine({
         ? `U${section.unit}`
         : section.kind === "review"
           ? `R${section.unit}`
-          : section.kind === "culture"
-            ? "🏛️"
-            : "✨";
+          : section.kind === "capture-section"
+            ? // Capture-sections carry no chapter layer: Part IV's Henle
+              // lessons label by composed lesson number ("L7"); the rest by
+              // their position within the part (uniform-menu step 2).
+              section.contentRef &&
+                "lessonNumber" in section.contentRef &&
+                section.contentRef.lessonNumber != null
+              ? `L${section.contentRef.lessonNumber}`
+              : `${section.firstIdx + 1}`
+            : section.kind === "culture"
+              ? "🏛️"
+              : "✨";
   // F5 — explore spines carry a tiny index number under the glyph so the 16
   // side-lesson books are distinguishable on touch (tooltips don't exist).
   const sideLessonId =
@@ -434,11 +449,17 @@ function Spine({
       ? `Lesson ${section.henleNumber} · ${section.title} — ${chapterWord}`
       : section.kind === "unit-review" || section.kind === "review"
         ? `${section.title} — ${chapterWord}`
-        : section.kind === "culture"
-          ? `Culture Corner — Unit ${section.unit}`
-          : section.kind === "explore"
-            ? `Explore: ${section.title}`
-            : `${section.title} — ${chapterWord}`;
+        : section.kind === "capture-section"
+          ? `${section.title} — ${
+              section.status === "captured"
+                ? "captured"
+                : "awaiting capture"
+            }`
+          : section.kind === "culture"
+            ? `Culture Corner — Unit ${section.unit}`
+            : section.kind === "explore"
+              ? `Explore: ${section.title}`
+              : `${section.title} — ${chapterWord}`;
   const title =
     section.kind === "henle"
       ? `Lesson ${section.henleNumber} · ${section.title} — ${chapterWord}`
@@ -458,7 +479,12 @@ function Spine({
         isCurrent
           ? "-translate-y-2 shadow-xl ring-2 ring-gold-500 z-10 sm:-translate-y-3"
           : ""
-      } ${!locked && !isCurrent ? "hover:brightness-110" : ""} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2`}
+      } ${!locked && !isCurrent ? "hover:brightness-110" : ""} ${
+        // Awaiting-capture capture-sections sit visibly muted on the shelf —
+        // honest (their content hasn't landed) yet still expandable, so the
+        // panel can say what they are (uniform-menu step 2).
+        section.status === "awaiting-capture" ? "opacity-60" : ""
+      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2`}
     >
       {bookmark && (
         <span
@@ -515,6 +541,8 @@ function ExpansionPanel({
   onCultureResult,
   openUnitReview,
   unitReviewUnlocked,
+  openSection,
+  sectionCompleted,
 }: {
   section: BookStructureSection;
   frontierCount: number;
@@ -524,6 +552,10 @@ function ExpansionPanel({
   onCultureResult?: BookStructureModel["onCultureResult"];
   openUnitReview?: (unitNumber: number) => void;
   unitReviewUnlocked?: Set<number>;
+  /** Capture-section session launcher (uniform-menu step 2). */
+  openSection?: (section: BookStructureSection) => void;
+  /** Scoreless completion read (capture-sections — Book 2's honest seam). */
+  sectionCompleted?: boolean;
 }) {
   const header =
     section.kind === "henle"
@@ -532,7 +564,9 @@ function ExpansionPanel({
         ? section.title // canonical from the data (P3a / F14)
         : section.kind === "culture"
           ? `Culture Corner — Unit ${section.unit}`
-          : `Explore: ${section.title}`;
+          : section.kind === "capture-section"
+            ? section.title
+            : `Explore: ${section.title}`;
   return (
     <div className="book-panel mt-3 w-full p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -558,6 +592,16 @@ function ExpansionPanel({
           section={section}
           unlocked={unitReviewUnlocked?.has(section.unit) ?? false}
           onOpen={() => openUnitReview?.(section.unit)}
+        />
+      ) : section.kind === "capture-section" ? (
+        // Uniform-menu step 2: Books 2/3 capture-sections have no chapter
+        // layer — the panel IS the section: honest capture status, the
+        // session launcher for captured rows, and the section's printed
+        // vocabulary when the data carries it.
+        <CaptureSectionPanel
+          section={section}
+          completed={sectionCompleted ?? false}
+          onOpen={() => openSection?.(section)}
         />
       ) : section.kind === "explore" ? (
         section.contentRef && "sideLesson" in section.contentRef ? (
@@ -679,6 +723,80 @@ function UnitReviewPanel({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * CaptureSectionPanel (uniform-menu step 2) — the expansion panel for the
+ * Books-2/3 capture-section kind. No chapter layer: the panel IS the
+ * section. Honest capture status (Minimalist Scholarly, rev 72 — never a
+ * blanket label, never invented content):
+ *   captured         → session launcher ("Begin the exercises →") + the
+ *                      section's printed vocabulary (model-carried).
+ *   awaiting-capture → the honest empty line; the capture pipeline fills
+ *                      sections in book order.
+ * A scoreless completion line ("✓ worked") shows where the student stands
+ * when the book's seam records it.
+ */
+function CaptureSectionPanel({
+  section,
+  completed,
+  onOpen,
+}: {
+  section: BookStructureSection;
+  completed: boolean;
+  onOpen: () => void;
+}) {
+  const captured = section.status === "captured";
+  const contentRef =
+    section.contentRef && "folio" in section.contentRef
+      ? section.contentRef
+      : null;
+  const vocab = contentRef?.vocab ?? [];
+  return (
+    <div className="space-y-3">
+      <p className="text-xs leading-relaxed text-gray-500">
+        {contentRef?.folio != null ? `p. ${contentRef.folio} · ` : ""}
+        {captured
+          ? "The book's own exercises for this section, captured as printed — ready to run."
+          : "Awaiting capture — the capture pipeline fills the book in book order."}
+      </p>
+      {captured && (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="w-full rounded-xl bg-burgundy-700 py-2.5 text-sm font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
+        >
+          {completed ? "Run it again →" : "Begin the exercises →"}
+        </button>
+      )}
+      {completed && (
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-teal-700">
+          ✓ worked — completion recorded on this path
+        </p>
+      )}
+      {vocab.length > 0 && (
+        <div className="rounded-xl border border-burgundy-100 bg-cream-50/60 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            Printed vocabulary · {vocab.length}{" "}
+            {vocab.length === 1 ? "entry" : "entries"}
+          </p>
+          <ul className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            {vocab.map((v, i) => (
+              <li
+                key={i}
+                className="flex items-baseline justify-between gap-2 text-xs"
+              >
+                <span className="font-book text-burgundy-900">{v.latin}</span>
+                <span className="min-w-0 text-right text-gray-500">
+                  {v.english}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

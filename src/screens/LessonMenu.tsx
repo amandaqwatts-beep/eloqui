@@ -8,7 +8,10 @@ import type { LessonProgress } from "~/engine/progress";
 import type { ExerciseResultDetail } from "~/engine/types";
 import NavBar from "~/components/NavBar";
 import BookStructure from "~/components/BookStructure";
-import { buildBook1StructureModel } from "~/lib/bookStructureModel";
+import {
+  buildBook1StructureModel,
+  type BookStructureModel,
+} from "~/lib/bookStructureModel";
 import RecommendedButton from "~/components/RecommendedButton";
 import SearchBox from "~/components/SearchBox";
 import GrammarDrawer from "~/components/GrammarDrawer";
@@ -18,7 +21,10 @@ import type { Recommendation } from "~/engine/recommendation";
 
 interface Props {
   lessons: Lesson[]; unlockedLessons: number; onSelectLesson: (idx: number) => void;
-  onOpenDrill: () => void; onOpenPlacement: () => void; onOpenAIPractice: (lessonId: number) => void;
+  // Optional (uniform-menu step 2): Books 2/3 have no per-book drill /
+  // placement / AI adapters yet (survey's engine-side ask) — the tiles
+  // render only when a handler is wired. Book 1's route always passes them.
+  onOpenDrill?: () => void; onOpenPlacement?: () => void; onOpenAIPractice?: (lessonId: number) => void;
   // Optional until the route integration phase wires them in (keeps build green).
   onOpenSettings?: () => void; onOpenAudio?: () => void; onOpenSleep?: () => void; onOpenProgress?: () => void; onOpenReview?: () => void;
   /** Beta bug-report affordance (owner directive 2026-08-23): 🪲 in the desk
@@ -37,6 +43,17 @@ interface Props {
   bookLessons?: BookLesson[];
   sideLessons?: SideLesson[];
   grammarTopics?: GrammarTopic[];
+  /** Uniform-menu step 2 — a caller-built BookStructureModel passed through
+   *  VERBATIM (Books 2/3 build their own adapters + runtime providers; the
+   *  menu must not overwrite them with Book-1 wiring). When present it takes
+   *  precedence over the bookLessons-driven Book-1 adapter. Absent → the
+   *  Book-1 path below, byte-identical. */
+  structureModel?: BookStructureModel;
+  /** Grammar-drawer handoff for a related lesson this book does not own
+   *  (Book 2's grammar topics cite Book-1 chapters — the shell hands off to
+   *  the Latin 1 course menu). Optional; absent → no-op. Book 1 resolves
+   *  every id in its own array, so this never fires there. */
+  onOpenForeignLesson?: (lessonId: number) => void;
   /** Reserved grid slot for daily-lesson / improvement-streak cards (later). */
   menuCards?: ReactNode;
   onCultureResult?: (
@@ -65,8 +82,10 @@ interface Props {
 
   /** Bugfix batch 2 (QA-3): quiet resume affordance — route passes the last
    *  open lesson (display number + title) + the open callback. Optional —
-   *  absent → byte-identical rendering. */
-  resumeLesson?: { lessonNumber: number; title?: string } | null;
+   *  absent → byte-identical rendering. lessonNumber is optional for books
+   *  whose sections don't sit on a numbered ladder (Book 2 carries the
+   *  section title only — uniform-menu step 2). */
+  resumeLesson?: { lessonNumber?: number; title?: string } | null;
   onResumeLesson?: () => void;
   /** Bugfix batch 2 (QA-8): route-owned confirmation strip (e.g. placement
    *  applied) rendered directly under the desk bar. Optional. */
@@ -92,18 +111,22 @@ export default function LessonMenu({
   onOpenUnitReview,unitReviewUnlocked,foundationsEntry,
   recommendation,onDoRecommended,
   resumeLesson,onResumeLesson,noticeBanner,shelfEntry,
+  structureModel,onOpenForeignLesson,
 }: Props) {
   // The book's structure (uniform-menu step 1): the Book-1 adapter folds
   // bookLessons/sideLessons into the book-agnostic BookStructureModel —
   // parts → sections → chapters with the Book-1-isms (tone rotation, legacy
   // review demotion, culture intros, bookKey formats) behind model data.
-  // Absent (English route / no bookLessons) → the TOC fallback below.
+  // Uniform-menu step 2: a caller-built structureModel (Books 2/3) passes
+  // through verbatim. Absent both (English route / no bookLessons) → the TOC
+  // fallback below.
   const structure = useMemo(
     () =>
-      bookLessons && bookLessons.length > 0
+      structureModel ??
+      (bookLessons && bookLessons.length > 0
         ? buildBook1StructureModel(lessons, bookLessons, sideLessons ?? [])
-        : null,
-    [lessons, bookLessons, sideLessons],
+        : null),
+    [structureModel, lessons, bookLessons, sideLessons],
   );
 
   // Per-book progress for shelf bookmark tabs / strips / chips (the model's
@@ -172,7 +195,13 @@ export default function LessonMenu({
     }
     const idx = lessons.findIndex((l) => l.id === lessonId);
     setDrawerOpen(false);
-    if (idx < 0) return;
+    if (idx < 0) {
+      // Uniform-menu step 2: the lesson isn't this book's (Book 2's grammar
+      // topics cite Book-1 chapters) — hand off to the caller when it wired
+      // a handler; otherwise the historical silent no-op.
+      onOpenForeignLesson?.(lessonId);
+      return;
+    }
     if (idx < unlockedLessons) {
       onSelectLesson(idx);
       return;
@@ -259,17 +288,22 @@ export default function LessonMenu({
               )}
             </div>
 
-            {/* Row B — remaining actions (3-col grid on mobile) */}
+            {/* Row B — remaining actions (3-col grid on mobile). Drill /
+                Placement / AI render only when the caller wires a handler —
+                Book 1 always does (byte-identical); Books 2/3 omit them
+                until per-book adapters exist (survey's engine-side ask). */}
             <div className="grid grid-cols-3 gap-2 sm:contents">
-              <button
-                type="button"
-                onClick={onOpenDrill}
-                className="flex h-11 flex-col items-center justify-center gap-0 rounded-xl bg-gold-400 px-1 text-burgundy-950 shadow transition hover:bg-gold-300 sm:flex-row sm:gap-1.5 sm:px-4"
-              >
-                <span aria-hidden="true" className="text-lg leading-none">🗡️</span>
-                <span className="text-[10px] font-black leading-tight sm:text-base">Drill</span>
-              </button>
-              {showAIPractice && (
+              {onOpenDrill && (
+                <button
+                  type="button"
+                  onClick={onOpenDrill}
+                  className="flex h-11 flex-col items-center justify-center gap-0 rounded-xl bg-gold-400 px-1 text-burgundy-950 shadow transition hover:bg-gold-300 sm:flex-row sm:gap-1.5 sm:px-4"
+                >
+                  <span aria-hidden="true" className="text-lg leading-none">🗡️</span>
+                  <span className="text-[10px] font-black leading-tight sm:text-base">Drill</span>
+                </button>
+              )}
+              {showAIPractice && onOpenAIPractice && (
                 <button
                   type="button"
                   onClick={() => onOpenAIPractice(aiTargetLessonId)}
@@ -279,14 +313,16 @@ export default function LessonMenu({
                   <span className="text-[10px] font-black leading-tight sm:text-base">AI Practice</span>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onOpenPlacement}
-                className="flex h-11 flex-col items-center justify-center gap-0 rounded-xl border-2 border-gold-600 bg-cream-50 px-1 text-burgundy-800 shadow-sm transition hover:bg-gold-50 sm:flex-row sm:gap-1.5 sm:px-4"
-              >
-                <span aria-hidden="true" className="text-lg leading-none">📋</span>
-                <span className="text-[10px] font-black leading-tight sm:text-base">Placement</span>
-              </button>
+              {onOpenPlacement && (
+                <button
+                  type="button"
+                  onClick={onOpenPlacement}
+                  className="flex h-11 flex-col items-center justify-center gap-0 rounded-xl border-2 border-gold-600 bg-cream-50 px-1 text-burgundy-800 shadow-sm transition hover:bg-gold-50 sm:flex-row sm:gap-1.5 sm:px-4"
+                >
+                  <span aria-hidden="true" className="text-lg leading-none">📋</span>
+                  <span className="text-[10px] font-black leading-tight sm:text-base">Placement</span>
+                </button>
+              )}
               {onOpenAudio && (
                 <button type="button" onClick={onOpenAudio} title="Listen" aria-label="Listen" className={ICON_TILE}>
                   🎧
@@ -328,8 +364,7 @@ export default function LessonMenu({
                 onClick={onResumeLesson}
                 className="text-sm font-semibold text-wood-800 hover:text-burgundy-700 transition"
               >
-                🔖 Resume: Lesson {resumeLesson.lessonNumber}
-                {resumeLesson.title ? ` — ${resumeLesson.title}` : ""}
+                🔖 Resume:{resumeLesson.lessonNumber != null ? ` Lesson ${resumeLesson.lessonNumber}` : ""}{resumeLesson.title ? (resumeLesson.lessonNumber != null ? ` — ${resumeLesson.title}` : ` ${resumeLesson.title}`) : ""}
               </button>
             </div>
           )}
@@ -346,26 +381,33 @@ export default function LessonMenu({
           )}
 
           {/* Shelf area: the book's structure (packed shelves → parts →
-              sections → chapters) when a model is present, else the TOC */}
+              sections → chapters) when a model is present, else the TOC.
+              Uniform-menu step 2: a caller-built model passes through
+              verbatim — its providers are the book's own; the Book-1 path
+              below keeps the route-owned wiring it has always had. */}
           {structure ? (
-            <BookStructure
-              model={{
-                ...structure,
-                getChapterProgress: (chapterId) => progressById.get(chapterId),
-                openChapter: (chapter) => onSelectLesson(chapter.ref),
-                onCultureResult,
-                openUnitReview: onOpenUnitReview,
-                unitReviewUnlocked,
-                frontier: {
-                  count: unlockedLessons,
-                  currentRef: frontierIdx,
-                  chapterId: lessons[frontierIdx]?.id ?? null,
-                  suppressScroll: suppressFrontierScroll,
-                  storageKey: `eloqui:frontier:${languageId}`,
-                },
-              }}
-              focusRequest={focusRequest}
-            />
+            structureModel ? (
+              <BookStructure model={structureModel} focusRequest={focusRequest} />
+            ) : (
+              <BookStructure
+                model={{
+                  ...structure,
+                  getChapterProgress: (chapterId) => progressById.get(chapterId),
+                  openChapter: (chapter) => onSelectLesson(chapter.ref),
+                  onCultureResult,
+                  openUnitReview: onOpenUnitReview,
+                  unitReviewUnlocked,
+                  frontier: {
+                    count: unlockedLessons,
+                    currentRef: frontierIdx,
+                    chapterId: lessons[frontierIdx]?.id ?? null,
+                    suppressScroll: suppressFrontierScroll,
+                    storageKey: `eloqui:frontier:${languageId}`,
+                  },
+                }}
+                focusRequest={focusRequest}
+              />
+            )
           ) : (
             <LessonTOC
               lessons={lessons}
@@ -396,6 +438,6 @@ export default function LessonMenu({
 }
 
 /** Today's flat lesson list, extracted verbatim from the menu (TOC fallback). */
-function LessonTOC({lessons,unlockedLessons,onSelectLesson,showAIPractice,onOpenAIPractice}:{lessons:Lesson[];unlockedLessons:number;onSelectLesson:(idx:number)=>void;showAIPractice:boolean;onOpenAIPractice:(lessonId:number)=>void}) {
- return <div className="space-y-3">{lessons.map((l,i)=>{const locked=i>=unlockedLessons;return <button key={l.id} onClick={()=>onSelectLesson(i)} disabled={locked} className={`w-full text-left rounded-2xl border-2 p-5 transition-all duration-200 ${locked?"border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed":"border-burgundy-200 bg-white hover:border-burgundy-400 hover:shadow-md cursor-pointer"}`}><div className="flex items-start gap-4"><div className={`flex h-10 w-10 items-center justify-center rounded-xl shrink-0 text-lg font-bold ${locked?"bg-gray-200 text-gray-400":"bg-burgundy-100 text-burgundy-700"}`}>{locked?"🔒":i+1}</div><div className="flex-1 min-w-0"><h3 className={`font-bold text-base ${locked?"text-gray-400":"text-burgundy-900"}`}>Lesson {i+1}: {l.title}</h3>{l.subtitle&&<p className="text-sm text-gray-500 mt-0.5">{l.subtitle}</p>}<p className="text-xs text-gray-400 mt-1">{l.exercises.length} exercises</p>{!locked&&showAIPractice&&<span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onOpenAIPractice(l.id)}} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onOpenAIPractice(l.id)}}} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-full transition">🤖 Practice</span>}</div>{!locked&&<svg className="h-5 w-5 text-burgundy-400 shrink-0 mt-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>}</div></button>})}</div>;
+function LessonTOC({lessons,unlockedLessons,onSelectLesson,showAIPractice,onOpenAIPractice}:{lessons:Lesson[];unlockedLessons:number;onSelectLesson:(idx:number)=>void;showAIPractice:boolean;onOpenAIPractice?:(lessonId:number)=>void}) {
+ return <div className="space-y-3">{lessons.map((l,i)=>{const locked=i>=unlockedLessons;return <button key={l.id} onClick={()=>onSelectLesson(i)} disabled={locked} className={`w-full text-left rounded-2xl border-2 p-5 transition-all duration-200 ${locked?"border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed":"border-burgundy-200 bg-white hover:border-burgundy-400 hover:shadow-md cursor-pointer"}`}><div className="flex items-start gap-4"><div className={`flex h-10 w-10 items-center justify-center rounded-xl shrink-0 text-lg font-bold ${locked?"bg-gray-200 text-gray-400":"bg-burgundy-100 text-burgundy-700"}`}>{locked?"🔒":i+1}</div><div className="flex-1 min-w-0"><h3 className={`font-bold text-base ${locked?"text-gray-400":"text-burgundy-900"}`}>Lesson {i+1}: {l.title}</h3>{l.subtitle&&<p className="text-sm text-gray-500 mt-0.5">{l.subtitle}</p>}<p className="text-xs text-gray-400 mt-1">{l.exercises.length} exercises</p>{!locked&&showAIPractice&&onOpenAIPractice&&<span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onOpenAIPractice(l.id)}} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onOpenAIPractice(l.id)}}} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-full transition">🤖 Practice</span>}</div>{!locked&&<svg className="h-5 w-5 text-burgundy-400 shrink-0 mt-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>}</div></button>})}</div>;
 }

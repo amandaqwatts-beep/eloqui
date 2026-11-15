@@ -18,21 +18,26 @@
  *   - buildBook2StructureModel — Henle Second Year Latin, from
  *     LATIN2_STRUCTURE (+ lib/latin2Sections for the composed lesson numbers;
  *     the completion seam is lib/book2Progress, scoreless, wired through
- *     getSectionCompletion). Data-level: nothing renders from it yet — Book 2
- *     keeps its shell until the uniform-menu rebuild (step 4).
+ *     getSectionCompletion). Rendered by the uniform shell (uniform-menu
+ *     step 2): the shell composes the runtime providers (openSection) over
+ *     the static structure this returns.
  *   - buildBook3StructureModel — Caesar's Gallic War, from GALLIC_WAR_STRUCTURE.
  *
  * ⚠️ Book 1 display order derives from ARRAY INDEX (unlock order), never id
  * order — the array-order constraint from bookshelfModel.ts carries through:
  * subLessonIds are membership sets; chapter refs are array indices.
  */
-import type { Lesson, CultureQuestionExercise } from "~/data/latinLessons";
+import type {
+  CultureQuestionExercise,
+  Lesson,
+  VocabularyItem,
+} from "~/data/latinLessons";
 import type { BookLesson } from "~/data/bookLessons";
 import type { SideLesson } from "~/data/latinSideLessons";
 import type { LessonProgress } from "~/engine/progress";
 import type { ExerciseResultDetail } from "~/engine/types";
 import { buildBookshelfModel, type ShelfBook } from "~/lib/bookshelfModel";
-import { LATIN2_STRUCTURE } from "~/data/latin2";
+import { LATIN2_STRUCTURE, LATIN2_SECTION_VOCAB } from "~/data/latin2";
 import { latin2SectionLessonNumber } from "~/lib/latin2Sections";
 import { GALLIC_WAR_STRUCTURE } from "~/data/gallicWar";
 
@@ -74,7 +79,14 @@ export type BookStructureContentRef =
       }[];
     }
   | { sideLesson?: SideLesson }
-  | { folio: number | null; lessonNumber: number | null };
+  | {
+      folio: number | null;
+      lessonNumber: number | null;
+      /** The section's printed vocabulary (uniform-menu step 2, PR #134's
+       *  LATIN2_SECTION_VOCAB) — real section content the capture-section
+       *  expansion panel renders. Absent when the section carries none. */
+      vocab?: VocabularyItem[];
+    };
 
 export interface BookStructureSection {
   /** Stable section id — the expansion key AND the search-focus address
@@ -155,6 +167,10 @@ export interface BookStructureModel {
   /** Session launcher — open a chapter (Book 1: four-phase selectLesson by
    *  array index). */
   openChapter?: (chapter: BookStructureChapter) => void;
+  /** Section-level session launcher (capture-section kinds — Books 2/3):
+   *  open the section's own session straight from its expansion panel
+   *  (Book 2: opener → ExerciseScreen; uniform-menu step 2). */
+  openSection?: (section: BookStructureSection) => void;
   /** Frontier/resume provider (auto-expand, scroll, locks). */
   frontier?: BookStructureFrontier;
   /** Culture diagnostics sink (Book 1: route recordAttempt passthrough). */
@@ -333,8 +349,9 @@ function bookToSection(
  *  folio map's own part/section order is display order (it IS the book's
  *  contents). Completion is the scoreless per-section seam
  *  (lib/book2Progress.completedSectionIds → getSectionCompletion); callers
- *  pass loadBook2Progress().completedSectionIds. Nothing renders from this
- *  adapter yet — Book 2 keeps its shell until the uniform-menu rebuild. */
+ *  pass loadBook2Progress().completedSectionIds. Uniform-menu step 2: the
+ *  sections carry their printed vocab (LATIN2_SECTION_VOCAB) in the content
+ *  ref — the uniform shell renders it in the capture-section panel. */
 export function buildBook2StructureModel(
   completedSectionIds: string[] = [],
 ): BookStructureModel {
@@ -343,25 +360,29 @@ export function buildBook2StructureModel(
     id: part.id,
     label: part.title,
     number: partIdx + 1,
-    sections: part.sections.map((section, i) => ({
-      id: section.id,
-      title: section.title,
-      kind: "capture-section" as const,
-      status:
-        section.status === "captured"
-          ? ("captured" as const)
-          : ("awaiting-capture" as const),
-      unit: partIdx + 1,
-      chapters: [],
-      // Captured rows are openable regardless of any frontier (honest — the
-      // shell gates on real content, not on a ladder position).
-      unlockIdx: -1,
-      firstIdx: i,
-      contentRef: {
-        folio: section.folio,
-        lessonNumber: latin2SectionLessonNumber(section.id),
-      },
-    })),
+    sections: part.sections.map((section, i) => {
+      const vocab = LATIN2_SECTION_VOCAB[section.id];
+      return {
+        id: section.id,
+        title: section.title,
+        kind: "capture-section" as const,
+        status:
+          section.status === "captured"
+            ? ("captured" as const)
+            : ("awaiting-capture" as const),
+        unit: partIdx + 1,
+        chapters: [],
+        // Captured rows are openable regardless of any frontier (honest — the
+        // shell gates on real content, not on a ladder position).
+        unlockIdx: -1,
+        firstIdx: i,
+        contentRef: {
+          folio: section.folio,
+          lessonNumber: latin2SectionLessonNumber(section.id),
+          ...(vocab && vocab.length > 0 ? { vocab } : {}),
+        },
+      };
+    }),
   }));
   return {
     bookKey: "latin-2",

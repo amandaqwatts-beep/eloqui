@@ -12,15 +12,24 @@ import Book2Shell from "~/components/Book2Shell";
 import Book3Shell from "~/components/Book3Shell";
 
 export const Route = createFileRoute("/shelf/$language")({
-  // Optional key (`book?: number`) keeps the search prop optional on Links.
-  validateSearch: (search: Record<string, unknown>): { book?: number } => {
+  // Optional keys (`book?: number`, `section?: string`) keep the search prop
+  // optional on Links. `section` is Book 2's deep-link address
+  // (?book=2&section=… — uniform-menu step 2); the shell validates it
+  // against the capture pipeline's data.
+  validateSearch: (search: Record<string, unknown>): { book?: number; section?: string } => {
     const n =
       typeof search.book === "number"
         ? search.book
         : typeof search.book === "string" && search.book !== ""
           ? Number(search.book)
           : NaN;
-    return { book: n === 2 || n === 3 ? n : undefined };
+    return {
+      book: n === 2 || n === 3 ? n : undefined,
+      section:
+        typeof search.section === "string" && search.section.trim() !== ""
+          ? search.section
+          : undefined,
+    };
   },
   component: ShelfRoute,
 });
@@ -50,9 +59,10 @@ function ShelfRoute() {
   }
 
   if (search.book === 2) {
-    // Book 2's study room: structural skeleton now; the two-path selector
-    // and per-path progress compose inside the shell.
-    return <Book2Shell shelf={shelf} />;
+    // Book 2's uniform menu (screens dept): the thin shell composes the
+    // BookStructureModel + session affordances (🪲 / resume / section
+    // deep-links) and renders through the shared LessonMenu path.
+    return <Book2Shell shelf={shelf} deepLinkSection={search.section} />;
   }
 
   if (search.book === 3) {

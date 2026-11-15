@@ -27,6 +27,12 @@ export interface Latin2PathProgress {
    * content exists.
    */
   completedSectionIds: string[];
+  /**
+   * The last section the student opened (resume seam, uniform-menu step 2).
+   * A section id from LATIN2_STRUCTURE; null until the first session opens.
+   * Recorded on OPEN — running a section is not required to resume it.
+   */
+  lastSectionId: string | null;
   /** ISO timestamp of the last write; null until the first write. */
   updatedAt: string | null;
 }
@@ -40,6 +46,7 @@ export interface StorageLike {
 const emptyProgress = (): Latin2PathProgress => ({
   path: null,
   completedSectionIds: [],
+  lastSectionId: null,
   updatedAt: null,
 });
 
@@ -68,6 +75,7 @@ export function loadBook2Progress(storage?: StorageLike): Latin2PathProgress {
       completedSectionIds: Array.isArray(rec.completedSectionIds)
         ? rec.completedSectionIds.filter((id): id is string => typeof id === "string")
         : [],
+      lastSectionId: typeof rec.lastSectionId === "string" ? rec.lastSectionId : null,
       updatedAt: typeof rec.updatedAt === "string" ? rec.updatedAt : null,
     };
   } catch {
@@ -119,6 +127,29 @@ export function saveBook2PathChoice(
       store.setItem(BOOK2_PROGRESS_KEY, JSON.stringify(next));
     } catch {
       /* storage unavailable — the choice stays in-session */
+    }
+  }
+  return next;
+}
+
+/** Record the last section the student OPENED (resume seam, uniform-menu
+ *  step 2). Load-modify-save like the other writers so it never clobbers a
+ *  concurrent path choice or completion; StrictMode-safe (idempotent). */
+export function saveBook2LastSection(
+  sectionId: string,
+  storage?: StorageLike,
+): Latin2PathProgress {
+  const store = storage ?? defaultStorage();
+  const next: Latin2PathProgress = {
+    ...loadBook2Progress(store ?? undefined),
+    lastSectionId: sectionId,
+    updatedAt: new Date().toISOString(),
+  };
+  if (store) {
+    try {
+      store.setItem(BOOK2_PROGRESS_KEY, JSON.stringify(next));
+    } catch {
+      /* storage unavailable — the resume pointer stays in-session */
     }
   }
   return next;
