@@ -20,7 +20,7 @@
 //   • Provenance: the owner's copy is a post-1952 printing; the PD-1943 text
 //     stays the structural spine. Folio numbers below are the book's own.
 
-import type { Exercise } from "./latinLessons";
+import type { Exercise, VocabularyItem } from "./latinLessons";
 
 /** Status of a structural node. "awaiting-capture" = structure only;
  *  "captured" = the capture pipeline has attached exercise content keyed by
@@ -1565,4 +1565,199 @@ export const LATIN2_SECTION_GRAMMAR_REFS: Record<string, string[]> = {
     "comparison-of-adverbs",
   ],
 
+};
+
+/** Printed vocabulary of each captured Part IV spine section — VERBATIM from
+ *  the book's own vocab lists (pull-don't-rephrase). Keyed by LATIN2_STRUCTURE
+ *  section id; mirrors LATIN2_SECTION_EXERCISES / LATIN2_SECTION_GRAMMAR_REFS.
+ *  Sources: research/henle-owner-notes/latin2-captures/part04-e1-e6.md and
+ *  latin2-e7-16-precapture.md ("Vocabulary (f.N):" lines); staged verbatim at
+ *  research/latin2-section-vocab-table.md.
+ *  latin   = headword + genitive/principal parts + printed footnote markers, verbatim.
+ *  english = printed gloss(es) + any printed construction note, verbatim.
+ *  type    = the book's own lexical tag where printed (1/2/3/4, irreg., adv.,
+ *            prep. w. abl., indecl. noun, conj., …); gender = m./f./n. where
+ *            printed; pronunciation omitted (the print gives none).
+ *  Related-English/Latin etymology lines are enrichment — excluded per the
+ *  owner's 2026-08-28 rule; printed footnote texts ride as comments. */
+export const LATIN2_SECTION_VOCAB: Record<string, VocabularyItem[]> = {
+  "part4-l01-nouns-sum": [
+    { latin: "crux, crucis", english: "cross" },
+    { latin: "classis, classis¹", english: "fleet" },                       // ¹ abl. classī or classe
+    { latin: "cohors, cohortis", english: "cohort (a division of a legion containing 600 men)" },
+    { latin: "cōnsul, cōnsulis", english: "consul²", gender: "m." },        // ² two consuls elected each year
+    { latin: "auctōritās, auctōritātis", english: "authority / influence" },
+    { latin: "lībertās, lībertātis", english: "liberty" },
+    { latin: "timor, timōris", english: "fear" },
+  ],
+  "part4-l02-adjectives": [
+    { latin: "barbarus, a, um", english: "{barbarian / foreign}" },
+    { latin: "fīrmus, a, um", english: "{strong / vigorous}" },
+    { latin: "plūrimus, a, um", english: "{very many / the greatest number / (pl.) the most}" },
+    { latin: "idōneus, a, um", english: "w. dat. or ad w. acc. {suitable / proper / convenient}" },
+    { latin: "proximus, a, um", english: "w. dat. {nearest / next}" },
+  ],
+  "part4-l03-indicative-questions": [
+    { latin: "pācō", english: "pacify", type: "1, tr." },
+    { latin: "incolō, incolere, incoluī", english: "inhabit / dwell in", type: "3, tr." },
+    { latin: "capiō, capere, cēpī, captus", english: "take / capture", type: "3, tr." },
+    { latin: "cōnsilium capere", english: "to make a plan" },
+    { latin: "faciō, facere, fēcī, factus", english: "do / make", type: "3, tr." },
+    { latin: "iter facere", english: "to march / to make a journey" },
+    { latin: "fugiō, fugere, fūgī, fugitūrus", english: "flee", type: "3, intr." },
+    { latin: "cupiō, cupere, cupīvī, cupītus", english: "desire", type: "3, tr." },
+    { latin: "jaciō, jacere, jēcī, jactus", english: "throw / hurl", type: "3, tr." },
+    { latin: "-ne¹", english: "particle used in asking questions" },        // ¹ added to emphatic word—generally the verb—and put first
+    { latin: "num", english: "word used in asking questions when the answer 'no' is expected" },
+    { latin: "nōnne²", english: "word used in asking questions when the answer 'yes' is expected" }, // ² generally first in its clause
+    { latin: "quis, quid", english: "who / what" },
+    { latin: "ubī", english: "where", type: "adv." },
+    { latin: "cūr", english: "why", type: "adv." },
+  ],
+  "part4-l04-pres-subj": [
+    { latin: "reducō, redūcere, redūxī, reductus", english: "lead back / draw back", type: "3, tr." },
+    { latin: "rejiciō, rejicere, rejēcī, rejectus", english: "hurl back / drive back / repel", type: "3, tr." },
+    { latin: "remittō, remittere, remīsī, remissus", english: "send back / return / release", type: "3, tr." },
+    { latin: "repellō, repellere, reppulī, repulsus", english: "beat back / drive back", type: "3, tr." },
+    { latin: "reprimō, reprimere, repressī, repressus", english: "press back / check / restrain", type: "3, tr." },
+    { latin: "vīvō, vīvere, vīxī, vīctūrus", english: "live", type: "3, intr." },
+    { latin: "praesidium, ī", english: "garrison / protection" },
+    { latin: "pīlum, ī", english: "javelin" },
+  ],
+  "part4-l05-subj-indirect": [
+    { latin: "rogō", english: "ask / request", type: "1, tr." },
+    { latin: "quot", english: "how many", type: "indecl. adj." },
+    { latin: "quantus, a, um", english: "how large / how great" },
+    { latin: "quō", english: "whither / where (of motion)", type: "adv." },
+    { latin: "sciō", english: "know", type: "4, tr." },
+    { latin: "quaerō, quaerere, quaesīvī, quaesītus", english: "seek / ask", type: "3, tr." },
+    { latin: "dolor, dolōris", english: "pain / sorrow" },
+    { latin: "aperiō, aperīre, aperuī, apertus", english: "open / uncover / expose", type: "4, tr." },
+  ],
+  "part4-l06-pronouns": [
+    { latin: "ego, meī", english: "I (pl., we)" },
+    { latin: "tū, tuī", english: "you" },
+    { latin: "meus, a, um", english: "my / mine" },
+    { latin: "noster, nostra, nostrum", english: "our / ours / our own" },
+    { latin: "tuus, a, um", english: "your (of one person) / yours / your own" },
+    { latin: "vester, vestra, vestrum", english: "your (of more than one person) / yours / your own" },
+    { latin: "is, ea, id", english: "he (pl., they) / she / it" },
+    { latin: "ējus", english: "his / her / hers / its / of him, etc." },
+    { latin: "eōrum, eārum", english: "their / of them, etc." },
+    { latin: "suī", english: "himself (him) / herself (her) / itself (it) / themselves (them)" },
+    { latin: "suus, a, um", english: "his (own) / her (own) / its (own) / their (own)" },
+    { latin: "recipiō, recipere, recēpī, receptus", english: "take back; with a reflexive pronoun withdraw / recover", type: "3, tr." },
+    { latin: "dēdō, dēdere, dēdidī, dēditus", english: "give up / devote / surrender¹", type: "3, tr." },   // ¹ This verb always takes an object in Latin.
+    { latin: "abdō, abdere, abdidī, abditus", english: "hide / conceal¹", type: "3, tr." },                 // ¹ This verb always takes an object in Latin.
+  ],
+  "part4-l07-passive": [
+    { latin: "dējiciō, dējicere, dējēcī, dējectus", english: "{hurl down / cast down}", type: "3, tr." },
+    { latin: "cōgō, cogere, coēgī, coāctus", english: "{bring together / collect / force}", type: "3, tr." },
+    { latin: "relinquō, relinquere, relīquī, relictus", english: "{leave / leave behind}", type: "3, tr." },
+    { latin: "dīvidō, dividere, dīvīsī, dīvīsus", english: "{divide / separate}", type: "3, tr." },
+    { latin: "fuga, ae", english: "flight" },
+    { latin: "in fugam dō, dare, dedī, datus", english: "put to flight", type: "1, tr." },
+    { latin: "ex (ē)", english: "{out of / from}", type: "prep. w. abl." },
+    { latin: "dē", english: "{down from / out of / from / concerning (about)}", type: "prep. w. abl." },
+    { latin: "ab (ā)", english: "{by (agent) / away from / from}", type: "prep. w. abl." },
+  ],
+  "part4-l08-hic-is-ille": [
+    { latin: "hic, haec, hoc", english: "{this (pl., these)}" },
+    { latin: "is, ea, id", english: "{that (pl., those) / he, she, it, they, etc.}" },
+    { latin: "ille, illa, illud", english: "{that (pl., those) / he, she, it, they, etc.}" },
+    { latin: "causa, ae", english: "{cause / reason}" },
+    { latin: "causā", english: "preceded by gen. for the sake of" },
+    { latin: "ratiō, ratiōnis", english: "{method / reason / plan / way}" },
+    { latin: "dīligō, dīligere, dīlēxī, dīlēctus", english: "love", type: "3, tr." },
+    { latin: "contrā", english: "{against / opposite}", type: "prep. w. acc." },
+  ],
+  "part4-l09-subj-purpose": [
+    { latin: "interficiō, interficere, interfēcī, interfectus", english: "kill", type: "3, tr." },
+    { latin: "addūcō, addūcere, addūxī, adductus", english: "{lead to / induce / influence}", type: "3, tr." },
+    { latin: "cōnspiciō, cōnspicere, cōnspexī, cōnspectus", english: "{observe / perceive}", type: "3, tr." },
+    { latin: "cōnficiō, cōnficere, cōnfēcī, cōnfectus", english: "{accomplish / finish / exhaust}", type: "3, tr." },
+    { latin: "accipiō, accipere, accēpī, acceptus", english: "{receive / take}", type: "3, tr." },
+    { latin: "facilius", english: "more easily", type: "comp. adv." },
+    { latin: "ut", english: "{that / in order that (in purpose clauses)}", type: "conj." },
+    { latin: "nē", english: "{that . . . not / in order that not (in negative purpose clauses)}", type: "conj." },
+    { latin: "quō", english: "{that / in order that (in purpose clauses containing a comparative adverb or adjective)}", type: "conj." },
+  ],
+  "part4-l10-adj-dative": [
+    { latin: "dīligēns (gen. dīligentis)", english: "{careful / exact}" },
+    { latin: "audāx (gen. audācis)", english: "{daring / bold / courageous}" },
+    { latin: "ācer, ācris, ācre", english: "{sharp / fierce / eager}" },
+    { latin: "celer, celeris, celere", english: "swift" },
+    { latin: "studeō, studēre, studuī", english: "w. dat. {am eager (for) / strive (after) / am devoted (to)}", type: "2, intr." },
+    { latin: "resistō, resistere, restitī", english: "w. dat. {remain behind / resist / withstand}", type: "3, intr." },
+    { latin: "praesum, praeesse, praefuī, praefutūrus", english: "w. dat. {am over / am in command of}", type: "irreg., intr." },
+    { latin: "noceō, nocēre, nocuī, nocitūrus", english: "w. dat. {harm / injure}", type: "2, intr." },
+    { latin: "praeficiō, praeficere, praefēcī, praefectus", english: "w. dat. of thing of which put in command of", type: "3, tr." },
+  ],
+  "part4-l11-deponents-cum": [
+    { latin: "hortor", english: "{urge / encourage}", type: "1, tr." },
+    { latin: "vereor", english: "fear", type: "2, tr." },
+    { latin: "sequor, sequī, secūtus sum", english: "{follow / pursue}", type: "3, tr." },
+    { latin: "patior, patī, passus sum", english: "{suffer / allow}", type: "3, tr." },
+    { latin: "orior, orīrī, ortus sum", english: "{rise / arise}", type: "4, intr." },
+    { latin: "loquor, loquī, locūtus sum", english: "{talk / speak}", type: "3, tr. and intr." },
+    { latin: "proficīscor, proficīscī, profectus sum", english: "{set out / depart}", type: "3, intr." },
+    { latin: "aggredior, aggredī, aggressus sum", english: "{advance to / attack}", type: "3, tr." },
+    { latin: "cum", english: "when", type: "conj." },
+  ],
+  "part4-l12-comparison-quam": [
+    { latin: "cohortor", english: "encourage", type: "1, tr." },
+    { latin: "prōgredior, prōgredī, prōgressus sum", english: "{go forward / advance / proceed}", type: "3, intr." },
+    { latin: "dubius, a, um", english: "{doubtful / uncertain}" },
+    { latin: "certus, a, um", english: "{certain / fixed}" },
+    { latin: "certiōrem (-ēs) faciō, facere, fēcī, factus", english: "acc. w. infn.; dē w. abl. inform (lit., make (someone) more certain)", type: "3, tr." },
+    { latin: "quam", english: "than", type: "adv." },
+    { latin: "apud", english: "{among / in the presence of}", type: "prep. w. acc." },
+    { latin: "nīhil (short form: nīl)", english: "nothing", type: "indecl. noun", gender: "n." },
+    { latin: "nīhil", english: "{not / not at all}", type: "adv." },
+    { latin: "sub", english: "{under / at the foot of}", type: "prep. w. abl." },
+    { latin: "sub", english: "{under / beneath / up to / about / toward of time}¹", type: "prep. w. acc." }, // ¹ sub takes the accusative whenever motion is expressed; otherwise ablative
+  ],
+  "part4-l13-relative": [
+    { latin: "quī, quae, quod", english: "{who / what / which / that}" },
+    { latin: "committō, committere, commīsī, commissus", english: "{commit / allow}", type: "3, tr." },
+    { latin: "proelium committere", english: "{to join battle / to begin battle}" },
+    { latin: "angustiae, angustiārum", english: "{defile / narrow place / difficulties}" },
+    { latin: "inquit¹", english: "{he says / he said}" },                   // ¹ inquit with direct quotations only, after the quotation's first word
+    { latin: "peccātum, ī", english: "{mistake / sin (in Christian Latin)}" },
+    { latin: "ante", english: "{before (of time or place) / in front of}", type: "prep. w. acc." },
+  ],
+  "part4-l14-irreg-comparison": [
+    { latin: "extrēmus, a, um", english: "{outermost / farthest / last}" },
+    { latin: "superior, superius", english: "{higher / former}" },
+    { latin: "summus, a, um", english: "{highest}" },
+    { latin: "ulterior, ulterius", english: "{farther}" },
+    { latin: "ultimus, a, um", english: "{farthest / last}" },
+    { latin: "medius, a, um", english: "{middle}" },
+  ],
+  "part4-l15-eo-extent": [
+    { latin: "eō, īre, īvī (iī), itum", english: "= go", type: "irreg., intr." },
+    { latin: "exeō, exīre, exiī (-ĭvī), exitum", english: "= go out", type: "irreg., intr." },
+    { latin: "trānseō, trānsīre, trānsiī (-ĭvī), trānsitus", english: "= {go across / cross / pass}", type: "irreg., tr." },
+    { latin: "ineō, inīre, iniī (-ĭvī), initus", english: "= {go into / enter upon}", type: "irreg., tr." },
+    { latin: "adeō, adīre, adiī (-ĭvī), aditus", english: "= {go to / approach / visit}", type: "irreg., tr." },
+    { latin: "hōra, ae", english: "= hour" },
+    { latin: "diēs, diēī", english: "= day", gender: "m. (f.)" },
+    { latin: "mīlle", english: "= thousand", type: "indecl. adj." },
+    { latin: "mīlia, mīlium", english: "= thousands", type: "noun (Gr. 117)" },
+    { latin: "decem", english: "= ten", type: "indecl. numeral" },
+    { latin: "quattuor", english: "= four", type: "indecl. numeral" },
+    { latin: "pēs, pedis", english: "= foot (of an animal, mountain, etc.; or a unit of measure)", gender: "m." },
+    { latin: "passus, ūs", english: "= a pace¹" },                          // ¹ a pace was 5 Roman feet; a mile 5,000 Roman feet or 1,618 English yards
+    { latin: "mīlle passūs", english: "= a mile¹" },                        // ¹ a pace was 5 Roman feet; a mile 5,000 Roman feet or 1,618 English yards
+  ],
+  "part4-l16-adverbs": [
+    { latin: "diū", english: "= {a long time / long (of time)}", type: "adv." },
+    { latin: "parum", english: "= {little / too little}", type: "adv." },
+    { latin: "parum", english: "w. gen. = {too little / not enough}", type: "indecl. noun" },
+    { latin: "satis", english: "= sufficiently", type: "adv." },
+    { latin: "satis", english: "w. gen. = enough", type: "indecl. noun" },
+    { latin: "tūtō", english: "= safely", type: "adv." },
+    { latin: "multum", english: "= {much / greatly}", type: "adv." },
+    { latin: "facile", english: "= easily", type: "adv." },
+  ],
 };
