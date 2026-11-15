@@ -7,7 +7,8 @@ import type { GrammarTopic } from "~/data/grammarIndex";
 import type { LessonProgress } from "~/engine/progress";
 import type { ExerciseResultDetail } from "~/engine/types";
 import NavBar from "~/components/NavBar";
-import Bookshelf from "~/components/Bookshelf";
+import BookStructure from "~/components/BookStructure";
+import { buildBook1StructureModel } from "~/lib/bookStructureModel";
 import RecommendedButton from "~/components/RecommendedButton";
 import SearchBox from "~/components/SearchBox";
 import GrammarDrawer from "~/components/GrammarDrawer";
@@ -30,7 +31,9 @@ interface Props {
   title?: string; description?: string; emoji?: string; showAIPractice?: boolean; backTo?: string;
   // Per-book progress for shelf bookmark tabs (route passes loadProgress(language.id)).
   lessonProgress?: LessonProgress[];
-  // Bookshelf v2 (optional — absent → TOC fallback, e.g. English route) ──
+  // Book structure (optional — absent → TOC fallback, e.g. English route).
+  // When bookLessons is present the menu renders the shared BookStructure
+  // renderer through the Book-1 adapter (uniform-menu step 1).
   bookLessons?: BookLesson[];
   sideLessons?: SideLesson[];
   grammarTopics?: GrammarTopic[];
@@ -90,12 +93,31 @@ export default function LessonMenu({
   recommendation,onDoRecommended,
   resumeLesson,onResumeLesson,noticeBanner,shelfEntry,
 }: Props) {
-  const hasShelf = (bookLessons?.length ?? 0) > 0;
+  // The book's structure (uniform-menu step 1): the Book-1 adapter folds
+  // bookLessons/sideLessons into the book-agnostic BookStructureModel —
+  // parts → sections → chapters with the Book-1-isms (tone rotation, legacy
+  // review demotion, culture intros, bookKey formats) behind model data.
+  // Absent (English route / no bookLessons) → the TOC fallback below.
+  const structure = useMemo(
+    () =>
+      bookLessons && bookLessons.length > 0
+        ? buildBook1StructureModel(lessons, bookLessons, sideLessons ?? [])
+        : null,
+    [lessons, bookLessons, sideLessons],
+  );
 
-  // Bookshelf v2 defaults the AI Practice target to the frontier chapter
-  // (the highest unlocked lesson), matching what the shelf visually leads to.
-  const aiTargetLessonId =
-    lessons[Math.min(Math.max(unlockedLessons, 1), lessons.length) - 1]?.id ?? 1;
+  // Per-book progress for shelf bookmark tabs / strips / chips (the model's
+  // progress provider — the same map BookshelfV2 used to build itself).
+  const progressById = useMemo(
+    () => new Map((lessonProgress ?? []).map((p) => [p.lessonId, p] as const)),
+    [lessonProgress],
+  );
+
+  // Frontier position (the clamped "current" row): shared by the AI Practice
+  // target (the highest unlocked lesson, matching what the shelf visually
+  // leads to) and the structure's frontier provider.
+  const frontierIdx = Math.min(Math.max(unlockedLessons, 1), lessons.length) - 1;
+  const aiTargetLessonId = lessons[frontierIdx]?.id ?? 1;
 
   const searchIndex = useMemo(
     () => buildSearchIndex(lessons, sideLessons ?? [], grammarTopics ?? [], grammarFoundationsLessons),
@@ -114,14 +136,18 @@ export default function LessonMenu({
   // ── Menu-local UI state (search → grammar drawer / explore focus) ──
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [grammarScroll, setGrammarScroll] = useState<{ topicId: string; nonce: number } | null>(null);
-  const [focusRequest, setFocusRequest] = useState<{ bookKey: string; nonce: number } | null>(null);
+  const [focusRequest, setFocusRequest] = useState<{ sectionId: string; nonce: number } | null>(null);
 
   const openGrammarTopic = (topicId: string) => {
     setDrawerOpen(true);
     setGrammarScroll((s) => ({ topicId, nonce: (s?.nonce ?? 0) + 1 }));
   };
+  // Search results for side lessons focus their EXPLORE section on the shelf
+  // (the model resolves the section id — no key-format hard-codes here).
   const openExploreBook = (sideLessonId: number) => {
-    setFocusRequest((s) => ({ bookKey: `explore-${sideLessonId}`, nonce: (s?.nonce ?? 0) + 1 }));
+    const sectionId = structure?.exploreSectionId?.(sideLessonId);
+    if (!sectionId) return;
+    setFocusRequest((s) => ({ sectionId, nonce: (s?.nonce ?? 0) + 1 }));
   };
   // Search results for Foundations lessons route to the module that owns them
   // (same resolution as openGrammarLesson's Foundations branch above).
@@ -129,18 +155,10 @@ export default function LessonMenu({
     void navigate({ to: "/lessons/latin/foundations" });
   };
 
-  /** Book key for the shelf book that contains a sub-lesson id (henle/review
-   *  books own all sub-lesson ids; culture/explore books own none). */
-  const bookKeyForLesson = (lessonId: number): string | null => {
-    if (!bookLessons) return null;
-    for (const bl of bookLessons) {
-      if (bl.subLessonIds.includes(lessonId)) {
-        return bl.kind === "mastery-review" ? `review-u${bl.unitNumber}` : `henle-${bl.henleNumber}`;
-      }
-    }
-    return null;
-  };
-
+  /** Locked-lesson focus: resolve the SECTION that owns the sub-lesson (the
+   *  model's resolver — the old bookKeyForLesson's "henle-N"/"review-uN"
+   *  hard-codes now live behind the Book-1 adapter) and ask the shelf to
+   *  expand it — the student sees where the topic lives and why it's locked. */
   const openGrammarLesson = (lessonId: number) => {
     // Foundations topics cite ids 401–405; the main-array findIndex below would
     // return -1 and silently no-op (the findIndexes gotcha). Send the student
@@ -160,12 +178,11 @@ export default function LessonMenu({
       return;
     }
     // F3 — locked-topic "Open": the engine would silently no-op (SELECT_LESSON
-    // gates on the unlock frontier), so expand the containing book on the
-    // shelf instead — the student sees where the topic lives and why it's
-    // locked. The shelf's focusRequest effect scrolls + expands the book.
-    const bookKey = bookKeyForLesson(lessonId);
-    if (bookKey) {
-      setFocusRequest((s) => ({ bookKey, nonce: (s?.nonce ?? 0) + 1 }));
+    // gates on the unlock frontier), so expand the containing section on the
+    // shelf instead. The structure's focus effect scrolls + expands it.
+    const sectionId = structure?.sectionIdForChapter(lessonId);
+    if (sectionId) {
+      setFocusRequest((s) => ({ sectionId, nonce: (s?.nonce ?? 0) + 1 }));
     }
   };
 
@@ -328,21 +345,26 @@ export default function LessonMenu({
             <div className="mb-4 grid gap-3 sm:grid-cols-2">{menuCards}</div>
           )}
 
-          {/* Shelf area: v2 packed shelves when bookLessons is present, else TOC */}
-          {hasShelf ? (
-            <Bookshelf
-              lessons={lessons}
-              unlockedLessons={unlockedLessons}
-              lessonProgress={lessonProgress}
-              onSelectLesson={onSelectLesson}
-              bookLessons={bookLessons}
-              sideLessons={sideLessons}
-              onCultureResult={onCultureResult}
+          {/* Shelf area: the book's structure (packed shelves → parts →
+              sections → chapters) when a model is present, else the TOC */}
+          {structure ? (
+            <BookStructure
+              model={{
+                ...structure,
+                getChapterProgress: (chapterId) => progressById.get(chapterId),
+                openChapter: (chapter) => onSelectLesson(chapter.ref),
+                onCultureResult,
+                openUnitReview: onOpenUnitReview,
+                unitReviewUnlocked,
+                frontier: {
+                  count: unlockedLessons,
+                  currentRef: frontierIdx,
+                  chapterId: lessons[frontierIdx]?.id ?? null,
+                  suppressScroll: suppressFrontierScroll,
+                  storageKey: `eloqui:frontier:${languageId}`,
+                },
+              }}
               focusRequest={focusRequest}
-              languageId={languageId}
-              suppressFrontierScroll={suppressFrontierScroll}
-              onOpenUnitReview={onOpenUnitReview}
-              unitReviewUnlocked={unitReviewUnlocked}
             />
           ) : (
             <LessonTOC
