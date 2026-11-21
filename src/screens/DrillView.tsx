@@ -120,9 +120,15 @@ export default function DrillView({
     card.kind === "vocab-latin" ||
     card.kind === "conjugation" ||
     card.kind === "declension";
-  const cardPron = isLatinPrompt
+  const rawPron = isLatinPrompt
     ? (card.pronunciation ?? getPronunciation(card.prompt, pronMode))
     : null;
+  // QA-P4-2: a pronunciation that merely repeats the prompt (est → "est")
+  // reads like the prompt listed again as an option — suppress the duplicate.
+  const cardPron =
+    rawPron && rawPron.trim().toLowerCase() !== card.prompt.trim().toLowerCase()
+      ? rawPron
+      : null;
 
   return (
     <WindowFrame title="Drill" onBack={onExit} backLabel={frameBackLabel}>
