@@ -48,6 +48,21 @@ interface Props {
   pronMode: PronMode;
   distractorLessons?: Lesson[];
   /**
+   * Batch-source override (Book-2 four-phase wrap, PR-B): when supplied, the
+   * drill batch comes from THIS builder instead of the Book-1 generative
+   * engine — Book 2's sections feed the loop from the PR-A spec registry
+   * (latin2SectionFourPhase.latin2BatchForDrill). Receives (run, batchSeed,
+   * count) exactly as the default path would; Book 1 omits it and is unchanged.
+   */
+  generateBatch?: (
+    run: FourPhaseRun,
+    batchSeed: string,
+    count: number,
+  ) => GeneratedExercise[];
+  /** Header-chip label override (Book 2's synthetic 2000-range ids must not
+   *  surface; the shell passes "Exercise N"). Default "Lesson {lesson.id}". */
+  lessonLabel?: string;
+  /**
    * → lesson.recordPhaseAttempt (dispatch PHASE_ATTEMPT + persist).
    * reTeachStepIndex: the step to re-present on a memorized→taught bounce.
    * passingConcepts: grammarIndex topic ids the (incorporated) passage
@@ -71,8 +86,16 @@ function buildBatch(
   run: FourPhaseRun,
   lesson: Lesson,
   seed: string,
-  distractorLessons?: Lesson[],
+  distractorLessons: Lesson[] | undefined,
+  generateBatch?: Props["generateBatch"],
 ): GeneratedExercise[] {
+  if (generateBatch) {
+    try {
+      return generateBatch(run, seed, BATCH_SIZE);
+    } catch {
+      return [];
+    }
+  }
   try {
     return generateForPhase({ ...run, seed }, lesson, {
       count: BATCH_SIZE,
@@ -95,6 +118,8 @@ export default function PhaseDrillScreen({
   run,
   pronMode,
   distractorLessons,
+  generateBatch,
+  lessonLabel,
   onAttempt,
   onQuit,
   onReportBug,
@@ -102,7 +127,7 @@ export default function PhaseDrillScreen({
   const steps = lesson.teachingSteps ?? [];
   const [batchNo, setBatchNo] = useState(0);
   const [exercises, setExercises] = useState<GeneratedExercise[]>(() =>
-    buildBatch(run, lesson, batchSeedFor(run, 0), distractorLessons),
+    buildBatch(run, lesson, batchSeedFor(run, 0), distractorLessons, generateBatch),
   );
   const [currentIdx, setCurrentIdx] = useState(0);
   // Per-step wrong tally, kept in a ref so pickReTeachStep can be computed
@@ -138,7 +163,7 @@ export default function PhaseDrillScreen({
         setBatchNo(nBatch);
         // Re-seed a fresh batch (same run seed, next batch index).
         setExercises(
-          buildBatch(run, lesson, batchSeedFor(run, nBatch), distractorLessons),
+          buildBatch(run, lesson, batchSeedFor(run, nBatch), distractorLessons, generateBatch),
         );
         setCurrentIdx(0);
       } else {
@@ -154,6 +179,7 @@ export default function PhaseDrillScreen({
       lesson,
       phase,
       distractorLessons,
+      generateBatch,
       onAttempt,
     ],
   );
@@ -169,7 +195,7 @@ export default function PhaseDrillScreen({
           {/* Header */}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="inline-block rounded-full bg-burgundy-100 px-3 py-1 text-xs font-medium text-burgundy-700">
-              Lesson {lesson.id} · {title}
+              {lessonLabel ?? `Lesson ${lesson.id}`} · {title}
             </span>
             <div className="flex items-center gap-2 text-xs font-semibold">
               <span
