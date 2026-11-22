@@ -95,9 +95,14 @@ function stripFootnotes(s: string): string {
   return s.replace(/[\u00b9\u00b2\u00b3\u2070-\u209f]/g, "");
 }
 
-/** The printed gloss cleaned for an answer/foil: braces stripped, trimmed. */
+/** The printed gloss cleaned for an answer/foil: braces and superscript
+ *  footnote digits stripped (the capture's "consul²" is book metadata, not
+ *  content — an honest typed "consul" must score), trimmed. */
 function cleanGloss(english: string): string {
-  return english.replace(/[{}]/g, "").trim();
+  return english
+    .replace(/[{}]/g, "")
+    .replace(/[\u00b9\u00b2\u00b3\u2070-\u209f]/g, "")
+    .trim();
 }
 
 /** Alternate glosses: the printed alternates split on " / " also count. */

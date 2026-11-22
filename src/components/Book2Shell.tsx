@@ -14,11 +14,11 @@
  *      — NavBar, book header, desk bar (Search · 📖 Grammar · 🪲 Report),
  *      banner stack (shelf entry · resume), and the shared BookStructure
  *      renderer (packed shelves → parts → spines → capture-section panels).
- *   3. It owns the section session (Book2SectionSession → ExerciseScreen —
- *      the same renderer Book 1's route uses) and the ONE BugReportDialog,
- *      with the 🪲 affordance wired on every Book-2 surface (menu, opener,
- *      exercise runner, complete) — closing QA's "Book-II exercise runner
- *      has no report affordance" gap.
+ *   3. It owns the section session (Book2SectionSession → the four-phase
+ *      loop — the SAME state machine and loop screen Book 1's route uses) and
+ *      the ONE BugReportDialog, with the 🪲 affordance wired on every Book-2
+ *      surface (menu, opener, drill phases, complete) — closing QA's
+ *      "Book-II exercise runner has no report affordance" gap.
  *
  * Owner directive (plan rev 74): TWO READING PATHS — kept, as a banner card
  * inside the uniform menu (survey: the path selector stops being a page).
@@ -29,12 +29,16 @@
  * choice is a preference, not a gate: the shelf shows the whole book either
  * way.
  *
- * Honesty rules (Minimalist Scholarly, plan rev 72):
- *   • Captured sections open (opener → ExerciseScreen → quiet close). The
- *     four-phase mastery loop is NOT forced onto them (documented in
- *     Book2SectionSession): the single-pass exercise flow over the book's
- *     own exercises is the honest run. Completion records into the Book 2
- *     progress seam (book2Progress).
+ * Honesty rules (Minimalist Scholarly, plan rev 72 + generation directive
+ * 2026-11-21):
+ *   • Captured sections run the FOUR-PHASE loop (owner directive 2026-11-21):
+ *     taught → memorized → quizzed → incorporated, over live-generated
+ *     instances — the captured 1,176 items are SPECS ONLY (see
+ *     engine/latin2SectionFourPhase + engine/latin2SectionSpecs). The shell
+ *     owns the FourPhaseRun state machine (the SAME engine/fourPhase machine
+ *     Book 1 runs — same mastery gates, same owner bounce rule); the session
+ *     screens are presentational. Completion records into the Book 2
+ *     progress seam (book2Progress) when incorporated passes.
  *   • Awaiting-capture rows stay visibly awaiting-capture — muted spines
  *     with honest panels. No invented content, no fabricated progress, no
  *     streaks, no hearts.
@@ -48,7 +52,13 @@ import type { LanguageShelf } from "~/data/shelves";
 import { LATIN2_PATHS } from "~/data/latin2";
 import { GRAMMAR_INDEX } from "~/data/grammarIndex";
 import { useSettings } from "~/engine/settings";
-import type { BugContext } from "~/engine/types";
+import type { BugContext, FourPhaseRun } from "~/engine/types";
+import {
+  applyPhaseAttempt,
+  completeTaughtPhase,
+  emptyPhaseState,
+} from "~/engine/fourPhase";
+import { utcDateStr } from "~/engine/dailyLesson";
 import { flushBugReports } from "~/lib/bugReport";
 import {
   loadBook2Progress,
@@ -72,9 +82,7 @@ import {
 import LessonMenu from "~/screens/LessonMenu";
 import BugReportDialog from "~/components/BugReportDialog";
 import GrammarDrawer from "~/components/GrammarDrawer";
-import Book2SectionSession, {
-  type Book2SessionPhase,
-} from "~/components/Book2SectionSession";
+import Book2SectionSession from "~/components/Book2SectionSession";
 
 interface Book2ShellProps {
   shelf: LanguageShelf;
@@ -84,11 +92,29 @@ interface Book2ShellProps {
   deepLinkSection?: string;
 }
 
-/** One open section: its exercises run through Book2SectionSession. */
+/** One open section: its four-phase run (taught → memorized → quizzed →
+ *  incorporated) — the same state machine Book 1 runs (engine/fourPhase),
+ *  owned by the shell; the session screens are presentational. */
 interface Book2Session {
   sectionId: string;
-  results: boolean[];
-  phase: Book2SessionPhase;
+  run: FourPhaseRun;
+  /** incorporated passed → the quiet close (the completion is recorded once,
+   *  at the transition). */
+  complete: boolean;
+}
+
+/** A fresh section run: opens at the taught phase (the opener presents the
+ *  section's vocab universe), seeded per section + UTC date so each session's
+ *  drills generate fresh from the specs (registry seed chain). */
+function freshSectionRun(sectionId: string): FourPhaseRun {
+  return {
+    lessonId: latin2SectionLessonId(sectionId) ?? -1,
+    phase: "taught",
+    reviewMode: false,
+    reTeachStepIndex: null,
+    phaseState: emptyPhaseState(),
+    seed: `latin2|${sectionId}|${utcDateStr()}`,
+  };
 }
 
 const MENU_DESCRIPTION =
@@ -155,7 +181,7 @@ export default function Book2Shell({ shelf, deepLinkSection }: Book2ShellProps) 
     // Resume seam — recorded on OPEN (running it is not required to resume).
     saveBook2LastSection(sectionId);
     setProgress(loadBook2Progress());
-    setSession({ sectionId, results: [], phase: "opener" });
+    setSession({ sectionId, run: freshSectionRun(sectionId), complete: false });
   }, []);
   // The model's launcher reads through a ref so the memo below never churns.
   const openSectionRef = useRef(openSection);
@@ -171,25 +197,49 @@ export default function Book2Shell({ shelf, deepLinkSection }: Book2ShellProps) 
     }
   }, []);
 
-  const handleExerciseComplete = useCallback(
-    (correct: boolean) => {
+  // taught → memorized: the opener's Begin completes the taught phase (the
+  // same PHASE_TEACH_COMPLETE transition Book 1's route fires).
+  const handleBeginTaught = useCallback(() => {
+    setSession((prev) =>
+      prev ? { ...prev, run: completeTaughtPhase(prev.run) } : prev,
+    );
+  }, []);
+
+  // One drill answer — the SAME state machine Book 1 runs: applyPhaseAttempt
+  // judges mastery gates and the owner bounce rule (2 consecutive fails OR
+  // <70% over the last 5), advancing / bouncing / completing the run. On
+  // "complete" the section's completion records into the Book 2 progress seam.
+  const handlePhaseAttempt = useCallback(
+    (
+      correct: boolean,
+      reTeachStepIndex?: number | null,
+      passingConcepts?: string[],
+    ) => {
       setSession((prev) => {
-        if (!prev || prev.phase !== "running") return prev;
-        const lesson = buildLatin2SectionLesson(prev.sectionId);
-        if (!lesson) return null;
-        const results = [...prev.results, correct];
-        if (results.length >= lesson.exercises.length) {
-          // Honest completion record — the Book 2 progress seam (per-path
-          // record), never a fabricated streak or score.
+        if (!prev || prev.complete) return prev;
+        const result = applyPhaseAttempt(prev.run, correct, {
+          reTeachStepIndex: reTeachStepIndex ?? null,
+          passingConcepts,
+        });
+        if (result.outcome === "complete") {
           saveBook2SectionCompletion(prev.sectionId);
           setProgress(loadBook2Progress());
-          return { ...prev, results, phase: "complete" };
+          return { ...prev, run: result.run, complete: true };
         }
-        return { ...prev, results };
+        return { ...prev, run: result.run };
       });
     },
     [],
   );
+
+  // Run it again — a fresh run from the taught phase (fresh generation seed).
+  const handleRestartRun = useCallback(() => {
+    setSession((prev) =>
+      prev
+        ? { ...prev, run: freshSectionRun(prev.sectionId), complete: false }
+        : prev,
+    );
+  }, []);
 
   // ── Section deep links (?book=2&section=…) ──────────────────────────────
   // Mount-only: a captured section opens straight into its session; anything
@@ -322,42 +372,40 @@ export default function Book2Shell({ shelf, deepLinkSection }: Book2ShellProps) 
     const lessonNumber = latin2SectionLessonNumber(session.sectionId);
     if (ctx && lesson && lessonNumber !== null) {
       const lessonId = latin2SectionLessonId(session.sectionId) ?? lesson.id;
-      const currentExercise = lesson.exercises[session.results.length];
-      const reportFrom = (phase: Book2SessionPhase): BugContext => ({
-        screen: `book2-${phase}`,
+      const run = session.run;
+      const reportFrom = (): BugContext => ({
+        screen:
+          session.complete
+            ? "book2-complete"
+            : run.phase === "taught"
+              ? "book2-opener"
+              : run.phase,
         lessonId,
         lessonNumber,
-        phase: null,
-        exerciseId: phase === "running" ? currentExercise?.id ?? null : null,
+        phase: session.complete ? null : run.phase,
+        // Drill items are generated fresh per session — no stable exercise id.
+        exerciseId: null,
       });
       return (
         <>
           <Book2SectionSession
-            phase={session.phase}
             section={ctx.section}
             part={ctx.part}
             lesson={lesson}
             lessonNumber={lessonNumber}
+            run={run}
+            complete={session.complete}
             grammarTopics={latin2SectionGrammarTopics(session.sectionId)}
             onOpenGrammarTopic={(topicId) => {
               setGrammarScroll({ topicId, nonce: Date.now() });
               setGrammarOpen(true);
             }}
             pronMode={settingsEngine.settings.pronMode}
-            results={session.results}
-            onBegin={() =>
-              setSession((prev) =>
-                prev ? { ...prev, phase: "running", results: [] } : prev,
-              )
-            }
-            onExerciseComplete={handleExerciseComplete}
+            onBegin={handleBeginTaught}
+            onAttempt={handlePhaseAttempt}
             onExit={exitSession}
-            onRestart={() =>
-              setSession((prev) =>
-                prev ? { ...prev, results: [], phase: "running" } : prev,
-              )
-            }
-            onReportBug={() => openBugReport(reportFrom(session.phase))}
+            onRestart={handleRestartRun}
+            onReportBug={() => openBugReport(reportFrom())}
           />
           <GrammarDrawer
             open={grammarOpen}
