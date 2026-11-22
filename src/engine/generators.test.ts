@@ -272,7 +272,14 @@ test("never untaught: instances draw only from this-and-prior section vocab", ()
   const ctx = ctxFor(sectionId);
   const pool = [...ctx.sectionVocab, ...(ctx.priorVocab ?? [])];
   const strip = (s: string) => s.replace(/[\u00b9\u00b2\u00b3\u2070-\u209f]/g, "");
-  const glosses = new Set(pool.map((v) => v.english.replace(/[{}]/g, "").trim()));
+  const glosses = new Set(
+    pool.map((v) =>
+      v.english
+        .replace(/[{}]/g, "")
+        .replace(/[\u00b9\u00b2\u00b3\u2070-\u209f]/g, "")
+        .trim(),
+    ),
+  );
   const latins = new Set(pool.map((v) => strip(v.latin)));
   const specs = latin2SectionSpecs(sectionId).filter(
     (s) => s.kind === "vocab-recall" || s.kind === "translate-l2e" || s.kind === "translate-e2l",
