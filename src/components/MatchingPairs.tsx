@@ -1,14 +1,28 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { MatchingExercise } from "~/data/latinLessons";
 import { getPronunciation, type PronMode } from "~/lib/pronunciation";
+import type {
+  GradeCheckerInput,
+  GradedAnswer,
+} from "~/engine/answerGrades";
+import GradedFeedback from "~/components/GradedFeedback";
 
 interface Props {
   exercise: MatchingExercise;
   onComplete: (correct: boolean) => void;
   pronMode?: PronMode;
+  /**
+   * Graded-answer feedback (owner ruling 2026-11-22): when supplied, a
+   * completed set grades PERFECT (canonical confirmation + trivia) and a
+   * revealed set grades REJECTED (mandatory helpful info — the grid already
+   * shows every correct pair). The Continue click then advances, so the
+   * feedback is actually on screen (the old path advanced instantly and
+   * never showed its box). Absent → the legacy immediate behavior.
+   */
+  graded?: (input: GradeCheckerInput) => GradedAnswer | null;
 }
 
-export default function MatchingPairs({ exercise, onComplete, pronMode = "ecclesiastical" }: Props) {
+export default function MatchingPairs({ exercise, onComplete, pronMode = "ecclesiastical", graded }: Props) {
   const pairs = exercise.pairs;
 
   // Shuffle right column on mount
@@ -31,6 +45,17 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
   } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [allCorrect, setAllCorrect] = useState(false);
+  const [grade, setGrade] = useState<GradedAnswer | null>(null);
+
+  // Answer-integrity (as MultipleChoice/FillInBlank): a parent that swaps
+  // exercises without a React key gets a clean slate. Graded mode only —
+  // the legacy path never showed a box, so its behavior is unchanged.
+  useEffect(() => {
+    if (!graded) return;
+    setSubmitted(false);
+    setAllCorrect(false);
+    setGrade(null);
+  }, [exercise, graded]);
 
   const isMatchedLeft = (idx: number) =>
     matches.some((m) => m.left === idx);
@@ -58,7 +83,12 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
         if (newMatches.length === pairs.length) {
           setAllCorrect(true);
           setSubmitted(true);
-          onComplete(true);
+          if (graded) {
+            // Graded mode: show the tiered box, advance on Continue.
+            setGrade(graded({ exercise, given: null, kind: "match-complete" }));
+          } else {
+            onComplete(true);
+          }
         }
       } else {
         setWrongFlash({ left: idx, right: selectedRight });
@@ -86,7 +116,12 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
         if (newMatches.length === pairs.length) {
           setAllCorrect(true);
           setSubmitted(true);
-          onComplete(true);
+          if (graded) {
+            // Graded mode: show the tiered box, advance on Continue.
+            setGrade(graded({ exercise, given: null, kind: "match-complete" }));
+          } else {
+            onComplete(true);
+          }
         }
       } else {
         setWrongFlash({ left: leftIdx, right: idx });
@@ -111,7 +146,18 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
     setMatches((prev) => [...prev, ...remaining]);
     setSubmitted(true);
     setAllCorrect(false);
-    onComplete(false);
+    if (graded) {
+      // Graded mode: rejected tier — the grid reveals the pairs, the box
+      // carries the mandatory helpful info; advance on Continue.
+      setGrade(graded({ exercise, given: null, kind: "match-gaveup" }));
+    } else {
+      onComplete(false);
+    }
+  };
+
+  const handleContinue = () => {
+    if (!submitted || !grade) return;
+    onComplete(grade.correct);
   };
 
   return (
@@ -214,7 +260,18 @@ export default function MatchingPairs({ exercise, onComplete, pronMode = "eccles
         </button>
       )}
 
-      {submitted && (
+      {submitted && grade && <GradedFeedback grade={grade} />}
+
+      {submitted && grade && (
+        <button
+          onClick={handleContinue}
+          className="w-full rounded-xl bg-burgundy-700 py-3 text-base font-semibold text-cream-50 shadow transition hover:bg-burgundy-800"
+        >
+          Continue
+        </button>
+      )}
+
+      {submitted && !grade && (
         <div
           className={`rounded-xl p-4 text-sm font-medium leading-relaxed ${
             allCorrect

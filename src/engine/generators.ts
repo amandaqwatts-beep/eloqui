@@ -186,6 +186,9 @@ const genVocabRecall: SpecGenerator = (spec, ctx) => {
       options,
       correctIndex: options.indexOf(correct),
       explanation: `"${latin}" — ${entry.english}.`,
+      // Graded-answer stamps (owner ruling 2026-11-22): the captured entry.
+      vocabLatin: latin,
+      sourceGloss: entry.english,
     }];
   }
   return [{
@@ -196,6 +199,10 @@ const genVocabRecall: SpecGenerator = (spec, ctx) => {
     answer: toEnglish ? gloss : latin,
     acceptableAnswers: toEnglish ? glossAlternates(gloss) : [latin, stripMacrons(latin)],
     explanation: `"${latin}" — ${entry.english}.`,
+    // Graded-answer stamps: the captured entry's raw gloss feeds the
+    // acceptance matcher's captured-alternate paths.
+    vocabLatin: latin,
+    sourceGloss: entry.english,
   }];
 };
 
@@ -225,6 +232,8 @@ const genFormDrill: SpecGenerator = (spec, ctx) => {
       explanation: `"${f.form}" is the adverb from "${stripFootnotes(f.from)}"${
         f.note ? ` (${f.note})` : ""
       }.`,
+      // Graded-answer stamps: the base word anchors item-keyed trivia.
+      vocabLatin: stripFootnotes(f.from),
     }];
   }
   const lemma = spec.vocabScope?.lemmas?.[0] ?? f.lemma ?? "";
@@ -237,6 +246,8 @@ const genFormDrill: SpecGenerator = (spec, ctx) => {
     explanation: `"${f.form}" is the ${f.case} ${f.number} of "${stripFootnotes(lemma)}"${
       f.note ? ` (${f.note})` : ""
     }.`,
+    // Graded-answer stamps: the lemma anchors item-keyed trivia.
+    vocabLatin: stripFootnotes(lemma),
   }];
 };
 
@@ -275,6 +286,9 @@ function translateInstance(
       answer: gloss,
       acceptableAnswers: glossAlternates(gloss),
       explanation: `"${latin}" — ${entry.english}.`,
+      // Graded-answer stamps: the captured entry's raw gloss.
+      vocabLatin: latin,
+      sourceGloss: entry.english,
     }];
   }
   return [{
@@ -283,6 +297,9 @@ function translateInstance(
     answer: latin,
     acceptableAnswers: [latin, stripMacrons(latin)],
     explanation: `"${gloss}" — ${latin}.`,
+    // Graded-answer stamps: item-keyed trivia anchors on the headword.
+    vocabLatin: latin,
+    sourceGloss: entry.english,
   }];
 }
 
@@ -320,6 +337,8 @@ const genParse: SpecGenerator = (spec, ctx) => {
     explanation: `"${f.form}" is the ${correct} of "${stripFootnotes(lemma)}"${
       f.note ? ` (${f.note})` : ""
     }.`,
+    // Graded-answer stamps: the lemma anchors item-keyed trivia.
+    vocabLatin: stripFootnotes(lemma),
   }];
 };
 
@@ -403,6 +422,9 @@ const genImitate: SpecGenerator = (spec, ctx) => {
     options,
     correctIndex: options.indexOf(e.governedCase),
     explanation: `"${e.latin}" governs the ${e.governedCase} — ${e.english}.`,
+    // Graded-answer stamps: the captured construction's entry.
+    vocabLatin: e.latin,
+    sourceGloss: e.english,
   }];
 };
 

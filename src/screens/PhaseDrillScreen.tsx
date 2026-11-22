@@ -16,8 +16,9 @@
  * to re-present first (pickReTeachStep). The in-window accuracy is shown so
  * the loop reads as intentional rather than infinite.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Lesson } from "~/data/latinLessons";
+import type { GrammarTopic } from "~/data/grammarIndex";
 import type { FourPhaseRun } from "~/engine/types";
 import {
   generateForPhase,
@@ -26,6 +27,7 @@ import {
   windowAccuracy,
 } from "~/engine/fourPhase";
 import type { GeneratedExercise } from "~/engine/fallbackGenerator";
+import { buildGradeChecker } from "~/engine/answerGrades";
 import MultipleChoice from "~/components/MultipleChoice";
 import FillInBlank from "~/components/FillInBlank";
 import MatchingPairs from "~/components/MatchingPairs";
@@ -62,6 +64,10 @@ interface Props {
   /** Header-chip label override (Book 2's synthetic 2000-range ids must not
    *  surface; the shell passes "Exercise N"). Default "Lesson {lesson.id}". */
   lessonLabel?: string;
+  /** Grammar topics the drilled lesson/section trains (Book 2's shell passes
+   *  the section's resolved topics) — the graded-feedback trivia's
+   *  topic-adjacent ring. Optional; Book 1 resolves topics from the lesson id. */
+  grammarTopics?: GrammarTopic[];
   /**
    * → lesson.recordPhaseAttempt (dispatch PHASE_ATTEMPT + persist).
    * reTeachStepIndex: the step to re-present on a memorized→taught bounce.
@@ -120,6 +126,7 @@ export default function PhaseDrillScreen({
   distractorLessons,
   generateBatch,
   lessonLabel,
+  grammarTopics,
   onAttempt,
   onQuit,
   onReportBug,
@@ -133,6 +140,15 @@ export default function PhaseDrillScreen({
   // Per-step wrong tally, kept in a ref so pickReTeachStep can be computed
   // synchronously with the attempt (not in async state). Reset per mount.
   const wrongCountsRef = useRef<number[]>(steps.map(() => 0));
+
+  // The graded-answer checker (owner ruling 2026-11-22): one engine-built
+  // matcher per mount — same answer + same item → same verdict + same
+  // feedback; trivia rotates on the UTC date. Both books drill through this
+  // screen, so both get the tiered feedback at once.
+  const graded = useMemo(
+    () => buildGradeChecker({ lesson, topics: grammarTopics }),
+    [lesson, grammarTopics],
+  );
 
   const title = phaseDisplayTitle(phase);
   const accuracy = windowAccuracy(run.phaseState.accuracyWindow);
@@ -238,12 +254,14 @@ export default function PhaseDrillScreen({
                 <MultipleChoice
                   exercise={ex as never}
                   onComplete={handleComplete}
+                  graded={graded}
                 />
               )}
               {ex.type === "fill-in-blank" && (
                 <FillInBlank
                   exercise={ex as never}
                   onComplete={handleComplete}
+                  graded={graded}
                 />
               )}
               {ex.type === "matching" && (
@@ -251,6 +269,7 @@ export default function PhaseDrillScreen({
                   exercise={ex as never}
                   onComplete={handleComplete}
                   pronMode={pronMode}
+                  graded={graded}
                 />
               )}
               <button

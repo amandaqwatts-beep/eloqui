@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import type { MultipleChoiceExercise } from "~/data/latinLessons";
 import type { ExerciseResultDetail } from "~/engine/types";
+import type {
+  GradeCheckerInput,
+  GradedAnswer,
+} from "~/engine/answerGrades";
+import GradedFeedback from "~/components/GradedFeedback";
 
 interface Props {
   exercise: MultipleChoiceExercise;
@@ -10,6 +15,14 @@ interface Props {
    * and the canonical answer so the route can record wrong/expected.
    */
   onResult?: (detail: ExerciseResultDetail) => void;
+  /**
+   * Graded-answer feedback (owner ruling 2026-11-22): when supplied, the
+   * verdict comes from the engine's graded matcher — a chosen option that is
+   * a captured alternate of the canonical one passes (ACCEPTED tier), and
+   * feedback is tiered (perfect → trivia; accepted/rejected → helpful info +
+   * the most-correct answer). Absent → the legacy check and feedback.
+   */
+  graded?: (input: GradeCheckerInput) => GradedAnswer | null;
 }
 
 /**
@@ -22,13 +35,15 @@ interface Props {
  * parent that swaps exercises without a React key gets a clean slate instead
  * of stale selected/submitted state bleeding into the next prompt.
  */
-export default function MultipleChoice({ exercise, onComplete, onResult }: Props) {
+export default function MultipleChoice({ exercise, onComplete, onResult, graded }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [grade, setGrade] = useState<GradedAnswer | null>(null);
 
   useEffect(() => {
     setSelected(null);
     setSubmitted(false);
+    setGrade(null);
   }, [exercise]);
 
   const isCorrect = selected === exercise.correctIndex;
@@ -41,6 +56,23 @@ export default function MultipleChoice({ exercise, onComplete, onResult }: Props
   const handleSubmit = () => {
     if (selected === null || submitted) return;
     setSubmitted(true);
+    if (graded) {
+      // Graded verdict: the engine's matcher decides the tier — an option
+      // that is a captured alternate of the canonical one passes with helpful
+      // info + the most-correct answer; the canonical option earns trivia.
+      const g = graded({
+        exercise,
+        given: exercise.options[selected] ?? null,
+        kind: "option",
+      });
+      setGrade(g);
+      onResult?.({
+        correct: g?.correct ?? false,
+        wrong: exercise.options[selected],
+        expected: g?.mostCorrect || exercise.options[exercise.correctIndex],
+      });
+      return;
+    }
     onResult?.({
       correct: isCorrect,
       wrong: exercise.options[selected],
@@ -50,7 +82,7 @@ export default function MultipleChoice({ exercise, onComplete, onResult }: Props
 
   const handleContinue = () => {
     if (!submitted) return;
-    onComplete(isCorrect);
+    onComplete(grade ? grade.correct : isCorrect);
   };
 
   return (
@@ -72,7 +104,13 @@ export default function MultipleChoice({ exercise, onComplete, onResult }: Props
                 "bg-cream-50 border-wood-200 text-wood-900 hover:bg-cream-100 hover:border-wood-300 cursor-pointer";
             }
           } else {
-            if (idx === exercise.correctIndex) {
+            // Under the graded contract an ACCEPTED selection is also
+            // correct — it shares the canonical option's green.
+            const selectedPassed = grade ? grade.correct : false;
+            if (
+              idx === exercise.correctIndex ||
+              (selectedPassed && selected === idx)
+            ) {
               btnClass += "border-green-500 bg-green-50 text-green-800";
             } else if (selected === idx) {
               btnClass += "border-red-400 bg-red-50 text-red-700";
@@ -110,7 +148,9 @@ export default function MultipleChoice({ exercise, onComplete, onResult }: Props
         </button>
       )}
 
-      {submitted && (
+      {submitted && grade && <GradedFeedback grade={grade} />}
+
+      {submitted && !grade && (
         <div
           className={`rounded-xl p-4 text-sm font-medium leading-relaxed ${
             isCorrect

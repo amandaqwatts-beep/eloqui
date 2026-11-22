@@ -1,6 +1,11 @@
 import { useEffect, useState, useRef, type KeyboardEvent } from "react";
 import type { FillInBlankExercise } from "~/data/latinLessons";
 import type { ExerciseResultDetail } from "~/engine/types";
+import type {
+  GradeCheckerInput,
+  GradedAnswer,
+} from "~/engine/answerGrades";
+import GradedFeedback from "~/components/GradedFeedback";
 
 interface Props {
   exercise: FillInBlankExercise;
@@ -10,11 +15,20 @@ interface Props {
    * and the canonical answer so the route can record wrong/expected.
    */
   onResult?: (detail: ExerciseResultDetail) => void;
+  /**
+   * Graded-answer feedback (owner ruling 2026-11-22): when supplied, the
+   * verdict comes from the engine's graded matcher — technically-correct
+   * answers pass (ACCEPTED tier) and feedback is tiered (perfect → trivia;
+   * accepted/rejected → helpful info + most-correct form). Absent → the
+   * legacy two-way check and feedback, unchanged.
+   */
+  graded?: (input: GradeCheckerInput) => GradedAnswer | null;
 }
 
-export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
+export default function FillInBlank({ exercise, onComplete, onResult, graded }: Props) {
   const [value, setValue] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [grade, setGrade] = useState<GradedAnswer | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Answer-integrity (2026-11-07 owner bug: prompt switches post-answer):
@@ -24,6 +38,7 @@ export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
   useEffect(() => {
     setValue("");
     setSubmitted(false);
+    setGrade(null);
   }, [exercise]);
 
   const normalize = (s: string) =>
@@ -53,17 +68,32 @@ export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
   const handleSubmit = () => {
     if (!value.trim() || submitted) return;
     setSubmitted(true);
+    if (graded) {
+      // Graded verdict: the engine's matcher decides the tier — technically
+      // correct answers pass through with helpful info + the most-correct
+      // form; a perfect answer earns trivia instead of remediation.
+      const g = graded({ exercise, given: value, kind: "typed" });
+      setGrade(g);
+      onResult?.({
+        correct: g?.correct ?? false,
+        wrong: value,
+        expected: g?.mostCorrect || exercise.answer,
+      });
+      return;
+    }
     onResult?.({ correct: isCorrect, wrong: value, expected: exercise.answer });
   };
 
   const handleContinue = () => {
     if (!submitted) return;
-    onComplete(isCorrect);
+    onComplete(grade ? grade.correct : isCorrect);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleSubmit();
   };
+
+  const submittedCorrect = grade ? grade.correct : isCorrect;
 
   return (
     <div className="space-y-4">
@@ -79,7 +109,7 @@ export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
           {submitted ? (
             <span
               className={`inline-block min-w-[120px] rounded-lg border-2 px-4 py-2.5 text-center font-bold ${
-                isCorrect
+                submittedCorrect
                   ? "border-green-500 bg-green-50 text-green-800"
                   : "border-red-400 bg-red-50 text-red-700 line-through"
               }`}
@@ -114,7 +144,9 @@ export default function FillInBlank({ exercise, onComplete, onResult }: Props) {
         </button>
       )}
 
-      {submitted && (
+      {submitted && grade && <GradedFeedback grade={grade} />}
+
+      {submitted && !grade && (
         <div
           className={`rounded-xl p-4 text-sm font-medium leading-relaxed ${
             isCorrect

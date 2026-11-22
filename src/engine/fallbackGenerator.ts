@@ -57,6 +57,17 @@ export interface GeneratedExercise {
   pairs?: { left: string; right: string }[];
   /** Optional teaching hint shown after answering. */
   explanation?: string;
+  /** ── Graded-answer feedback stamps (owner ruling 2026-11-22) ──────────
+   *  The drilled item's captured headword and the entry's RAW captured gloss
+   *  ("power / authority"), set by the generators when the exercise is built
+   *  from a captured vocab entry. Pure provenance for the graded-answer
+   *  matcher (engine/answerGrades): captured acceptance alternates + item-keyed
+   *  trivia. Never a prompt or answer — the doctrine's SPECS rule is untouched
+   *  (these fields carry the entry, not the book's exercise text). Absent on
+   *  exercises not built from a captured entry (declension/conjugation cells,
+   *  concept fallback). */
+  vocabLatin?: string;
+  sourceGloss?: string;
 }
 
 /** Which exercise kind(s) to generate. */
@@ -172,6 +183,9 @@ function buildVocabMultipleChoice(
       : language === "latin"
         ? `"${target.latin}" is the Latin word for "${target.english}".`
         : englishEToL.explanation,
+    // Graded-answer stamps: the captured entry the drill draws from.
+    vocabLatin: target.latin,
+    sourceGloss: target.english,
   };
 }
 
@@ -264,6 +278,9 @@ function buildMatching(
     pairs: shuffle(
       chosen.map((v) => ({ left: v.latin, right: v.english })),
     ),
+    // Graded-answer stamps: item-key trivia rides the set's first entry.
+    vocabLatin: chosen[0].latin,
+    sourceGloss: chosen[0].english,
   };
 }
 
