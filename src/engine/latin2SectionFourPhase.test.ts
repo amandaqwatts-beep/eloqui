@@ -71,11 +71,6 @@ for (const items of Object.values(LATIN2_SECTION_EXERCISES)) {
   }
 }
 
-// Vocab of a LATER section (never demanded before it is taught).
-const lastSectionVocab = new Set(
-  (LATIN2_SECTION_VOCAB[allSections[15]] ?? []).map((v) => v.latin),
-);
-
 // ── 1. Batch shape over the whole spine ──────────────────────────────────
 test("every section × drill phase yields a full non-empty batch", () => {
   for (const sid of allSections) {
