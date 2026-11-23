@@ -36,10 +36,10 @@
  *           ring widens with the section's own LATIN2_SECTION_GRAMMAR_REFS
  *           topics resolved against GRAMMAR_INDEX;
  *       (c) general enrichment — the curated culture bank (NLE culture
- *           B1–B6 bundles), the grammar-index definitions (PD-reference
- *           lore), and the generalCulture slot (the research trivia-census
- *           tranche lands here when it arrives — the pool merges it today).
- *           Ring (a) is preferred when it exists.
+ *           B1–B6 bundles), the generalCulture bank (the research trivia
+ *           census tranche 1: 37 verified facts), and the grammar-index
+ *           definitions (PD-reference lore). Ring (a) is preferred when it
+ *           exists.
  *   - No gimmicks: trivia is enrichment, not reward mechanics.
  *
  * Pure TypeScript — zero JSX, zero rendering, zero storage, zero
@@ -392,6 +392,224 @@ export function latinMottoText(m: LatinMottoFact): string {
   return t;
 }
 
+// ── Ring (c) extension: the general culture bank (research tranche 1) ───────
+// research/trivia-bank-draft.md (research, 2026-11-23): 40 facts verified
+// against the team's own captured sources. The 37 traceable to captured
+// bundles (cuN-qN ids) or side lessons (sideNNN) land here — fact text and
+// source line VERBATIM from the draft (list indentation stripped). The three
+// flagged facts (23, 30, 40 — classical attestations NOT found in the
+// captured bundles) stay out per the never-unsourced rule, kept in the
+// pending block below for a later research pass. Rotation: the pool merges
+// into ring (c) of the daily-seeded selector (pickTrivia) behind rings
+// (a)/(b) — the existing precedence, unchanged.
+
+export interface GeneralCultureFact {
+  /** The fact, verbatim from research/trivia-bank-draft.md. */
+  text: string;
+  /** The draft's verbatim source line (bundle id + captured citation) —
+   *  the provenance trail, carried in the data. */
+  source: string;
+}
+
+export const GENERAL_CULTURE_TRIVIA: GeneralCultureFact[] = [
+  // Draft fact 1
+  {
+    text: "The toga — a large, heavy woollen garment worn over the tunica — was the badge of the Roman male citizen, worn for formal occasions, in the Forum, and in court. The stola and palla were the respectable married woman's dress and shawl; the calceus was the shoe.",
+    source: "Source: cu90-q1 (OCD s.v. toga; L&S s.v. induō).",
+  },
+  // Draft fact 2
+  {
+    text: "The city domus opened onto the ātrium, a central reception hall lit by an opening in the roof, with the cubiculum (bedroom) and trīclīnium (dining room) off it. The poor of Rome lived in tall apartment blocks called īnsulae — literally \"islands.\"",
+    source: "Source: cu98-q1 (OCD s.v. domus; Vitruvius, De Architectura 6.4–5).",
+  },
+  // Draft fact 3
+  {
+    text: "Romans ate a light breakfast and a light midday prandium; the real meal was the evening cēna, formally served in three courses (tria fercula). A plebeian with no kitchen ate at a taberna.",
+    source: "Source: cu108-q1 (OCD s.v. cena; Cato, De Agricultura 156).",
+  },
+  // Draft fact 4
+  {
+    text: "Rome had no state schools: elementary schooling was private and fee-paying, run by a magister lūdī in a rented room or shop, with boys usually starting around age seven.",
+    source: "Source: cu56-q1 (OCD s.v. education, Roman).",
+  },
+  // Draft fact 5
+  {
+    text: "The paterfamilias held patria potestas — legal power over his children and the household's slaves; the household was his to govern.",
+    source: "Source: cu57-q1 (OCD s.v. paterfamilias / patria potestas).",
+  },
+  // Draft fact 6
+  {
+    text: "In Roman law, familia meant the whole household under the paterfamilias — family and slaves together, more than blood relatives — and was the basic unit of Roman society; domus, by contrast, meant only the physical house.",
+    source: "Source: cu60-q1 (OCD s.v. familia).",
+  },
+  // Draft fact 7
+  {
+    text: "Manumissiō, the formal freeing of a slave, literally means \"a sending from the hand\" (manus + missiō). The freed person (lībertus/līberta) became a citizen of restricted status, barred from some offices; their children were born full citizens.",
+    source: "Sources: cu59-q1, cu65-q1 (OCD s.v. manumission; s.v. freedmen, freedwomen).",
+  },
+  // Draft fact 8
+  {
+    text: "Mornings belonged to business and the law-courts; from the afternoon on the city turned to leisure — washing, exercise, and conversation at the great public thermae, or a smaller private balneum.",
+    source: "Source: cu111-q1 (OCD s.v. baths/thermae).",
+  },
+  // Draft fact 9
+  {
+    text: "The forum was Rome's civic, commercial, and judicial center: shops lined the colonnades, merchants sold their goods, and judges heard cases.",
+    source: "Source: side107, latinSideLessons.ts (\"A Forum Mystery\" context).",
+  },
+  // Draft fact 10
+  {
+    text: "Romans carved short inscriptions (titulī) on stone and metal to record names, dedications, honors, and ownership.",
+    source: "Source: side110, latinSideLessons.ts (\"Mastery Through Roman Inscriptions\" context).",
+  },
+  // Draft fact 11
+  {
+    text: "The genius was the protective spirit associated with a Roman man and his household, receiving offerings in household religion — not the modern English sense \"brilliant person.\"",
+    source: "Source: side102, latinSideLessons.ts (\"A Roman Household and its Genius\" context).",
+  },
+  // Draft fact 12
+  {
+    text: "By the traditional (Varronian) dating Romans counted 753 BC as the city's founding, with Romulus the legendary founder — his twin Remus died in the rivalry before the city was built.",
+    source: "Source: cu9-q1 (OCD s.v. Rome (history); Livy 1.6–7).",
+  },
+  // Draft fact 13
+  {
+    text: "Lucius Tarquinius Superbus was traditionally the last king, expelled c. 509 BC; the new state called itself rēs pūblica, \"the public thing\" — and Roman hatred of kings ran so deep that calling a man rēx stayed a political charge for centuries, even under the emperors.",
+    source: "Source: cu33-q1 (Livy 1.49–60; OCD s.v. Tarquinius Superbus).",
+  },
+  // Draft fact 14
+  {
+    text: "The Via Appia, Rome's first great paved road, was begun in 312 BC under the censor Appius Claudius and ran from Rome toward Capua (later extended to Brundisium); Roman roads used layered construction with bridges, drainage, and durable stonework.",
+    source: "Sources: cu26-q1 (OCD s.v. via Appia) + side114 (road-engineering context).",
+  },
+  // Draft fact 15
+  {
+    text: "Rome's oldest bridge over the Tiber was the wooden Pons Sublicius, built of timber without iron and attributed by tradition to King Ancus Marcius; it was the city's only crossing for centuries and was kept in repair by the priests as a sacred relic.",
+    source: "Source: cu32-q1 (Livy 1.33.6; OCD s.v. Pons Sublicius).",
+  },
+  // Draft fact 16
+  {
+    text: "Between 58 and 50 BC Caesar conquered Gaul and recounted the war himself in the Commentarii de Bello Gallico — written in the third person, in the plainest style; its opening \"Gallia est omnis divisa in partes tres\" is still many students' first Latin prose.",
+    source: "Source: cu27-q1 (OCD s.v. Caesar; Caesar, Bellum Gallicum 1.1).",
+  },
+  // Draft fact 17
+  {
+    text: "In 49 BC Caesar brought his army to the Rubicon, the boundary of his province; crossing it with armed force meant civil war against Pompey and the Senate — and \"crossing the Rubicon\" is still our phrase for an irreversible decision.",
+    source: "Source: cu37-q1 (Suetonius, Divus Iulius 32; OCD s.v. Rubicon).",
+  },
+  // Draft fact 18
+  {
+    text: "A legion of Caesar's day was ten cohorts, nominally about five thousand men, and rarely at full strength on campaign; wherever it stopped for the night it built a fresh fortified camp, digging a ditch (fossa) and raising a rampart (vallum) — a routine Polybius describes in detail.",
+    source: "Sources: cu34-q1 + cu35-q1 (OCD s.v. legion; Polybius 6.27–34).",
+  },
+  // Draft fact 19
+  {
+    text: "The legionary's standard kit was the pilum — a heavy javelin thrown to break the enemy's shield-wall, designed to bend on impact so it could not be thrown back — and the gladius, the short sword for close work.",
+    source: "Source: cu41-q1 (OCD s.v. army, Roman; also pilum, gladius).",
+  },
+  // Draft fact 20
+  {
+    text: "In 218 BC, in the Second Punic War, the Carthaginian general Hannibal crossed the Alps with an army that included war elephants — most of the elephants did not survive the crossing.",
+    source: "Source: cu53-q1 (Livy 21.31–38; OCD s.v. Hannibal).",
+  },
+  // Draft fact 21
+  {
+    text: "Spartacus, a Thracian sold into slavery and trained as a gladiator, led the Third Servile War (73–71 BC) — the largest slave uprising Rome ever faced, finally crushed by Crassus.",
+    source: "Source: cu70-q1 (OCD s.v. Spartacus; Appian, Civil Wars 1.116–120).",
+  },
+  // Draft fact 22
+  {
+    text: "The triumph was the highest honor a Roman commander could receive: the victorious general rode in a chariot through the city, his soldiers sang, and the procession ended at the temple of Jupiter Optimus Maximus on the Capitoline, where he thanked Jupiter for the victory.",
+    source: "Source: cu1-q1 (OCD s.v. triumph; cf. Beard, The Roman Triumph, 2007).",
+  },
+  // Draft fact 24
+  {
+    text: "Rome's three chief gods — Iuppiter, Iūnō, and Minerva — were worshipped together in the great temple on the Capitoline Hill (the Capitoline triad), and Romans used their Roman names, not the Greek (Zeus, Hera, Athena).",
+    source: "Source: cu120-q1 (OCD s.v. Capitolium; Livy 1.55).",
+  },
+  // Draft fact 25
+  {
+    text: "Other gods of the Roman world: Mārs (war), Venus (love), and Neptūnus (the sea).",
+    source: "Source: cu120-q1.",
+  },
+  // Draft fact 26
+  {
+    text: "Jupiter's Capitoline temple was dedicated to Iuppiter Optimus Maximus — \"Jupiter Best and Greatest.\"",
+    source: "Source: cu1-q1/cu120-q1 (OCD s.v. Capitolium).",
+  },
+  // Draft fact 27
+  {
+    text: "Before public business, an augur read the gods' will from the flight of birds; the state's chief priest, head of the college of priests, was the pontifex maximus.",
+    source: "Source: cu127-q1 (OCD s.v. augures; s.v. pontifex).",
+  },
+  // Draft fact 28
+  {
+    text: "Religious rites marked the whole of Roman life — vows (vōta), the wedding (nūptiae), the funeral (fūnus) — and the virtue binding it all was pietās: dutiful love of gods, country, and family.",
+    source: "Source: cu127-q1 (OCD s.v. pietas; s.v. marriage/funus).",
+  },
+  // Draft fact 29
+  {
+    text: "Every family tended its own household gods, the Larēs and the protecting Genius; the state did on a grander scale what the family did in its house, keeping public cult in temples under its priesthoods.",
+    source: "Source: cu127-q1 + side102 (household-religion context).",
+  },
+  // Draft fact 31
+  {
+    text: "English \"triumph\" is straight from triumphus, and \"victory\" and \"glorious\" come from victōria and glōria — the vocabulary of a Roman victory parade.",
+    source: "Source: cu1-q1 (L&S s.v. triumphus).",
+  },
+  // Draft fact 32
+  {
+    text: "Agricola, \"farmer,\" is literally a \"field-tiller\" (ager \"field\" + colō \"I till\"); the same pair gives English \"agriculture\" (ager + cultura).",
+    source: "Source: cu2-q1 (L&S s.v. agricola).",
+  },
+  // Draft fact 33
+  {
+    text: "Prōvincia \"province\" is literally \"the conquered land\" (prō + vincere), and the same root vincere gives English \"victor\" and \"invincible\"; provinces were governed by Roman magistrates (proconsuls and propraetors) sent out from Rome with imperium.",
+    source: "Source: cu4-q1 (OCD s.v. province; L&S s.v. prōvincia).",
+  },
+  // Draft fact 34
+  {
+    text: "Caesar's cognomen outlived the Republic: it became \"kaiser\" in German and \"tsar\" in Russian.",
+    source: "Source: cu58-q1 (tip; OCD s.v. names, personal, Roman — the tria nomina).",
+  },
+  // Draft fact 35
+  {
+    text: "Pōns \"bridge\" survives in English \"pontoon\" — and in Pontifex Maximus, the chief priest's title, literally \"bridge-builder.\"",
+    source: "Source: cu32-q1 (L&S s.v. pōns).",
+  },
+  // Draft fact 36
+  {
+    text: "Rēs pūblica, \"the public thing,\" gave English \"republic\"; \"public\" itself comes from populus, \"the people\"; and rēx survives in \"regal\" and \"royal.\"",
+    source: "Source: cu33-q1 (L&S s.v. rēs pūblica).",
+  },
+  // Draft fact 37
+  {
+    text: "Lūdus means \"game, play\" — and by extension \"school\": Roman schooling was literally a \"play-place\" for children (hence magister lūdī).",
+    source: "Source: cu56-q1 (L&S s.v. lūdus).",
+  },
+  // Draft fact 38
+  {
+    text: "Trīclīnium, the dining room, is built on the same number-root as trēs, \"three\" — named for its three couches arranged around the table.",
+    source: "Source: cu108-q1 (OCD s.v. cena context).",
+  },
+  // Draft fact 39
+  {
+    text: "Ālea iacta est — \"the die is cast\" — is Suetonius' phrase for Caesar at the Rubicon, still used whenever a gamble is made.",
+    source: "Source: cu37-q1 (Suetonius, Divus Iulius 32).",
+  },
+];
+
+// ── PENDING ON-DISK VERIFICATION — the draft's flagged facts ────────────────
+// NOT in the bank: classical attestations the captured bundles do not carry.
+// A later research pass either sources them on disk or drops them. Verbatim
+// from the draft:
+// 23. [FLAGGED — not in captured bundles] The Ides fell on the 15th of March, May, July, and October (the 13th in other months); Caesar was assassinated on the Ides of March, 15 March 44 BC.
+// Source: standard Roman-calendar scholarship (classical attestation; flag for the bank).
+// 30. [FLAGGED — not in captured bundles] Roman tradition told how the exposed twins Romulus and Remus were suckled by a she-wolf (lupa) beside the Tiber before the founding.
+// Source: Livy 1.4 (classical attestation; flag for the bank).
+// 40. [FLAGGED — not in captured bundles] Two classical phrases still in modern use: Caesar's report of a swift victory, vēnī, vīdī, vīcī ("I came, I saw, I conquered"), and Horace's carpe diem — carpe literally "pluck," so "pluck the day."
+// Sources: Suetonius, Divus Iulius 37; Horace, Odes 1.11.8 (classical attestations; flag for the bank).
+
 interface TriviaBank {
   /** Ring (a) sources: captured tips (Book-1 teaching steps, culture lore). */
   itemFacts: TriviaFact[];
@@ -405,8 +623,8 @@ interface TriviaBank {
   /** Ring (a) section-tied mottoes: section prefix ("part4-lNN") → the
    *  boxed mottoes that ride with it (verbatim quote + source). */
   mottoesBySection: Map<string, TriviaFact[]>;
-  /** Ring (c) slot for the research general-culture census tranche — the
-   *  pool merges it; empty until the tranche lands. */
+  /** Ring (c) general culture bank — the research trivia-census tranche 1
+   *  (37 verified facts, GENERAL_CULTURE_TRIVIA); the pool merges it. */
   generalCulture: TriviaFact[];
 }
 
@@ -458,7 +676,7 @@ function triviaBank(): TriviaBank {
     generalFacts,
     footnoteFacts,
     mottoesBySection,
-    generalCulture: [], // slot: the research census tranche lands here
+    generalCulture: GENERAL_CULTURE_TRIVIA.map((f) => fact(f.text)),
   };
   return BANK;
 }
@@ -606,8 +824,8 @@ function pickTrivia(
   if (b) return b;
 
   // Ring (c) — general enrichment: the curated culture bank, the general
-  // culture census slot (empty until research's tranche lands), and the
-  // grammar index's definitions (verified PD-reference lore).
+  // culture bank (research tranche 1: 37 verified facts), and the grammar
+  // index's definitions (verified PD-reference lore).
   return pickFrom([...bank.generalFacts, ...bank.generalCulture, ...bank.topicDefs]);
 }
 

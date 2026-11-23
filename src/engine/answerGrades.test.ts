@@ -23,6 +23,7 @@
 import { buildGradeChecker, type GradeContext } from "~/engine/answerGrades";
 import {
   FOOTNOTE_TRIVIA,
+  GENERAL_CULTURE_TRIVIA,
   LATIN2_MOTTOES,
   latinMottoText,
   latin2SectionPrefix,
@@ -480,6 +481,68 @@ const check = buildGradeChecker({ date: "2026-11-22" });
       return g2.trivia === gDil.trivia;
     })(),
   );
+}
+
+// ── General culture bank (research tranche 1): provenance + count ──────────
+{
+  // Provenance gate: every general entry carries the draft's verbatim source
+  // line, and that line cites a captured bundle (cuN-qN) or side lesson
+  // (sideNNN) — the never-unsourced rule, ring (c) included.
+  const capturedRef = /(cu\d+-q\d+|side\d+)/;
+  let provenanceOk = true;
+  let textOk = true;
+  for (const f of GENERAL_CULTURE_TRIVIA) {
+    if (typeof f.source !== "string" || f.source.trim().length === 0)
+      provenanceOk = false;
+    if (!capturedRef.test(f.source)) provenanceOk = false;
+    if (typeof f.text !== "string" || f.text.trim().length === 0) textOk = false;
+  }
+  ok(
+    "general culture bank: 37 verified facts (tranche 1)",
+    GENERAL_CULTURE_TRIVIA.length === 37,
+    GENERAL_CULTURE_TRIVIA.length,
+  );
+  ok(
+    "every general entry cites a captured bundle or side lesson",
+    provenanceOk,
+  );
+  ok("every general entry carries non-empty fact text", textOk);
+
+  // The three flagged draft facts (23, 30, 40 — classical attestations NOT in
+  // the captured bundles) stay OUT of the bank (pending on-disk verification).
+  const leaked = GENERAL_CULTURE_TRIVIA.some(
+    (f) =>
+      f.text.includes("Ides of March") ||
+      f.text.includes("she-wolf") ||
+      f.text.includes("carpe diem"),
+  );
+  ok("flagged facts (23, 30, 40) excluded from the bank", !leaked);
+
+  // Rotation — ring (c) rides the same daily-seeded selector as the other
+  // rings (existing precedence, unchanged): an untied item draws from the
+  // merged general pool, deterministic per (item, date), with tranche facts
+  // surfacing across days.
+  const xEx: GeneratedExercise = {
+    type: "fill-in-blank",
+    prompt: "Give the Latin for 'x': ___",
+    answer: "x",
+  };
+  const generalTexts = new Set(GENERAL_CULTURE_TRIVIA.map((f) => f.text));
+  let deterministic = true;
+  let poolNeverEmpty = true;
+  let sawTranche = false;
+  for (let i = 0; i < 365; i++) {
+    const date = new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10);
+    const g1 = buildGradeChecker({ date })({ exercise: xEx, given: "x", kind: "typed" });
+    const g2 = buildGradeChecker({ date })({ exercise: xEx, given: "x", kind: "typed" });
+    if (g1.tier !== "perfect") poolNeverEmpty = false;
+    if (g1.trivia === null || g1.trivia.length === 0) poolNeverEmpty = false;
+    if (g1.trivia !== g2.trivia) deterministic = false;
+    if (g1.trivia !== null && generalTexts.has(g1.trivia)) sawTranche = true;
+  }
+  ok("ring (c) merged pool deterministic per (item, date)", deterministic);
+  ok("ring (c) pool never empty for an untied item (tranche merged)", poolNeverEmpty);
+  ok("tranche facts rotate through the daily-seeded selector", sawTranche);
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────
