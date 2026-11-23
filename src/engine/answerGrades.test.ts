@@ -21,8 +21,20 @@
  *   bun src/engine/answerGrades.test.ts
  */
 import { buildGradeChecker, type GradeContext } from "~/engine/answerGrades";
+import {
+  FOOTNOTE_TRIVIA,
+  LATIN2_MOTTOES,
+  latinMottoText,
+  latin2SectionPrefix,
+  latin2SectionGrammarTopics,
+} from "~/engine/answerGrades";
 import type { GeneratedExercise } from "~/engine/fallbackGenerator";
-import latinLessons from "~/data/latinLessons";
+import latinLessons, { type Lesson } from "~/data/latinLessons";
+import {
+  LATIN2_SECTION_VOCAB,
+  LATIN2_SECTION_GRAMMAR_REFS,
+} from "~/data/latin2";
+import { GRAMMAR_INDEX } from "~/data/grammarIndex";
 
 let passed = 0;
 let failed = 0;
@@ -270,6 +282,204 @@ const check = buildGradeChecker({ date: "2026-11-22" });
   };
   const g = c({ exercise: ex, given: "x", kind: "typed" });
   ok("perfect without trivia still confirms the canonical", g.tier === "perfect" && g.mostCorrect === "x", g);
+}
+
+// ── Trivia provenance: footnote + motto banks trace to captured sources ────
+{
+  const norm = (s: string) =>
+    s.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+  const stripFns = (s: string) =>
+    s.replace(/[\u00b9\u00b2\u00b3\u2070-\u209f]/g, "");
+
+  // The captured evidence: the footnote comment texts riding as trailing
+  // comments on LATIN2_SECTION_VOCAB entries (src/data/latin2.ts), verbatim.
+  const capturedFootnoteTexts = new Set([
+    "¹ abl. classī or classe",
+    "² two consuls elected each year",
+    "¹ added to emphatic word—generally the verb—and put first",
+    "² generally first in its clause",
+    "¹ This verb always takes an object in Latin.",
+    "¹ sub takes the accusative whenever motion is expressed; otherwise ablative",
+    "¹ inquit with direct quotations only, after the quotation's first word",
+    "¹ a pace was 5 Roman feet; a mile 5,000 Roman feet or 1,618 English yards",
+  ]);
+  const vocabHeadwords = new Set(
+    Object.values(LATIN2_SECTION_VOCAB).flatMap((entries) =>
+      entries.map((v) => norm(stripFns(v.latin))),
+    ),
+  );
+  let fnKeysOk = true;
+  let fnTextsOk = true;
+  let fnInstanceCount = 0;
+  for (const [key, texts] of Object.entries(FOOTNOTE_TRIVIA)) {
+    fnInstanceCount += texts.length;
+    if (!vocabHeadwords.has(norm(key))) fnKeysOk = false;
+    for (const t of texts) if (!capturedFootnoteTexts.has(t)) fnTextsOk = false;
+  }
+  ok(
+    "footnote bank: 10 item-tied instances over 8 distinct captured texts",
+    fnInstanceCount === 10 && capturedFootnoteTexts.size === 8,
+    [fnInstanceCount, capturedFootnoteTexts.size],
+  );
+  ok(
+    "every footnote key is a captured VOCAB headword (footnotes stripped)",
+    fnKeysOk,
+  );
+  ok(
+    "every footnote text is verbatim from the captured comments",
+    fnTextsOk,
+  );
+
+  // The motto mini-bank: every box keyed to a REAL captured spine section
+  // (prefixes validated against the spine's own grammar-ref keys), each
+  // entry quoting + attributing (or translating) verbatim.
+  const spinePrefixes = new Set(
+    Object.keys(LATIN2_SECTION_GRAMMAR_REFS).map((k) =>
+      k.split("-").slice(0, 2).join("-"),
+    ),
+  );
+  let mottoKeysOk = true;
+  let mottoComposeOk = true;
+  for (const m of LATIN2_MOTTOES) {
+    if (m.quote.trim().length === 0) mottoKeysOk = false;
+    // Provenance: each box carries captured attribution, a printed
+    // translation, or the captured fn glosses — the book's own content.
+    if (m.source === null && m.translation === null && m.fns === null)
+      mottoKeysOk = false;
+    for (const s of m.sectionIds) if (!spinePrefixes.has(s)) mottoKeysOk = false;
+    const text = latinMottoText(m);
+    if (!text.includes(`"${m.quote}"`)) mottoComposeOk = false;
+    if (m.translation && !text.includes(m.translation)) mottoComposeOk = false;
+    if (m.source && !text.includes(m.source)) mottoComposeOk = false;
+    if (m.fns && !text.includes(m.fns)) mottoComposeOk = false;
+  }
+  ok(
+    "motto bank: 18 captured boxes",
+    LATIN2_MOTTOES.length === 18,
+    LATIN2_MOTTOES.length,
+  );
+  ok(
+    "every motto keyed to a real captured spine section with captured attribution, translation, or fn glosses",
+    mottoKeysOk,
+  );
+  ok(
+    "motto trivia text composes ONLY the verbatim captured pieces",
+    mottoComposeOk,
+  );
+  ok(
+    "mottoes ride with 12 of the 16 spine sections (the sections that carry boxes)",
+    new Set(LATIN2_MOTTOES.flatMap((m) => m.sectionIds)).size === 12,
+  );
+
+  // Section resolution: the 2000-range lesson ids resolve to the spine.
+  ok(
+    "lesson 2012 resolves to part4-l12; 2001 to part4-l01",
+    latin2SectionPrefix(2012) === "part4-l12" &&
+      latin2SectionPrefix(2001) === "part4-l01",
+  );
+  ok(
+    "Book-1 and Foundations ids never resolve to a Book-2 section",
+    latin2SectionPrefix(179) === null && latin2SectionPrefix(401) === null,
+  );
+
+  // Integration — ring (a0): the book's own footnote beats everything for
+  // its item (vocabLatin stamped footnote-stripped, as the generators do).
+  const b2 = buildGradeChecker({ date: "2026-11-22" });
+  const classisEx: GeneratedExercise = {
+    type: "fill-in-blank",
+    prompt: 'Give one English meaning of "classis": ___',
+    answer: "fleet",
+    vocabLatin: "classis, classis",
+    sourceGloss: "fleet",
+  };
+  const gClassis = b2({ exercise: classisEx, given: "fleet", kind: "typed" });
+  ok("classis perfect", gClassis.tier === "perfect", gClassis.tier);
+  ok(
+    "classis perfect earns the verbatim footnote trivia",
+    gClassis.trivia === "¹ abl. classī or classe",
+    gClassis.trivia,
+  );
+  ok(
+    "footnote trivia deterministic under repetition",
+    (() => {
+      for (let i = 0; i < 10; i++) {
+        if (b2({ exercise: classisEx, given: "fleet", kind: "typed" }).trivia !== gClassis.trivia)
+          return false;
+      }
+      return true;
+    })(),
+  );
+
+  // Integration — mottoes: a Book-2 section whose item carries no footnote
+  // and no Book-1 tip tie (dubius — verified untied) draws its section's
+  // boxed mottoes, byte-stable per (item, date).
+  const lesson12 = { id: 2012, teachingSteps: [] } as unknown as Lesson;
+  const b12 = buildGradeChecker({ date: "2026-11-22", lesson: lesson12 });
+  const dubiusEx: GeneratedExercise = {
+    type: "fill-in-blank",
+    prompt: 'Give one English meaning of "dubius": ___',
+    answer: "doubtful",
+    vocabLatin: "dubius",
+    sourceGloss: "doubtful / uncertain",
+  };
+  const gDub = b12({ exercise: dubiusEx, given: "doubtful", kind: "typed" });
+  const l12MottoTexts = LATIN2_MOTTOES.filter((m) =>
+    m.sectionIds.includes("part4-l12"),
+  ).map(latinMottoText);
+  ok("dubius perfect", gDub.tier === "perfect", gDub.tier);
+  ok(
+    "the section's boxed motto supplies the trivia",
+    gDub.trivia !== null && l12MottoTexts.includes(gDub.trivia),
+    gDub.trivia,
+  );
+  ok(
+    "motto selection deterministic per (item, date)",
+    (() => {
+      const g2 = b12({ exercise: dubiusEx, given: "doubtful", kind: "typed" });
+      const g3 = buildGradeChecker({ date: "2026-11-22", lesson: lesson12 })({
+        exercise: dubiusEx,
+        given: "doubtful",
+        kind: "typed",
+      });
+      return g2.trivia === gDub.trivia && g3.trivia === gDub.trivia;
+    })(),
+  );
+
+  // Integration — ring (b): a section WITHOUT mottoes (part4-l08 carries no
+  // box) still reaches its mapped grammar-index lore through the section's
+  // own GRAMMAR_REFS topics (dīligō — verified untied by tips or keywords).
+  const l8Topics = latin2SectionGrammarTopics("part4-l08");
+  ok(
+    "part4-l08 resolves its captured GRAMMAR_REFS topics in book order",
+    l8Topics.map((t) => t.id).join(",") === "demonstratives,adjective-agreement",
+    l8Topics.map((t) => t.id),
+  );
+  const lesson8 = { id: 2008, teachingSteps: [] } as unknown as Lesson;
+  const b8 = buildGradeChecker({ date: "2026-11-22", lesson: lesson8 });
+  const diligoEx: GeneratedExercise = {
+    type: "fill-in-blank",
+    prompt: 'Give the Latin for "love": ___',
+    answer: "dīligō",
+    vocabLatin: "dīligō, dīligere, dīlēxī, dīlēctus",
+    sourceGloss: "love",
+  };
+  const gDil = b8({ exercise: diligoEx, given: "dīligō", kind: "typed" });
+  const defs = new Set(
+    GRAMMAR_INDEX.filter((t) => t.definition).map((t) => t.definition),
+  );
+  ok("dīligō perfect", gDil.tier === "perfect", gDil.tier);
+  ok(
+    "ring (b) supplies a captured grammar-index definition",
+    gDil.trivia !== null && defs.has(gDil.trivia),
+    gDil.trivia,
+  );
+  ok(
+    "ring (b) deterministic per (item, date)",
+    (() => {
+      const g2 = b8({ exercise: diligoEx, given: "dīligō", kind: "typed" });
+      return g2.trivia === gDil.trivia;
+    })(),
+  );
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────
