@@ -180,6 +180,7 @@ export default function Book2SectionSession({
         pronMode={pronMode}
         generateBatch={generateBatch}
         lessonLabel={`Exercise ${lessonNumber}`}
+        grammarTopics={grammarTopics}
         onAttempt={onAttempt}
         onQuit={onExit}
         onReportBug={onReportBug}
